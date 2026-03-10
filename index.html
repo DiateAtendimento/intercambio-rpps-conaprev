@@ -1,576 +1,350 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Intercâmbio Técnico entre Regimes Previdenciários – Conaprev</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta
-    name="description"
-    content="Programa de Intercâmbio Técnico entre Regimes Previdenciários, instituído pela Resolução Conaprev nº 05/2025, para fortalecer a gestão dos RPPS e EFPC por meio da troca estruturada de experiências."
-  />
-  <link rel="stylesheet" href="style.css" />
-
-  <!-- Fonte moderna -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-    rel="stylesheet"
-  />
-
-  <!-- Ícones Font Awesome -->
-
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
-    referrerpolicy="no-referrer"
-  />
-
-
-  <!-- Favicon -->
+  <title>Intercambio Tecnico RPPS/EFPC - Conaprev</title>
+  <meta name="description" content="Portal de cadastro e gestao de intercambios tecnicos entre regimes previdenciarios." />
   <link rel="icon" type="image/svg+xml" href="logo-conaprev.svg" />
 
-  <script defer src="script.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Barra superior pequena -->
-  <div class="topbar">
-    <span>Conselho Nacional dos Dirigentes de Regimes Próprios de Previdência Social – Conaprev</span>
-  </div>
+  <div class="top-strip">Conaprev | Programa de Intercambio Tecnico entre Regimes Previdenciarios</div>
 
-  <!-- Navegação principal -->
-  <header class="navbar">
-    <div class="navbar__brand">
-      <img
-        src="logo-conaprev.svg"
-        alt="Logomarca do Conaprev"
-        class="logo-img"
-      />
-      <div class="logo-text">
-        <span class="logo-title">Conaprev</span>
-        <span class="logo-subtitle">Intercâmbio Técnico</span>
+  <header class="main-header sticky-top">
+    <div class="container-fluid px-3 px-lg-4 d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2">
+        <img src="logo-conaprev.svg" alt="Conaprev" class="brand-logo" />
+        <div>
+          <div class="brand-title">Conaprev</div>
+          <div class="brand-sub">Intercambio Tecnico RPPS/EFPC</div>
+        </div>
       </div>
+      <button class="btn btn-light menu-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#mainAside" aria-controls="mainAside">
+        <i class="fa-solid fa-bars"></i>
+        Menu
+      </button>
     </div>
-
-    <button class="navbar__toggle" id="navbarToggle" aria-label="Abrir menu">
-      <span></span><span></span><span></span>
-    </button>
-
-    <nav class="navbar__menu" id="navbarMenu">
-      <a href="#sobre" data-scroll>Sobre</a>
-      <a href="#objetivos" data-scroll>Objetivos</a>
-      <a href="#como-funciona" data-scroll>Como funciona</a>
-      <a href="#participacao" data-scroll>Quem pode participar</a>
-      <a href="#custos" data-scroll>Responsabilidades</a>
-      <a href="#resultados" data-scroll>Resultados</a>
-    </nav>
   </header>
 
-  <main>
-    <!-- HERO -->
-    <section id="hero" class="hero">
-      <div class="hero__content reveal">
-        <span class="hero__badge">Resolução Conaprev nº 05/2025</span>
-        <h1>Intercâmbio Técnico entre Regimes Previdenciários</h1>
-        <p class="hero__subtitle">
-          Troca estruturada de experiências, fortalecimento institucional e
-          melhoria contínua da gestão previdenciária nos RPPS e EFPC.
-        </p>
-        <p class="hero__text">
-          Instituído pela Resolução Conaprev nº 05/2025, o Programa de
-          Intercâmbio Técnico entre Regimes Previdenciários promove imersões
-          presenciais em regimes Anfitriões, reconhecidos por suas boas práticas
-          e nível de maturidade no Pró-Gestão RPPS, para capacitar dirigentes,
-          conselheiros, servidores e colaboradores de Regimes Próprios de
-          Previdência Social (RPPS) e Entidades Fechadas de Previdência
-          Complementar (EFPC).
-        </p>
+  <aside class="offcanvas offcanvas-start" tabindex="-1" id="mainAside" aria-labelledby="mainAsideLabel">
+    <div class="offcanvas-header border-bottom">
+      <h5 class="offcanvas-title" id="mainAsideLabel">Areas do Sistema</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column gap-2">
+      <button class="btn btn-nav" data-target="section-home"><i class="fa-solid fa-house"></i> Inicio</button>
+      <button class="btn btn-nav" data-target="section-forms"><i class="fa-solid fa-file-lines"></i> Formularios</button>
+      <button class="btn btn-nav" data-target="section-candidate"><i class="fa-solid fa-user-check"></i> Area Intercambista</button>
+      <button class="btn btn-nav" data-target="section-host"><i class="fa-solid fa-building-user"></i> Area Anfitriao</button>
+      <button class="btn btn-nav" data-target="section-admin"><i class="fa-solid fa-user-shield"></i> Gerenciador Admin</button>
+      <hr />
+      <small class="text-secondary">Fluxo: cadastro -> escolha -> decisao -> resultado.</small>
+    </div>
+  </aside>
 
-        <div class="hero__actions">
-          <button class="btn btn-primary" data-scroll data-target="#anfitriao">
-            <i class="fa-solid fa-building-columns"></i>
-            Quero ser Anfitrião
-          </button>
-          <button class="btn btn-outline" data-scroll data-target="#intercambista">
-            <i class="fa-solid fa-users"></i>
-            Quero ser Intercambista
-          </button>
-        </div>
-
-        <div class="hero__meta">
-          <span><i class="fa-regular fa-calendar"></i> Execução a partir do 1º semestre de 2026</span>
-          <span><i class="fa-solid fa-diagram-project"></i> Coordenado pela Comissão de Credenciamento e Avaliação do Pró-Gestão RPPS</span>
-        </div>
-      </div>
-
-      <div class="hero__visual reveal">
-        <div class="hero-card">
-          <div class="hero-card__title">
-            <i class="fa-solid fa-people-group"></i>
-            Cooperação em rede
-          </div>
-          <p>
-            Imersões de 5 a 10 dias úteis em regimes Anfitriões para vivenciar, na prática, rotinas e soluções em:
-          </p>
-          <ul>
-            <li>Benefícios e cadastros;</li>
-            <li>Investimentos e controles;</li>
-            <li>Compensação previdenciária;</li>
-            <li>Tecnologia, governança e transparência.</li>
-          </ul>
-          <div class="hero-card__stats">
-            <div>
-              <span class="label">Foco</span>
-              <strong>Boas práticas</strong>
-            </div>
-            <div>
-              <span class="label">Resultados</span>
-              <strong>CRP e Pró-Gestão</strong>
+  <main class="container-fluid px-3 px-lg-4 py-4 pb-5">
+    <section id="section-home" class="app-section active-section">
+      <div class="row g-4 align-items-stretch">
+        <div class="col-lg-8">
+          <div class="hero-card card border-0 shadow-sm h-100">
+            <div class="card-body p-4 p-lg-5">
+              <span class="pill">Resolucao Conaprev n 05/2025</span>
+              <h1 class="display-title mt-3">Portal de Intercambio Tecnico</h1>
+              <p class="text-secondary mb-4">Ambiente unico para cadastro de anfitrioes, inscricao de intercambistas, decisao de aceite/rejeicao e gerenciamento administrativo.</p>
+              <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-brand" data-jump="section-forms">Iniciar cadastros</button>
+                <button class="btn btn-outline-brand" data-jump="section-candidate">Entrar com CPF</button>
+              </div>
+              <div class="row g-3 mt-2">
+                <div class="col-md-4">
+                  <div class="metric-box">
+                    <div class="metric-label">Fluxo</div>
+                    <strong>5 Etapas</strong>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="metric-box">
+                    <div class="metric-label">Acesso</div>
+                    <strong>Admin | Anfitriao | Intercambista</strong>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="metric-box">
+                    <div class="metric-label">Base</div>
+                    <strong>Google Sheets</strong>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- SOBRE O PROGRAMA -->
-    <section id="sobre" class="section section--alt">
-      <div class="section__header reveal">
-        <h2>Sobre o Programa</h2>
-        <p>
-          Uma iniciativa do Conaprev para fortalecer a gestão previdenciária por meio do aprendizado entre pares.
-        </p>
-      </div>
-
-      <div class="section__content section__grid--2col">
-        <div class="reveal">
-          <p>
-            O <strong>Programa de Intercâmbio Técnico entre Regimes Previdenciários</strong> foi instituído pela
-            <strong>Resolução Conaprev nº 05/2025</strong> como uma estratégia nacional de fortalecimento dos
-            Regimes Próprios de Previdência Social (RPPS) e das Entidades Fechadas de Previdência Complementar (EFPC)
-            que atuam junto a esses regimes.
-          </p>
-          <p>
-            Coordenado pela <strong>Comissão de Credenciamento e Avaliação do Pró-Gestão RPPS</strong> e com início
-            previsto para o <strong>primeiro semestre de 2026</strong>, o Programa organiza a troca de experiências
-            por meio de imersões presenciais de <strong>5 a 10 dias úteis</strong> em regimes Anfitriões reconhecidos
-            por suas boas práticas e por seu nível de maturidade institucional.
-          </p>
-          <p>
-            Durante as imersões, dirigentes, conselheiros, servidores e colaboradores dos regimes Intercambistas
-            acompanham rotinas, processos e soluções adotadas em áreas como benefícios, cadastros, investimentos,
-            compensação previdenciária, tecnologia, governança e controle interno.
-          </p>
-        </div>
-
-        <div class="cards-column reveal">
-          <article class="info-card">
-            <div class="info-card__icon">
-              <i class="fa-solid fa-people-arrows"></i>
+        <div class="col-lg-4">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4 d-flex flex-column justify-content-between">
+              <div>
+                <h5>Interacao com Lottie</h5>
+                <p class="small text-secondary mb-3">Estados de carregamento, confirmacao e seguranca.</p>
+              </div>
+              <div class="lottie-grid">
+                <div class="lottie-slot" data-lottie="lottie_search_loading.json"></div>
+                <div class="lottie-slot" data-lottie="lottie_success_check.json"></div>
+                <div class="lottie-slot" data-lottie="lottie_lock_unauthorized.json"></div>
+              </div>
             </div>
-            <h3>Intercâmbio técnico-institucional</h3>
-            <p>
-              RPPS e EFPC atuam em rede, compartilhando experiências que podem ser replicadas e adaptadas à realidade
-              de cada ente federativo.
-            </p>
-          </article>
+          </div>
+        </div>
+      </div>
+    </section>
 
-          <article class="info-card">
-            <div class="info-card__icon">
-              <i class="fa-solid fa-shield-halved"></i>
+    <section id="section-forms" class="app-section">
+      <div class="row g-4">
+        <div class="col-12">
+          <div class="section-title-wrap">
+            <h2>Formularios de Cadastro</h2>
+            <p>Preencha o formulario de Anfitriao ou Intercambista conforme seu perfil.</p>
+          </div>
+        </div>
+
+        <div class="col-xl-6">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="mb-0">Formulario do Anfitriao</h5>
+                <img src="img_anfitriao.svg" alt="Anfitriao" class="profile-img profile-img-host" />
+              </div>
+
+              <form id="hostForm" class="row g-3">
+                <div class="col-md-8"><label class="form-label">Entidade ou orgao gestor</label><input class="form-control" name="entidade" required /></div>
+                <div class="col-md-4"><label class="form-label">UF</label><input class="form-control text-uppercase" name="uf" maxlength="2" required /></div>
+                <div class="col-12"><label class="form-label">Endereco</label><input class="form-control" name="endereco" required /></div>
+                <div class="col-md-7"><label class="form-label">Dirigente / Responsavel Legal</label><input class="form-control" name="dirigente" required /></div>
+                <div class="col-md-5"><label class="form-label">Cargo/Funcao (Dirigente)</label><input class="form-control" name="cargoDirigente" required /></div>
+                <div class="col-md-6"><label class="form-label">Coordenador local</label><input class="form-control" name="coordenadorLocal" required /></div>
+                <div class="col-md-3"><label class="form-label">E-mail</label><input type="email" class="form-control" name="email" required /></div>
+                <div class="col-md-3"><label class="form-label">Telefone</label><input class="form-control" name="telefone" required /></div>
+                <div class="col-md-4"><label class="form-label">Nivel Pro-Gestao</label><input class="form-control" name="nivelProGestao" required /></div>
+                <div class="col-md-4"><label class="form-label">Vagas oferecidas</label><input class="form-control" name="vagas" required /></div>
+                <div class="col-md-4"><label class="form-label">No de areas/setores</label><input class="form-control" name="totalAreas" required /></div>
+                <div class="col-12">
+                  <label class="form-label">CNPJ para login</label>
+                  <input class="form-control" name="cnpj" required />
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label">Areas disponiveis</label>
+                  <div class="check-grid">
+                    <label><input type="checkbox" name="areaCadastro" /> Cadastro e Atendimento</label>
+                    <label><input type="checkbox" name="areaConcessao" /> Concessao e Revisao de Beneficios</label>
+                    <label><input type="checkbox" name="areaCompensacao" /> Compensacao Previdenciaria</label>
+                    <label><input type="checkbox" name="areaAtuaria" /> Atuaria</label>
+                    <label><input type="checkbox" name="areaInvestimentos" /> Investimentos</label>
+                    <label><input type="checkbox" name="areaControleInterno" /> Controle Interno</label>
+                    <label><input type="checkbox" name="areaCertificacao" /> Certificacao/Pro-Gestao</label>
+                    <label><input type="checkbox" name="areaGovernanca" /> Governanca e Transparencia</label>
+                    <label><input type="checkbox" name="areaPessoal" /> Gestao de Pessoal</label>
+                    <label><input type="checkbox" name="areaTecnologia" /> Tecnologia/Sistemas</label>
+                    <label><input type="checkbox" name="areaContabilidade" /> Contabilidade</label>
+                    <label><input type="checkbox" name="areaOutros" /> Outros</label>
+                  </div>
+                </div>
+
+                <div class="col-12"><label class="form-label">Outros (especificar)</label><input class="form-control" name="areaOutrosTexto" /></div>
+                <div class="col-12"><label class="form-label">Equipe de apoio designada</label><textarea class="form-control" rows="2" name="equipeApoio" required></textarea></div>
+                <div class="col-12"><label class="form-label">Breve descricao da proposta</label><textarea class="form-control" rows="3" name="proposta" required></textarea></div>
+                <div class="col-md-6"><label class="form-label">Responsavel pelo preenchimento</label><input class="form-control" name="responsavel" required /></div>
+                <div class="col-md-3"><label class="form-label">Cargo/Função (Responsavel)</label><input class="form-control" name="cargoResponsavel" required /></div>
+                <div class="col-md-3"><label class="form-label">Data</label><input type="date" class="form-control" name="dataPreenchimento" required /></div>
+
+                <div class="col-12 d-flex gap-2 align-items-center">
+                  <button class="btn btn-brand" type="submit">Enviar cadastro</button>
+                  <div id="hostFormFeedback" class="small fw-semibold"></div>
+                </div>
+              </form>
             </div>
-            <h3>Foco em regularidade e sustentabilidade</h3>
-            <p>
-              O Programa apoia a busca pela regularidade previdenciária, contribuindo para a obtenção e a manutenção
-              do <strong>Certificado de Regularidade Previdenciária – CRP</strong> e para o avanço no
-              <strong>Pró-Gestão RPPS</strong>.
-            </p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- OBJETIVOS -->
-    <section id="objetivos" class="section">
-      <div class="section__header reveal">
-        <h2>Objetivos do Intercâmbio</h2>
-        <p>
-          Entenda os principais eixos que orientam o Programa de Intercâmbio Técnico entre Regimes Previdenciários.
-        </p>
-      </div>
-
-      <div class="cards-grid reveal">
-        <article class="objective-card">
-          <i class="fa-solid fa-people-arrows objective-card__icon"></i>
-          <h3>Intercâmbio técnico-institucional</h3>
-          <p>
-            Promover intercâmbio organizado entre RPPS e EFPC, conectando realidades diferentes e aproximando gestores
-            que enfrentam desafios semelhantes.
-          </p>
-        </article>
-
-        <article class="objective-card">
-          <i class="fa-solid fa-award objective-card__icon"></i>
-          <h3>Boas práticas e CRP</h3>
-          <p>
-            Disseminar boas práticas de gestão, reforçar a conformidade previdenciária e contribuir para a regularidade
-            do CRP.
-          </p>
-        </article>
-
-        <article class="objective-card">
-          <i class="fa-solid fa-chalkboard-user objective-card__icon"></i>
-          <h3>Capacitação prática</h3>
-          <p>
-            Oferecer capacitação prática a dirigentes, conselheiros, servidores e colaboradores, diretamente nas
-            rotinas dos regimes Anfitriões.
-          </p>
-        </article>
-
-        <article class="objective-card">
-          <i class="fa-solid fa-handshake-angle objective-card__icon"></i>
-          <h3>Cooperação e apoio técnico</h3>
-          <p>
-            Estimular a cooperação técnica entre entes federativos e entidades gestoras, criando uma rede contínua de
-            apoio e troca de soluções.
-          </p>
-        </article>
-      </div>
-    </section>
-
-    <!-- COMO FUNCIONA -->
-    <section id="como-funciona" class="section section--alt">
-      <div class="section__header reveal">
-        <h2>Como funciona na prática</h2>
-        <p>
-          Um fluxo simples, mas estruturado, que organiza desde o credenciamento até o compartilhamento dos resultados.
-        </p>
-      </div>
-
-      <div class="timeline reveal">
-        <div class="timeline__item">
-          <div class="timeline__badge">1</div>
-          <div class="timeline__content">
-            <h3>Credenciamento do Anfitrião</h3>
-            <p>
-              RPPS e EFPC apresentam sua candidatura como regimes Anfitriões, demonstrando boas práticas de gestão e
-              nível de maturidade no Pró-Gestão RPPS.
-            </p>
           </div>
         </div>
 
-        <div class="timeline__item">
-          <div class="timeline__badge">2</div>
-          <div class="timeline__content">
-            <h3>Divulgação dos Anfitriões habilitados</h3>
-            <p>
-              O Conaprev publica a lista de Anfitriões habilitados, com informações sobre perfil, áreas de destaque e
-              possibilidades de imersão.
-            </p>
-          </div>
-        </div>
+        <div class="col-xl-6">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="mb-0">Formulario do Intercambista</h5>
+                <img src="img_for_woman.svg" alt="Intercambista" class="profile-img profile-img-candidate" id="candidateFormImage" />
+              </div>
 
-        <div class="timeline__item">
-          <div class="timeline__badge">3</div>
-          <div class="timeline__content">
-            <h3>Credenciamento dos Intercambistas</h3>
-            <p>
-              Dirigentes, conselheiros, servidores e colaboradores se inscrevem como Intercambistas, apresentando os
-              documentos e requisitos exigidos.
-            </p>
-          </div>
-        </div>
+              <form id="candidateForm" class="row g-3">
+                <div class="col-md-8"><label class="form-label">Entidade ou orgao gestor</label><input class="form-control" name="entidade" required /></div>
+                <div class="col-md-4"><label class="form-label">UF</label><input class="form-control text-uppercase" name="uf" maxlength="2" required /></div>
+                <div class="col-md-4"><label class="form-label">CPF (login)</label><input class="form-control" name="cpf" required /></div>
+                <div class="col-md-4"><label class="form-label">Genero</label><select class="form-select" name="genero" id="candidateGenero"><option value="Feminino">Feminino</option><option value="Masculino">Masculino</option></select></div>
+                <div class="col-md-4"><label class="form-label">Nivel Pro-Gestao</label><input class="form-control" name="nivelProGestao" required /></div>
+                <div class="col-md-7"><label class="form-label">Dirigente / Responsavel Legal</label><input class="form-control" name="dirigente" required /></div>
+                <div class="col-md-5"><label class="form-label">Cargo/Função (Dirigente)</label><input class="form-control" name="cargoDirigente" required /></div>
+                <div class="col-md-6"><label class="form-label">E-mail institucional</label><input type="email" class="form-control" name="email" required /></div>
+                <div class="col-md-6"><label class="form-label">Telefone</label><input class="form-control" name="telefone" required /></div>
 
-        <div class="timeline__item">
-          <div class="timeline__badge">4</div>
-          <div class="timeline__content">
-            <h3>Compatibilização e seleção</h3>
-            <p>
-              São analisadas a compatibilidade de perfil, nível no Pró-Gestão, objetivos do plano de trabalho e a
-              capacidade de recebimento dos Anfitriões.
-            </p>
-          </div>
-        </div>
+                <div class="col-12">
+                  <label class="form-label">Participantes indicados (max 8)</label>
+                  <div id="participantsWrap" class="participants-wrap"></div>
+                  <button type="button" class="btn btn-sm btn-outline-brand mt-2" id="addParticipantBtn">Adicionar participante</button>
+                </div>
 
-        <div class="timeline__item">
-          <div class="timeline__badge">5</div>
-          <div class="timeline__content">
-            <h3>Execução do intercâmbio</h3>
-            <p>
-              O Intercambista realiza imersão presencial de 5 a 10 dias úteis, com agenda pactuada e acompanhada pela
-              equipe técnica do Anfitrião.
-            </p>
-          </div>
-        </div>
+                <div class="col-md-6"><label class="form-label">Anfitriao de interesse - Prioridade 1</label><input class="form-control" name="prioridade1Host" /></div>
+                <div class="col-md-6"><label class="form-label">Objetivo principal (P1)</label><input class="form-control" name="prioridade1Objetivo" /></div>
+                <div class="col-md-6"><label class="form-label">Anfitriao de interesse - Prioridade 2</label><input class="form-control" name="prioridade2Host" /></div>
+                <div class="col-md-6"><label class="form-label">Objetivo principal (P2)</label><input class="form-control" name="prioridade2Objetivo" /></div>
+                <div class="col-md-6"><label class="form-label">Anfitriao de interesse - Prioridade 3</label><input class="form-control" name="prioridade3Host" /></div>
+                <div class="col-md-6"><label class="form-label">Objetivo principal (P3)</label><input class="form-control" name="prioridade3Objetivo" /></div>
+                <div class="col-12"><label class="form-label">Temas/areas de interesse</label><textarea class="form-control" rows="2" name="temas" required></textarea></div>
+                <div class="col-12"><label class="form-label">Atividades propostas (agenda)</label><textarea class="form-control" rows="2" name="atividades" required></textarea></div>
+                <div class="col-12"><label class="form-label">Objetivos e compromissos</label><textarea class="form-control" rows="2" name="objetivosCompromissos" required></textarea></div>
 
-        <div class="timeline__item">
-          <div class="timeline__badge">6</div>
-          <div class="timeline__content">
-            <h3>Relatório e compartilhamento de resultados</h3>
-            <p>
-              Ao final, os participantes elaboram relatórios com resultados, compromissos e boas práticas que poderão
-              ser replicadas, contribuindo para a melhoria contínua dos regimes.
-            </p>
+                <div class="col-12">
+                  <label class="form-label d-block">Declaracoes</label>
+                  <div class="check-grid">
+                    <label><input type="checkbox" name="declaracaoVinculo" required /> Vinculo formal com RPPS/EFPC</label>
+                    <label><input type="checkbox" name="declaracaoCusteio" required /> Custeio pelo intercambista</label>
+                    <label><input type="checkbox" name="declaracaoCiencia" required /> Ciencia dos termos da resolucao</label>
+                  </div>
+                </div>
+
+                <div class="col-md-6"><label class="form-label">Responsavel pelo preenchimento</label><input class="form-control" name="responsavel" required /></div>
+                <div class="col-md-3"><label class="form-label">Cargo/Função (Responsavel)</label><input class="form-control" name="cargoResponsavel" required /></div>
+                <div class="col-md-3"><label class="form-label">Data</label><input type="date" class="form-control" name="dataPreenchimento" required /></div>
+
+                <div class="col-12 d-flex gap-2 align-items-center">
+                  <button class="btn btn-brand" type="submit">Enviar cadastro</button>
+                  <div id="candidateFormFeedback" class="small fw-semibold"></div>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- QUEM PODE PARTICIPAR -->
-    <section id="participacao" class="section">
-      <div class="section__header reveal">
-        <h2>Quem pode participar</h2>
-        <p>
-          O Programa é direcionado a Regimes Próprios de Previdência Social e EFPC que atuam com RPPS, em diferentes
-          níveis de maturidade e estrutura.
-        </p>
-      </div>
-
-      <div class="section__grid--2col reveal">
-        <!-- Anfitrião -->
-        <article id="anfitriao" class="role-card">
-          <div class="role-card__header">
-            <span class="role-tag role-tag--host">Anfitrião</span>
-            <h3>Regimes Anfitriões</h3>
+    <section id="section-candidate" class="app-section">
+      <div class="row g-4">
+        <div class="col-lg-4">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Area do Intercambista</h5>
+                <img id="candidateLoginImage" src="img_for_man.svg" alt="Intercambista" class="profile-img profile-img-candidate" />
+              </div>
+              <form id="candidateLoginForm" class="row g-3">
+                <div class="col-12"><label class="form-label">CPF</label><input class="form-control" name="cpf" required /></div>
+                <div class="col-12"><button class="btn btn-brand w-100" type="submit">Entrar</button></div>
+              </form>
+              <div id="candidateLoginFeedback" class="small fw-semibold mt-2"></div>
+              <hr />
+              <div id="candidateResultBox" class="result-box">Sem solicitacao no momento.</div>
+            </div>
           </div>
-          <p class="role-card__intro">
-            São responsáveis por receber os Intercambistas, abrir suas rotinas e compartilhar suas experiências de
-            gestão.
-          </p>
-          <h4>Requisitos básicos</h4>
-          <ul class="role-card__list">
-            <li>RPPS com <strong>CRP regular</strong> no Cadprev.</li>
-            <li>
-              Certificação institucional no <strong>Pró-Gestão RPPS em nível II ou superior</strong>, ou nível de
-              maturidade equivalente.
-            </li>
-            <li>
-              EFPC com <strong>representatividade no Conaprev</strong> também podem atuar como Anfitriãs, quando
-              vinculadas a RPPS.
-            </li>
-            <li>
-              Disponibilidade de equipe técnica para acompanhar imersões de 5 a 10 dias úteis e organizar a agenda
-              temática.
-            </li>
-          </ul>
-          <div class="role-card__cta">
-            <button class="btn btn-primary" data-scroll data-target="#como-funciona">
-              Entender o fluxo do credenciamento
-            </button>
+        </div>
+        <div class="col-lg-8">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="mb-0">Lista dos Anfitrioes</h5>
+                <span class="badge text-bg-light" id="hostsCountBadge">0 disponiveis</span>
+              </div>
+              <div id="candidateHostsWrap" class="host-list-wrap empty">Faça login com CPF para carregar a lista.</div>
+            </div>
           </div>
-        </article>
-
-        <!-- Intercambista -->
-        <article id="intercambista" class="role-card">
-          <div class="role-card__header">
-            <span class="role-tag role-tag--guest">Intercambista</span>
-            <h3>Regimes Intercambistas</h3>
-          </div>
-          <p class="role-card__intro">
-            São os regimes que enviam dirigentes, conselheiros, servidores e colaboradores para vivenciar a experiência
-            em um Anfitrião.
-          </p>
-          <h4>Requisitos básicos</h4>
-          <ul class="role-card__list">
-            <li>
-              Atendimento às exigências de <strong>qualificação e regularidade</strong> dos dirigentes e conselheiros.
-            </li>
-            <li>
-              Observância da <strong>compatibilidade de nível no Pró-Gestão RPPS</strong> com o regime Anfitrião
-              pretendido.
-            </li>
-            <li>
-              Apresentação de <strong>plano de trabalho</strong> com objetivos, áreas de interesse e metas do
-              intercâmbio.
-            </li>
-            <li>
-              Envio de <strong>carta de anuência</strong> da autoridade competente e <strong>currículo</strong> dos
-              participantes.
-            </li>
-            <li>
-              <strong>Declaração de custeio</strong> comprovando que o ente arcará integralmente com os custos de
-              deslocamento, hospedagem e alimentação.
-            </li>
-          </ul>
-          <div class="role-card__cta">
-            <button class="btn btn-outline" data-scroll data-target="#custos">
-              Ver responsabilidades e custos
-            </button>
-          </div>
-        </article>
+        </div>
       </div>
     </section>
 
-    <!-- RESPONSABILIDADES E CUSTOS -->
-    <section id="custos" class="section section--alt">
-      <div class="section__header reveal">
-        <h2>Responsabilidades e Custos</h2>
-        <p>
-          O Programa organiza as atribuições de cada parte de forma clara, garantindo segurança jurídica e
-          previsibilidade administrativa.
-        </p>
-      </div>
-
-      <div class="section__grid--2col reveal">
-        <article class="responsibility-card">
-          <h3><i class="fa-solid fa-plane-departure"></i> Regime Intercambista</h3>
-          <ul>
-            <li>
-              Arcar com os <strong>custos de deslocamento, diárias, hospedagem e alimentação</strong> dos
-              participantes.
-            </li>
-            <li>
-              Prever, quando couber, o uso de <strong>recursos da taxa de administração</strong>, conforme a
-              legislação local.
-            </li>
-            <li>
-              Garantir a participação dos servidores e dirigentes nas datas pactuadas, sem prejuízo das demais
-              atividades essenciais.
-            </li>
-            <li>
-              Elaborar e enviar o <strong>relatório de resultados</strong> após a conclusão da imersão.
-            </li>
-          </ul>
-        </article>
-
-        <article class="responsibility-card">
-          <h3><i class="fa-solid fa-building-user"></i> Regime Anfitrião</h3>
-          <ul>
-            <li>
-              Organizar a <strong>recepção e o acolhimento</strong> dos Intercambistas, com agenda previamente
-              pactuada.
-            </li>
-            <li>
-              Disponibilizar <strong>espaço físico adequado</strong> e infraestrutura para reuniões, visitas técnicas e
-              oficinas.
-            </li>
-            <li>
-              Designar <strong>equipe técnica de referência</strong> para acompanhar as atividades de imersão.
-            </li>
-            <li>
-              Compartilhar <strong>documentos-modelo, fluxos e indicadores</strong> que possam ser replicados pelos
-              regimes Intercambistas, respeitando as normas de sigilo e proteção de dados.
-            </li>
-          </ul>
-        </article>
-      </div>
-
-      <p class="section__note reveal">
-        <i class="fa-solid fa-circle-info"></i>
-        Os detalhes operacionais, formulários de credenciamento e modelos de documentos serão definidos em ato
-        específico e amplamente divulgados pelo Conaprev e pelos canais oficiais do Pró-Gestão RPPS.
-      </p>
-    </section>
-
-    <!-- RESULTADOS ESPERADOS -->
-    <section id="resultados" class="section">
-      <div class="section__header reveal">
-        <h2>Resultados esperados</h2>
-        <p>
-          O intercâmbio é pensado para gerar ganhos concretos na gestão previdenciária e na qualidade do atendimento
-          aos segurados.
-        </p>
-      </div>
-
-      <div class="cards-grid reveal">
-        <article class="result-card">
-          <i class="fa-solid fa-diagram-project result-card__icon"></i>
-          <h3>Organização e processos</h3>
-          <p>
-            Melhoria da organização interna, revisão de fluxos de trabalho e padronização de procedimentos, reduzindo
-            retrabalhos e gargalos.
-          </p>
-        </article>
-
-        <article class="result-card">
-          <i class="fa-solid fa-sliders result-card__icon"></i>
-          <h3>Controles mais eficientes</h3>
-          <p>
-            Aperfeiçoamento dos mecanismos de controle, monitoramento e registro de informações, com foco em segurança
-            e confiabilidade dos dados.
-          </p>
-        </article>
-
-        <article class="result-card">
-          <i class="fa-solid fa-eye result-card__icon"></i>
-          <h3>Transparência e institucionalidade</h3>
-          <p>
-            Fortalecimento da transparência, da prestação de contas e da imagem institucional dos regimes perante
-            segurados, órgãos de controle e sociedade.
-          </p>
-        </article>
-
-        <article class="result-card">
-          <i class="fa-solid fa-chart-line result-card__icon"></i>
-          <h3>Regularidade e Pró-Gestão</h3>
-          <p>
-            Avanços na regularidade previdenciária, no cumprimento de critérios do CRP e na elevação do nível de
-            certificação no Pró-Gestão RPPS.
-          </p>
-        </article>
+    <section id="section-host" class="app-section">
+      <div class="row g-4">
+        <div class="col-lg-4">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Area do Anfitriao</h5>
+                <img src="img_anfitriao.svg" alt="Anfitriao" class="profile-img profile-img-host" />
+              </div>
+              <form id="hostLoginForm" class="row g-3">
+                <div class="col-12"><label class="form-label">CNPJ</label><input class="form-control" name="cnpj" required /></div>
+                <div class="col-12"><label class="form-label">Senha</label><input type="password" class="form-control" name="senha" required /></div>
+                <div class="col-12"><button class="btn btn-brand w-100" type="submit">Entrar</button></div>
+              </form>
+              <div id="hostLoginFeedback" class="small fw-semibold mt-2"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-8">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="mb-0">Solicitacoes Pendentes</h5>
+                <span class="badge text-bg-light" id="hostPendingBadge">0 pendentes</span>
+              </div>
+              <div id="hostRequestsWrap" class="empty-state">Faça login para visualizar as solicitacoes.</div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- CALL TO ACTION FINAL -->
-    <section id="cta-final" class="section section--cta">
-      <div class="section__header reveal">
-        <h2>Pronto para participar do Intercâmbio Técnico?</h2>
-        <p>
-          Se o seu regime já desenvolve boas práticas ou busca apoio para avançar em organização, controles e
-          regularidade previdenciária, o Programa de Intercâmbio Técnico é o caminho para evoluir em rede.
-        </p>
-      </div>
-      <div class="cta-buttons reveal">
-        <button class="btn btn-primary" data-scroll data-target="#anfitriao">
-          Quero credenciar meu regime como Anfitrião
-        </button>
-        <button class="btn btn-outline" data-scroll data-target="#intercambista">
-          Quero participar como Intercambista
-        </button>
+    <section id="section-admin" class="app-section">
+      <div class="row g-4">
+        <div class="col-lg-4">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Gerenciador Admin</h5>
+                <img src="img_admin.png" alt="Admin" class="profile-img profile-img-admin" />
+              </div>
+              <form id="adminLoginForm" class="row g-3">
+                <div class="col-12"><label class="form-label">Usuario</label><input class="form-control" name="user" required /></div>
+                <div class="col-12"><label class="form-label">Senha</label><input type="password" class="form-control" name="password" required /></div>
+                <div class="col-12"><button class="btn btn-brand w-100" type="submit">Entrar</button></div>
+              </form>
+              <div id="adminLoginFeedback" class="small fw-semibold mt-2"></div>
+              <hr />
+              <div id="adminMetrics" class="small text-secondary">Aguardando login do admin.</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-8">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="mb-0">Aceitos e Rejeitados + Base de Anfitrioes</h5>
+                <button class="btn btn-sm btn-outline-brand" id="adminRefreshBtn">Atualizar</button>
+              </div>
+
+              <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+                <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabDecisions" type="button">Decisoes</button></li>
+                <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabHosts" type="button">Anfitrioes</button></li>
+              </ul>
+
+              <div class="tab-content pt-3">
+                <div class="tab-pane fade show active" id="tabDecisions">
+                  <div id="adminDecisionsWrap" class="empty-state">Sem dados carregados.</div>
+                </div>
+                <div class="tab-pane fade" id="tabHosts">
+                  <div id="adminHostsWrap" class="empty-state">Sem dados carregados.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   </main>
 
-  <!-- Rodapé -->
-  <footer class="footer">
-    <div class="footer__content">
-      <!-- COLUNA ESQUERDA: LOGOS (50%) -->
-      <div class="footer__col footer__col--logos">
-        <div class="footer__logos">
-          <img
-            src="logo-conaprev.svg"
-            alt="Conaprev"
-            class="footer-logo footer-logo--conaprev"
-          />
-          <img
-            src="logo-previdencia.svg"
-            alt="Ministério da Previdência Social"
-            class="footer-logo footer-logo--previdencia"
-          />
-        </div>
-      </div>
-
-      <!-- COLUNA DIREITA: TEXTOS (50%) -->
-      <div class="footer__col footer__col--text">
-        <div class="footer__org-name">
-          <strong>Conselho Nacional dos Dirigentes de Regimes Próprios de Previdência Social – Conaprev</strong><br />
-          Programa de Intercâmbio Técnico entre Regimes Previdenciários
-        </div>
-
-        <div class="footer__links">
-          <span>Resolução Conaprev nº 05/2025</span>
-          <span>Execução a partir do 1º semestre de 2026</span>
-        </div>
-      </div>
-    </div>
-  </footer>
-
-  <!-- Botão voltar ao topo -->
-  <button id="backToTop" class="back-to-top" aria-label="Voltar ao topo">
-    <img
-      src="logo-conaprev.svg"
-      alt="Voltar ao topo"
-      class="back-to-top__icon"
-    />
-  </button>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js" referrerpolicy="no-referrer"></script>
+  <script defer src="script.js"></script>
 </body>
 </html>
