@@ -97,6 +97,7 @@ const hostHeaders = [
   "Numero de Inscricao",
   "CNPJ",
   "Senha Hash",
+  "Primeiro Acesso Concluido",
   "Status do Anfitriao",
 ];
 
@@ -130,6 +131,8 @@ const candidateHeaders = [
   "Data",
   "CPF",
   "Genero",
+  "Senha Hash",
+  "Primeiro Acesso Concluido",
   "Anfitriao escolhido - Numero de Inscricao",
   "Anfitriao escolhido - Nome",
   "Status da solicitacao",
@@ -387,6 +390,15 @@ function generateHostPassword() {
   return out;
 }
 
+function isStrongPassword(password) {
+  const value = String(password || "");
+  if (value.length < 8) return false;
+  if (!/[A-Za-z]/.test(value)) return false;
+  if (!/\d/.test(value)) return false;
+  if (!/[^A-Za-z0-9]/.test(value)) return false;
+  return true;
+}
+
 function buildHostValueMap(payload, passwordHash, numeroInscricao) {
   const yesNo = (v) => (v ? "Sim" : "Não");
 
@@ -423,6 +435,7 @@ function buildHostValueMap(payload, passwordHash, numeroInscricao) {
     "Numero de Inscricao": numeroInscricao,
     CNPJ: onlyDigits(payload.cnpj),
     "Senha Hash": passwordHash,
+    "Primeiro Acesso Concluido": "Não",
     "Status do Anfitriao": "Ativo",
   };
 }
@@ -468,6 +481,8 @@ function buildCandidateValueMap(payload) {
     Data: sanitizeInput(payload.dataPreenchimento || nowIsoDate(), 20),
     CPF: onlyDigits(payload.cpf),
     Genero: sanitizeInput(payload.genero, 20),
+    "Senha Hash": "",
+    "Primeiro Acesso Concluido": "Não",
     "Anfitriao escolhido - Numero de Inscricao": "",
     "Anfitriao escolhido - Nome": "",
     "Status da solicitacao": "Sem solicitacao",
@@ -540,6 +555,10 @@ app.post("/api/host/login", loginLimiter, async (req, res) => {
       return res.status(401).json({ error: "Credenciais invalidas." });
     }
 
+    if (normalizeText(found.data["Primeiro Acesso Concluido"] || "nao") !== "sim") {
+      return res.status(403).json({ error: "Primeiro acesso obrigatorio. Defina sua senha." });
+    }
+
     const token = createToken("host", String(found.rowNumber));
     return res.json({
       token,
@@ -552,6 +571,49 @@ app.post("/api/host/login", loginLimiter, async (req, res) => {
   } catch (error) {
     console.error("host/login", error);
     return res.status(500).json({ error: "Falha no login do anfitriao." });
+  }
+});
+
+app.post("/api/host/first-access", loginLimiter, async (req, res) => {
+  try {
+    const cnpj = onlyDigits(req.body.cnpj);
+    const numeroInscricao = sanitizeInput(req.body.numeroInscricao, 60);
+    const senhaInicial = String(req.body.senhaInicial || "");
+    const novaSenha = String(req.body.novaSenha || "");
+
+    if (cnpj.length !== 14 || !numeroInscricao || !senhaInicial) {
+      return res.status(400).json({ error: "Dados de primeiro acesso invalidos." });
+    }
+    if (!isStrongPassword(novaSenha)) {
+      return res
+        .status(400)
+        .json({ error: "Senha fraca. Use letras, numeros e caractere especial (minimo 8)." });
+    }
+
+    const dataset = await getRows(HOST_SHEET, hostHeaders);
+    const found = dataset.rows.find(
+      (row) =>
+        onlyDigits(row.data.CNPJ) === cnpj &&
+        String(row.data["Numero de Inscricao"] || "") === numeroInscricao
+    );
+
+    if (!found) {
+      return res.status(404).json({ error: "Anfitriao nao encontrado para primeiro acesso." });
+    }
+
+    const initialOk = await bcrypt.compare(senhaInicial, found.data["Senha Hash"] || "");
+    if (!initialOk) {
+      return res.status(401).json({ error: "Senha inicial invalida." });
+    }
+
+    found.data["Senha Hash"] = await bcrypt.hash(novaSenha, 12);
+    found.data["Primeiro Acesso Concluido"] = "Sim";
+    await updateRow(HOST_SHEET, dataset.headers, found.rowNumber, found.data);
+
+    return res.json({ ok: true, message: "Primeiro acesso concluido." });
+  } catch (error) {
+    console.error("host/first-access", error);
+    return res.status(500).json({ error: "Falha no primeiro acesso do anfitriao." });
   }
 });
 
@@ -667,11 +729,21 @@ app.post("/api/candidate/register", loginLimiter, async (req, res) => {
 app.post("/api/candidate/login", loginLimiter, async (req, res) => {
   try {
     const cpf = onlyDigits(req.body.cpf);
+    const senha = String(req.body.senha || "");
     const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
     const found = candidates.rows.find((row) => onlyDigits(row.data.CPF) === cpf);
 
     if (!found) {
       return res.status(404).json({ error: "CPF nao encontrado." });
+    }
+
+    if (normalizeText(found.data["Primeiro Acesso Concluido"] || "nao") !== "sim") {
+      return res.status(403).json({ error: "Primeiro acesso obrigatorio. Defina sua senha." });
+    }
+
+    const passOk = await bcrypt.compare(senha, found.data["Senha Hash"] || "");
+    if (!passOk) {
+      return res.status(401).json({ error: "Credenciais invalidas." });
     }
 
     const token = createToken("candidate", String(found.rowNumber));
@@ -688,6 +760,43 @@ app.post("/api/candidate/login", loginLimiter, async (req, res) => {
   } catch (error) {
     console.error("candidate/login", error);
     res.status(500).json({ error: "Falha no login do intercambista." });
+  }
+});
+
+app.post("/api/candidate/first-access", loginLimiter, async (req, res) => {
+  try {
+    const cpf = onlyDigits(req.body.cpf);
+    const email = sanitizeInput(req.body.email, 150).toLowerCase();
+    const novaSenha = String(req.body.novaSenha || "");
+
+    if (cpf.length !== 11 || !email) {
+      return res.status(400).json({ error: "Dados de primeiro acesso invalidos." });
+    }
+    if (!isStrongPassword(novaSenha)) {
+      return res
+        .status(400)
+        .json({ error: "Senha fraca. Use letras, numeros e caractere especial (minimo 8)." });
+    }
+
+    const dataset = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    const found = dataset.rows.find((row) => onlyDigits(row.data.CPF) === cpf);
+    if (!found) {
+      return res.status(404).json({ error: "CPF nao encontrado." });
+    }
+
+    const rowEmail = String(found.data["E-mail institucional"] || "").trim().toLowerCase();
+    if (!rowEmail || rowEmail !== email) {
+      return res.status(401).json({ error: "Email institucional nao confere." });
+    }
+
+    found.data["Senha Hash"] = await bcrypt.hash(novaSenha, 12);
+    found.data["Primeiro Acesso Concluido"] = "Sim";
+    await updateRow(CANDIDATE_SHEET, dataset.headers, found.rowNumber, found.data);
+
+    return res.json({ ok: true, message: "Primeiro acesso concluido." });
+  } catch (error) {
+    console.error("candidate/first-access", error);
+    return res.status(500).json({ error: "Falha no primeiro acesso do intercambista." });
   }
 });
 
