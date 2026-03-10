@@ -163,6 +163,7 @@ function openWorkspace(screenId) {
   const landing = qs("main");
   const footer = qs("footer.footer");
   const backTop = qs("#backToTop");
+  const workspaceTop = qs(".workspace__top");
   if (!workspace || !landing) return;
 
   landing.hidden = true;
@@ -188,6 +189,7 @@ function openWorkspace(screenId) {
   };
   const title = qs("#workspaceTitle");
   if (title) title.textContent = titles[screenId] || "Módulo do Sistema";
+  if (workspaceTop) workspaceTop.hidden = screenId === "form-host" || screenId === "form-candidate";
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
