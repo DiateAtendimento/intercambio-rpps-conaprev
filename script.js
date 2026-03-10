@@ -52,6 +52,7 @@ function setupSmoothScroll() {
       event.preventDefault();
       const targetSelector = el.getAttribute("data-target") || el.getAttribute("href");
       if (!targetSelector || !targetSelector.startsWith("#")) return;
+      showHome();
       const target = qs(targetSelector);
       if (!target) return;
       target.scrollIntoView({ behavior: "smooth", block: "start" });

@@ -68,8 +68,6 @@
       </button>
     </div>
     <nav class="system-panel__nav">
-      <button class="system-nav-btn" type="button" data-go-home><i class="fa-solid fa-house"></i> Início</button>
-
       <button class="system-nav-btn system-nav-btn--submenu" type="button" id="formsToggleBtn" aria-expanded="false">
         <span><i class="fa-solid fa-file-lines"></i> Formulários</span>
         <i class="fa-solid fa-caret-down"></i>
@@ -79,7 +77,7 @@
         <button class="system-submenu-btn" type="button" data-screen="form-candidate"><i class="fa-solid fa-user-check"></i> Intercambista</button>
       </div>
 
-      <button class="system-nav-btn" type="button" data-screen="candidate-login"><i class="fa-solid fa-user-check"></i> Area Intercambista</button>
+      <button class="system-nav-btn" type="button" data-screen="candidate-login"><i class="fa-solid fa-user-check"></i> Área Intercambista</button>
       <button class="system-nav-btn" type="button" data-screen="host-login"><i class="fa-solid fa-building-user"></i> Área Anfitrião</button>
       <button class="system-nav-btn" type="button" data-screen="admin-login"><i class="fa-solid fa-user-shield"></i> Gerenciador Admin</button>
     </nav>
@@ -551,9 +549,6 @@
 
   <section id="workspace" class="workspace" hidden>
     <div class="workspace__top">
-      <button class="workspace__back" type="button" data-go-home>
-        <i class="fa-solid fa-arrow-left"></i> Voltar para Inicio
-      </button>
       <h2 id="workspaceTitle">Modulo do Sistema</h2>
     </div>
 
@@ -644,15 +639,15 @@
       </div>
     </section>
 
-    <section class="workspace-screen" data-screen-id="candidate-login"><div class="module-card module-card--login"><h3>Login Intercambista</h3><form id="candidateLoginForm" class="module-form"><label>CPF<input name="cpf" required /></label><label>Senha<input type="password" name="senha" required /></label><button type="submit" class="btn btn-primary">Entrar</button><p class="module-feedback" id="candidateLoginFeedback"></p></form><button type="button" class="btn btn-outline" data-screen="candidate-first-access">Primeiro acesso</button></div></section>
+    <section class="workspace-screen" data-screen-id="candidate-login"><div class="module-card module-card--login"><div class="login-avatar login-avatar--pair"><img src="img_for_woman.svg" alt="Avatar intercambista 1" /><img src="img_for_man.svg" alt="Avatar intercambista 2" /></div><h3>Login Intercambista</h3><form id="candidateLoginForm" class="module-form"><label>CPF<input name="cpf" required /></label><label>Senha<input type="password" name="senha" required /></label><button type="submit" class="btn btn-primary">Entrar</button><p class="module-feedback" id="candidateLoginFeedback"></p></form><button type="button" class="login-link" data-screen="candidate-first-access">Primeiro acesso</button></div></section>
     <section class="workspace-screen" data-screen-id="candidate-first-access"><div class="module-card module-card--login"><h3>Primeiro Acesso Intercambista</h3><form id="candidateFirstAccessForm" class="module-form"><label>CPF<input name="cpf" required /></label><label>Email institucional<input type="email" name="email" required /></label><label>Nova senha<input type="password" name="novaSenha" required /></label><label>Confirmar senha<input type="password" name="confirmSenha" required /></label><small>Senha com letras, numeros e caractere especial.</small><button type="submit" class="btn btn-primary">Definir senha</button><p class="module-feedback" id="candidateFirstAccessFeedback"></p></form></div></section>
     <section class="workspace-screen" data-screen-id="candidate-area"><div class="module-card"><h3>Ambiente Intercambista</h3><p class="module-note" id="candidateStatusBox">Sem solicitacao no momento.</p><div class="list-box" id="candidateHostsList">Carregando anfitrioes...</div></div></section>
 
-    <section class="workspace-screen" data-screen-id="host-login"><div class="module-card module-card--login"><h3>Login Anfitriao</h3><form id="hostLoginForm" class="module-form"><label>CNPJ<input name="cnpj" required /></label><label>Senha<input type="password" name="senha" required /></label><button type="submit" class="btn btn-primary">Entrar</button><p class="module-feedback" id="hostLoginFeedback"></p></form><button type="button" class="btn btn-outline" data-screen="host-first-access">Primeiro acesso</button></div></section>
+    <section class="workspace-screen" data-screen-id="host-login"><div class="module-card module-card--login"><div class="login-avatar login-avatar--single"><img src="img_anfitriao.svg" alt="Avatar anfitriao" /></div><h3>Login Anfitriao</h3><form id="hostLoginForm" class="module-form"><label>CNPJ<input name="cnpj" required /></label><label>Senha<input type="password" name="senha" required /></label><button type="submit" class="btn btn-primary">Entrar</button><p class="module-feedback" id="hostLoginFeedback"></p></form><button type="button" class="login-link" data-screen="host-first-access">Primeiro acesso</button></div></section>
     <section class="workspace-screen" data-screen-id="host-first-access"><div class="module-card module-card--login"><h3>Primeiro Acesso Anfitriao</h3><form id="hostFirstAccessForm" class="module-form"><label>CNPJ<input name="cnpj" required /></label><label>Numero de inscricao<input name="numeroInscricao" required /></label><label>Senha inicial<input type="password" name="senhaInicial" required /></label><label>Nova senha<input type="password" name="novaSenha" required /></label><label>Confirmar senha<input type="password" name="confirmSenha" required /></label><small>Senha com letras, numeros e caractere especial.</small><button type="submit" class="btn btn-primary">Definir senha</button><p class="module-feedback" id="hostFirstAccessFeedback"></p></form></div></section>
     <section class="workspace-screen" data-screen-id="host-area"><div class="module-card"><h3>Ambiente Anfitriao</h3><div class="list-box" id="hostRequestsList">Carregando solicitacoes...</div></div></section>
 
-    <section class="workspace-screen" data-screen-id="admin-login"><div class="module-card module-card--login"><h3>Login Admin</h3><form id="adminLoginForm" class="module-form"><label>Usuario<input name="user" required /></label><label>Senha<input type="password" name="password" required /></label><button type="submit" class="btn btn-primary">Entrar</button><p class="module-feedback" id="adminLoginFeedback"></p></form></div></section>
+    <section class="workspace-screen" data-screen-id="admin-login"><div class="module-card module-card--login"><div class="login-avatar login-avatar--single"><img src="img_admin.png" alt="Avatar admin" /></div><h3>Login Admin</h3><form id="adminLoginForm" class="module-form"><label>Usuario<input name="user" required /></label><label>Senha<input type="password" name="password" required /></label><button type="submit" class="btn btn-primary">Entrar</button><p class="module-feedback" id="adminLoginFeedback"></p></form></div></section>
     <section class="workspace-screen" data-screen-id="admin-area"><div class="module-card"><h3>Ambiente Admin</h3><div id="adminMetrics" class="module-note">Carregando metricas...</div><h4>Decisoes</h4><div class="list-box" id="adminDecisionsList"></div><h4>Anfitrioes</h4><div class="list-box" id="adminHostsList"></div></div></section>
   </section>
 

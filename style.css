@@ -257,6 +257,8 @@ body {
   background: #eaf2ff;
   color: #0b63ad;
   font-size: 0.82rem;
+  line-height: 1;
+  flex: 0 0 1.5rem;
 }
 
 .system-nav-btn--submenu {
@@ -292,7 +294,7 @@ body.system-menu-open {
 
 .workspace__top {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   gap: 1rem;
   margin-bottom: 1rem;
@@ -308,6 +310,11 @@ body.system-menu-open {
   font-weight: 600;
 }
 
+.workspace__top h2 {
+  margin: 0;
+  text-align: center;
+}
+
 .workspace-screen {
   display: none;
 }
@@ -319,14 +326,19 @@ body.system-menu-open {
 .module-card {
   background: #fff;
   border: 1px solid #dbe7f4;
-  border-radius: 1.2rem;
-  padding: 1.2rem;
+  border-radius: 1.35rem;
+  padding: 1.4rem;
   box-shadow: var(--shadow-subtle);
 }
 
 .module-card--login {
   max-width: 560px;
   margin: 0 auto;
+}
+
+.module-card h3,
+.module-card h4 {
+  text-align: center;
 }
 
 .module-form {
@@ -368,6 +380,7 @@ body.system-menu-open {
 .module-feedback {
   margin: 0.15rem 0 0;
   font-weight: 600;
+  text-align: center;
 }
 
 .module-note {
@@ -391,6 +404,37 @@ body.system-menu-open {
   border-radius: 10px;
   background: #fff;
   padding: 0.65rem;
+}
+
+.login-link {
+  background: transparent;
+  border: 0;
+  color: #0b63ad;
+  text-decoration: underline;
+  cursor: pointer;
+  justify-self: center;
+  margin-top: 0.35rem;
+  font-weight: 600;
+}
+
+.login-avatar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.65rem;
+}
+
+.login-avatar img {
+  width: 74px;
+  height: 74px;
+  object-fit: cover;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  background: #f4f8ff;
+}
+
+.login-avatar--pair img + img {
+  margin-left: -16px;
 }
 
 /* ===== Layout geral ===== */
@@ -521,7 +565,11 @@ main {
 .info-card__icon i,
 .objective-card__icon,
 .result-card__icon {
-  font-size: 1rem;
+  font-size: 1.03rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hero-card p {
@@ -731,6 +779,7 @@ main {
   margin-bottom: 0.7rem;
   background: rgba(37, 99, 235, 0.08);
   color: var(--color-primary);
+  line-height: 1;
 }
 
 .result-card__icon {
