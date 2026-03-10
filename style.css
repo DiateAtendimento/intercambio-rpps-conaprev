@@ -335,11 +335,11 @@ body.system-menu-open {
 }
 
 .module-card {
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
   border: 1px solid #cfe0f2;
-  border-radius: 1.35rem;
-  padding: 1.65rem;
-  box-shadow: 0 22px 46px rgba(15, 23, 42, 0.12);
+  border-radius: 1.45rem;
+  padding: 2rem 1.65rem 1.65rem;
+  box-shadow: 0 26px 52px rgba(15, 23, 42, 0.14);
   position: relative;
   overflow: hidden;
   max-width: 980px;
@@ -350,25 +350,50 @@ body.system-menu-open {
   content: "";
   position: absolute;
   inset: 0 0 auto 0;
-  height: 4px;
-  background: linear-gradient(90deg, #0b63ad, #39a3e0);
-  opacity: 0.85;
+  height: 76px;
+  background:
+    radial-gradient(circle at 12% 35%, #38bdf8 0 20px, transparent 22px),
+    radial-gradient(circle at 36% 65%, #22c55e 0 14px, transparent 16px),
+    radial-gradient(circle at 72% 30%, #f59e0b 0 15px, transparent 17px),
+    linear-gradient(120deg, #0b63ad, #16a3cf 55%, #22c55e);
+  opacity: 0.98;
+}
+
+.module-card::after {
+  content: "";
+  position: absolute;
+  top: 54px;
+  right: -32px;
+  width: 140px;
+  height: 140px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0));
+  pointer-events: none;
 }
 
 .module-card--login {
   max-width: 620px;
   margin: 0 auto;
+  padding-top: 2.35rem;
 }
 
 .module-card h3,
 .module-card h4 {
   text-align: center;
-  margin-top: 0.1rem;
+  margin-top: 0.2rem;
   margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
 }
 
 .module-card h3 {
   font-size: 1.45rem;
+  margin-top: 2rem;
+  margin-bottom: 1.15rem;
+}
+
+.module-card--login h3 {
+  margin-top: 0.45rem;
 }
 
 .module-card h4 {
@@ -387,28 +412,31 @@ body.system-menu-open {
 .module-form label {
   display: grid;
   gap: 0.35rem;
-  font-size: 0.9rem;
-  color: #1e344a;
+  font-size: 0.84rem;
+  color: #46627f;
   font-weight: 600;
-  background: linear-gradient(180deg, #fafdff 0%, #f3f9ff 100%);
-  border: 1px solid #d8e6f4;
-  border-radius: 12px;
-  padding: 0.55rem 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #fcfeff 0%, #f3f9ff 100%);
+  border: 1px solid #dbe7f4;
+  border-radius: 14px;
+  padding: 0.48rem 0.65rem 0.56rem;
 }
 
 .module-form input,
 .module-form textarea,
 .module-form select {
   border: 1px solid #c7d8ec;
-  border-radius: 11px;
-  padding: 0.65rem 0.75rem;
+  border-radius: 999px;
+  padding: 0.66rem 0.92rem;
   font: inherit;
   background: #ffffff;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
 }
 
 .module-form textarea {
-  min-height: 96px;
+  min-height: 108px;
+  border-radius: 16px;
   resize: vertical;
 }
 
@@ -467,8 +495,10 @@ body.system-menu-open {
 
 .module-form .btn-primary {
   justify-self: center;
-  min-width: 220px;
-  margin-top: 0.25rem;
+  min-width: 250px;
+  margin-top: 0.35rem;
+  border-radius: 999px;
+  box-shadow: 0 14px 28px rgba(11, 99, 173, 0.28);
 }
 
 .module-note {
@@ -508,25 +538,30 @@ body.system-menu-open {
   padding: 0.2rem 0.4rem;
   letter-spacing: 0.01em;
   width: fit-content;
+  border-radius: 999px;
 }
 
 .login-link:hover {
   color: #084f8a;
+  background: rgba(11, 99, 173, 0.08);
 }
 
 .login-avatar {
   display: flex;
   justify-content: center;
-  margin-bottom: 0.65rem;
+  margin-top: 0.1rem;
+  margin-bottom: 0.9rem;
+  position: relative;
+  z-index: 2;
 }
 
 .login-avatar img {
-  width: 74px;
-  height: 74px;
+  width: 80px;
+  height: 80px;
   object-fit: cover;
   border-radius: 999px;
-  border: 2px solid #fff;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  border: 3px solid #fff;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
   background: #f4f8ff;
 }
 
