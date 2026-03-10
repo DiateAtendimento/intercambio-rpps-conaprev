@@ -232,7 +232,7 @@ function payloadHostRegister(form) {
     "areaContabilidade",
     "areaOutros",
   ].forEach((key) => {
-    payload[key] = form.querySelector(`[name="${key}"]`)?.checked || false;
+    payload[key] = form.querySelector(`[name=\"${key}\"]`)?.checked || false;
   });
   return payload;
 }
@@ -240,15 +240,13 @@ function payloadHostRegister(form) {
 function payloadCandidateRegister(form) {
   const payload = collectFormData(form);
   payload.cpf = normalizeDigits(payload.cpf);
-  payload.participantes = [
-    {
-      nome: payload.p_nome || "",
-      cargo: payload.p_cargo || "",
-      vinculo: payload.p_vinculo || "",
-      area: payload.p_area || "",
-      certificacao: payload.p_certificacao || "",
-    },
-  ];
+  payload.participantes = [{
+    nome: payload.p_nome || "",
+    cargo: payload.p_cargo || "",
+    vinculo: payload.p_vinculo || "",
+    area: payload.p_area || "",
+    certificacao: payload.p_certificacao || "",
+  }];
   payload.declaracaoVinculo = form.querySelector('[name="declaracaoVinculo"]').checked;
   payload.declaracaoCusteio = form.querySelector('[name="declaracaoCusteio"]').checked;
   payload.declaracaoCiencia = form.querySelector('[name="declaracaoCiencia"]').checked;
@@ -256,17 +254,11 @@ function payloadCandidateRegister(form) {
 }
 
 async function refreshCandidateArea() {
-  const status = await apiFetch("/api/candidate/status", {
-    headers: { Authorization: `Bearer ${state.tokens.candidate}` },
-  });
-  const hosts = await apiFetch("/api/candidate/hosts", {
-    headers: { Authorization: `Bearer ${state.tokens.candidate}` },
-  });
+  const status = await apiFetch("/api/candidate/status", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
+  const hosts = await apiFetch("/api/candidate/hosts", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
 
   const statusBox = qs("#candidateStatusBox");
-  if (statusBox) {
-    statusBox.textContent = `Status: ${status.status || "Sem solicitacao"}. Anfitriao: ${status.host || "-"}.`;
-  }
+  if (statusBox) statusBox.textContent = `Status: ${status.status || "Sem solicitacao"}. Anfitriao: ${status.host || "-"}.`;
 
   const list = qs("#candidateHostsList");
   if (!list) return;
@@ -277,20 +269,13 @@ async function refreshCandidateArea() {
     return;
   }
 
-  list.innerHTML = items
-    .map(
-      (host) => `
-      <div class="item-row">
-        <strong>${host.entidade}</strong><br />
-        <small>${host.numeroInscricao} | ${host.uf} | Vagas: ${host.vagas || "-"}</small><br />
-        <small>Areas: ${(host.areas || []).join(", ") || "Nao informado"}</small>
-        <div style="margin-top:0.5rem;">
-          <button class="btn btn-primary" type="button" data-select-host="${host.numeroInscricao}">Escolher</button>
-        </div>
-      </div>
-    `
-    )
-    .join("");
+  list.innerHTML = items.map((host) => `
+    <div class="item-row">
+      <strong>${host.entidade}</strong><br />
+      <small>${host.numeroInscricao} | ${host.uf} | Vagas: ${host.vagas || "-"}</small><br />
+      <small>Areas: ${(host.areas || []).join(", ") || "Nao informado"}</small>
+      <div style="margin-top:0.5rem;"><button class="btn btn-primary" type="button" data-select-host="${host.numeroInscricao}">Escolher</button></div>
+    </div>`).join("");
 
   qsa("[data-select-host]").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -309,10 +294,7 @@ async function refreshCandidateArea() {
 }
 
 async function refreshHostArea() {
-  const data = await apiFetch("/api/host/requests", {
-    headers: { Authorization: `Bearer ${state.tokens.host}` },
-  });
-
+  const data = await apiFetch("/api/host/requests", { headers: { Authorization: `Bearer ${state.tokens.host}` } });
   const list = qs("#hostRequestsList");
   if (!list) return;
 
@@ -322,22 +304,17 @@ async function refreshHostArea() {
     return;
   }
 
-  list.innerHTML = pendentes
-    .map(
-      (item) => `
-      <div class="item-row">
-        <strong>${item.entidade}</strong><br />
-        <small>CPF: ${item.cpf || "-"}</small><br />
-        <small>Participante: ${item.participante || "-"}</small><br />
-        <small>Objetivo: ${item.objetivo || "-"}</small>
-        <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
-          <button class="btn btn-primary" type="button" data-host-decision="aceito" data-host-row="${item.rowNumber}">Aceitar</button>
-          <button class="btn btn-outline" type="button" data-host-decision="rejeitado" data-host-row="${item.rowNumber}">Rejeitar</button>
-        </div>
+  list.innerHTML = pendentes.map((item) => `
+    <div class="item-row">
+      <strong>${item.entidade}</strong><br />
+      <small>CPF: ${item.cpf || "-"}</small><br />
+      <small>Participante: ${item.participante || "-"}</small><br />
+      <small>Objetivo: ${item.objetivo || "-"}</small>
+      <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+        <button class="btn btn-primary" type="button" data-host-decision="aceito" data-host-row="${item.rowNumber}">Aceitar</button>
+        <button class="btn btn-outline" type="button" data-host-decision="rejeitado" data-host-row="${item.rowNumber}">Rejeitar</button>
       </div>
-    `
-    )
-    .join("");
+    </div>`).join("");
 
   qsa("[data-host-decision]").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -346,11 +323,7 @@ async function refreshHostArea() {
         await apiFetch("/api/host/decision", {
           method: "POST",
           headers: { Authorization: `Bearer ${state.tokens.host}` },
-          body: JSON.stringify({
-            candidateRow: Number(btn.dataset.hostRow),
-            decision: btn.dataset.hostDecision,
-            note,
-          }),
+          body: JSON.stringify({ candidateRow: Number(btn.dataset.hostRow), decision: btn.dataset.hostDecision, note }),
         });
         await refreshHostArea();
       } catch (error) {
@@ -361,24 +334,16 @@ async function refreshHostArea() {
 }
 
 async function refreshAdminArea() {
-  const data = await apiFetch("/api/admin/overview", {
-    headers: { Authorization: `Bearer ${state.tokens.admin}` },
-  });
+  const data = await apiFetch("/api/admin/overview", { headers: { Authorization: `Bearer ${state.tokens.admin}` } });
 
   const metrics = qs("#adminMetrics");
-  if (metrics) {
-    metrics.innerHTML = `Anfitrioes: ${data.metrics.totalHosts} | Intercambistas: ${data.metrics.totalCandidates} | Aceitos: ${data.metrics.totalAceitos} | Rejeitados: ${data.metrics.totalRejeitados}`;
-  }
+  if (metrics) metrics.innerHTML = `Anfitrioes: ${data.metrics.totalHosts} | Intercambistas: ${data.metrics.totalCandidates} | Aceitos: ${data.metrics.totalAceitos} | Rejeitados: ${data.metrics.totalRejeitados}`;
 
   const decisionsList = qs("#adminDecisionsList");
   if (decisionsList) {
     const decisions = data.decisions || [];
     decisionsList.innerHTML = decisions.length
-      ? decisions
-          .map(
-            (d) => `<div class="item-row"><strong>${d.status}</strong> - ${d.entidadeIntercambista} -> ${d.host}<br /><small>CPF: ${d.cpf || "-"} | Data: ${d.dataDecisao || "-"}</small></div>`
-          )
-          .join("")
+      ? decisions.map((d) => `<div class="item-row"><strong>${d.status}</strong> - ${d.entidadeIntercambista} -> ${d.host}<br /><small>CPF: ${d.cpf || "-"} | Data: ${d.dataDecisao || "-"}</small></div>`).join("")
       : "Sem decisoes.";
   }
 
@@ -386,20 +351,7 @@ async function refreshAdminArea() {
   if (hostsList) {
     const hosts = data.hosts || [];
     hostsList.innerHTML = hosts.length
-      ? hosts
-          .map(
-            (host) => `
-          <div class="item-row">
-            <strong>${host.entidade}</strong><br />
-            <small>${host.numeroInscricao} | ${host.uf} | Status: ${host.status}</small>
-            <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
-              <button class="btn btn-primary" type="button" data-admin-status="Ativo" data-admin-row="${host.rowNumber}">Ativar</button>
-              <button class="btn btn-outline" type="button" data-admin-status="Inativo" data-admin-row="${host.rowNumber}">Inativar</button>
-            </div>
-          </div>
-        `
-          )
-          .join("")
+      ? hosts.map((host) => `<div class="item-row"><strong>${host.entidade}</strong><br /><small>${host.numeroInscricao} | ${host.uf} | Status: ${host.status}</small><div style="margin-top:0.5rem; display:flex; gap:0.5rem;"><button class="btn btn-primary" type="button" data-admin-status="Ativo" data-admin-row="${host.rowNumber}">Ativar</button><button class="btn btn-outline" type="button" data-admin-status="Inativo" data-admin-row="${host.rowNumber}">Inativar</button></div></div>`).join("")
       : "Sem anfitrioes cadastrados.";
 
     qsa("[data-admin-status]").forEach((btn) => {
@@ -420,8 +372,8 @@ async function refreshAdminArea() {
 }
 
 function setupWorkspaceActions() {
-  qsa('[data-screen]').forEach((btn) => {
-    btn.addEventListener('click', () => openWorkspace(btn.dataset.screen));
+  qsa("[data-screen]").forEach((btn) => {
+    btn.addEventListener("click", () => openWorkspace(btn.dataset.screen));
   });
 
   const hostRegisterForm = qs("#hostRegisterForm");
@@ -429,15 +381,10 @@ function setupWorkspaceActions() {
     event.preventDefault();
     setFeedback("hostRegisterFeedback", "Enviando cadastro...", true);
     try {
-      const data = await apiFetch("/api/host/register", {
-        method: "POST",
-        body: JSON.stringify(payloadHostRegister(hostRegisterForm)),
-      });
+      const data = await apiFetch("/api/host/register", { method: "POST", body: JSON.stringify(payloadHostRegister(hostRegisterForm)) });
       setFeedback("hostRegisterFeedback", "Cadastro concluido.", true);
       const cred = qs("#hostRegisterCredentials");
-      if (cred) {
-        cred.textContent = `Numero de inscricao: ${data.numeroInscricao} | CNPJ: ${data.cnpj} | Senha inicial: ${data.senha}`;
-      }
+      if (cred) cred.textContent = `Numero de inscricao: ${data.numeroInscricao} | CNPJ: ${data.cnpj} | Senha inicial: ${data.senha}`;
       hostRegisterForm.reset();
     } catch (error) {
       setFeedback("hostRegisterFeedback", error.message, false);
@@ -449,10 +396,7 @@ function setupWorkspaceActions() {
     event.preventDefault();
     setFeedback("candidateRegisterFeedback", "Enviando cadastro...", true);
     try {
-      await apiFetch("/api/candidate/register", {
-        method: "POST",
-        body: JSON.stringify(payloadCandidateRegister(candidateRegisterForm)),
-      });
+      await apiFetch("/api/candidate/register", { method: "POST", body: JSON.stringify(payloadCandidateRegister(candidateRegisterForm)) });
       setFeedback("candidateRegisterFeedback", "Cadastro concluido. Realize o primeiro acesso para criar sua senha.", true);
       candidateRegisterForm.reset();
     } catch (error) {
@@ -464,25 +408,11 @@ function setupWorkspaceActions() {
   candidateFirstAccessForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = collectFormData(candidateFirstAccessForm);
-    if (data.novaSenha !== data.confirmSenha) {
-      setFeedback("candidateFirstAccessFeedback", "As senhas nao conferem.", false);
-      return;
-    }
-    if (!isStrongPassword(data.novaSenha)) {
-      setFeedback("candidateFirstAccessFeedback", "Senha fraca. Use letras, numeros e caractere especial.", false);
-      return;
-    }
-
+    if (data.novaSenha !== data.confirmSenha) return setFeedback("candidateFirstAccessFeedback", "As senhas nao conferem.", false);
+    if (!isStrongPassword(data.novaSenha)) return setFeedback("candidateFirstAccessFeedback", "Senha fraca. Use letras, numeros e caractere especial.", false);
     setFeedback("candidateFirstAccessFeedback", "Processando primeiro acesso...", true);
     try {
-      await apiFetch("/api/candidate/first-access", {
-        method: "POST",
-        body: JSON.stringify({
-          cpf: normalizeDigits(data.cpf),
-          email: data.email,
-          novaSenha: data.novaSenha,
-        }),
-      });
+      await apiFetch("/api/candidate/first-access", { method: "POST", body: JSON.stringify({ cpf: normalizeDigits(data.cpf), email: data.email, novaSenha: data.novaSenha }) });
       setFeedback("candidateFirstAccessFeedback", "Senha criada com sucesso. Faca login.", true);
       candidateFirstAccessForm.reset();
       openWorkspace("candidate-login");
@@ -495,26 +425,11 @@ function setupWorkspaceActions() {
   hostFirstAccessForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = collectFormData(hostFirstAccessForm);
-    if (data.novaSenha !== data.confirmSenha) {
-      setFeedback("hostFirstAccessFeedback", "As senhas nao conferem.", false);
-      return;
-    }
-    if (!isStrongPassword(data.novaSenha)) {
-      setFeedback("hostFirstAccessFeedback", "Senha fraca. Use letras, numeros e caractere especial.", false);
-      return;
-    }
-
+    if (data.novaSenha !== data.confirmSenha) return setFeedback("hostFirstAccessFeedback", "As senhas nao conferem.", false);
+    if (!isStrongPassword(data.novaSenha)) return setFeedback("hostFirstAccessFeedback", "Senha fraca. Use letras, numeros e caractere especial.", false);
     setFeedback("hostFirstAccessFeedback", "Processando primeiro acesso...", true);
     try {
-      await apiFetch("/api/host/first-access", {
-        method: "POST",
-        body: JSON.stringify({
-          cnpj: normalizeDigits(data.cnpj),
-          numeroInscricao: data.numeroInscricao,
-          senhaInicial: data.senhaInicial,
-          novaSenha: data.novaSenha,
-        }),
-      });
+      await apiFetch("/api/host/first-access", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(data.cnpj), numeroInscricao: data.numeroInscricao, senhaInicial: data.senhaInicial, novaSenha: data.novaSenha }) });
       setFeedback("hostFirstAccessFeedback", "Senha criada com sucesso. Faca login.", true);
       hostFirstAccessForm.reset();
       openWorkspace("host-login");
@@ -528,12 +443,8 @@ function setupWorkspaceActions() {
     event.preventDefault();
     const payload = collectFormData(candidateLoginForm);
     setFeedback("candidateLoginFeedback", "Autenticando...", true);
-
     try {
-      const data = await apiFetch("/api/candidate/login", {
-        method: "POST",
-        body: JSON.stringify({ cpf: normalizeDigits(payload.cpf), senha: payload.senha }),
-      });
+      const data = await apiFetch("/api/candidate/login", { method: "POST", body: JSON.stringify({ cpf: normalizeDigits(payload.cpf), senha: payload.senha }) });
       state.tokens.candidate = data.token;
       setFeedback("candidateLoginFeedback", "Login realizado com sucesso.", true);
       openWorkspace("candidate-area");
@@ -549,12 +460,8 @@ function setupWorkspaceActions() {
     event.preventDefault();
     const payload = collectFormData(hostLoginForm);
     setFeedback("hostLoginFeedback", "Autenticando...", true);
-
     try {
-      const data = await apiFetch("/api/host/login", {
-        method: "POST",
-        body: JSON.stringify({ cnpj: normalizeDigits(payload.cnpj), senha: payload.senha }),
-      });
+      const data = await apiFetch("/api/host/login", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(payload.cnpj), senha: payload.senha }) });
       state.tokens.host = data.token;
       setFeedback("hostLoginFeedback", "Login realizado com sucesso.", true);
       openWorkspace("host-area");
@@ -570,12 +477,8 @@ function setupWorkspaceActions() {
     event.preventDefault();
     const payload = collectFormData(adminLoginForm);
     setFeedback("adminLoginFeedback", "Autenticando...", true);
-
     try {
-      const data = await apiFetch("/api/admin/login", {
-        method: "POST",
-        body: JSON.stringify({ user: payload.user, password: payload.password }),
-      });
+      const data = await apiFetch("/api/admin/login", { method: "POST", body: JSON.stringify({ user: payload.user, password: payload.password }) });
       state.tokens.admin = data.token;
       setFeedback("adminLoginFeedback", "Login realizado com sucesso.", true);
       openWorkspace("admin-area");
