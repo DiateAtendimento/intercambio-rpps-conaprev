@@ -112,6 +112,17 @@ body {
   transform: translateY(-1px);
 }
 
+.nav-home-link {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #c9d9ee;
+  color: var(--color-primary);
+}
+
 /* Toggle mobile */
 .navbar__toggle {
   display: flex;
@@ -324,11 +335,11 @@ body.system-menu-open {
 }
 
 .module-card {
-  background: #fff;
-  border: 1px solid #dbe7f4;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid #cfe0f2;
   border-radius: 1.35rem;
-  padding: 1.4rem;
-  box-shadow: var(--shadow-subtle);
+  padding: 1.5rem;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
 }
 
 .module-card--login {
@@ -339,6 +350,8 @@ body.system-menu-open {
 .module-card h3,
 .module-card h4 {
   text-align: center;
+  margin-top: 0.1rem;
+  margin-bottom: 0.8rem;
 }
 
 .module-form {
@@ -349,17 +362,29 @@ body.system-menu-open {
 .module-form label {
   display: grid;
   gap: 0.35rem;
-  font-size: 0.92rem;
-  color: #233549;
+  font-size: 0.9rem;
+  color: #1e344a;
+  font-weight: 600;
 }
 
 .module-form input,
 .module-form textarea,
 .module-form select {
-  border: 1px solid #cfdceb;
-  border-radius: 9px;
-  padding: 0.55rem 0.65rem;
+  border: 1px solid #c7d8ec;
+  border-radius: 11px;
+  padding: 0.65rem 0.75rem;
   font: inherit;
+  background: #ffffff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.module-form input:focus,
+.module-form textarea:focus,
+.module-form select:focus {
+  outline: none;
+  border-color: #5ca5df;
+  box-shadow: 0 0 0 3px rgba(92, 165, 223, 0.18);
+  transform: translateY(-1px);
 }
 
 .form-grid {
@@ -381,6 +406,12 @@ body.system-menu-open {
   margin: 0.15rem 0 0;
   font-weight: 600;
   text-align: center;
+}
+
+.module-form .btn-primary {
+  justify-self: center;
+  min-width: 220px;
+  margin-top: 0.25rem;
 }
 
 .module-note {
@@ -415,6 +446,7 @@ body.system-menu-open {
   justify-self: center;
   margin-top: 0.35rem;
   font-weight: 600;
+  padding: 0;
 }
 
 .login-avatar {
@@ -563,8 +595,8 @@ main {
 }
 
 .info-card__icon i,
-.objective-card__icon,
-.result-card__icon {
+.objective-card__icon i,
+.result-card__icon i {
   font-size: 1.03rem;
   line-height: 1;
   display: inline-flex;
