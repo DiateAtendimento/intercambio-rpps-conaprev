@@ -246,6 +246,19 @@ body {
   background: #f4f9ff;
 }
 
+.system-nav-btn i,
+.system-submenu-btn i {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eaf2ff;
+  color: #0b63ad;
+  font-size: 0.82rem;
+}
+
 .system-nav-btn--submenu {
   justify-content: space-between;
 }
@@ -503,6 +516,12 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.info-card__icon i,
+.objective-card__icon,
+.result-card__icon {
+  font-size: 1rem;
 }
 
 .hero-card p {
