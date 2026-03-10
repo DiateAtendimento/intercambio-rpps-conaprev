@@ -350,25 +350,13 @@ body.system-menu-open {
   content: "";
   position: absolute;
   inset: 0 0 auto 0;
-  height: 76px;
-  background:
-    radial-gradient(circle at 12% 35%, #38bdf8 0 20px, transparent 22px),
-    radial-gradient(circle at 36% 65%, #22c55e 0 14px, transparent 16px),
-    radial-gradient(circle at 72% 30%, #f59e0b 0 15px, transparent 17px),
-    linear-gradient(120deg, #0b63ad, #16a3cf 55%, #22c55e);
-  opacity: 0.98;
+  height: 68px;
+  background: linear-gradient(110deg, #0a4f8a 0%, #0b63ad 45%, #1a79bf 100%);
+  opacity: 1;
 }
 
 .module-card::after {
-  content: "";
-  position: absolute;
-  top: 54px;
-  right: -32px;
-  width: 140px;
-  height: 140px;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0));
-  pointer-events: none;
+  content: none;
 }
 
 .module-card--login {
@@ -485,6 +473,67 @@ body.system-menu-open {
   text-align: center;
   color: #4a6480;
   font-weight: 500;
+}
+
+.dynamic-field-block {
+  border: 1px solid #d8e6f4;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fcfeff 0%, #f3f9ff 100%);
+  padding: 0.7rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.dynamic-field-title {
+  font-size: 0.84rem;
+  color: #46627f;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dynamic-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.dynamic-list__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.dynamic-list__row input {
+  border: 1px solid #c7d8ec;
+  border-radius: 999px;
+  padding: 0.66rem 0.92rem;
+  font: inherit;
+  background: #ffffff;
+}
+
+.dynamic-remove-btn {
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 1px solid #c8d9ec;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #47607d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dynamic-remove-btn:hover:not(:disabled) {
+  border-color: #ef4444;
+  color: #b91c1c;
+  background: #fff5f5;
+}
+
+.dynamic-add-btn {
+  justify-self: start;
+  padding-inline: 0.95rem;
+  min-width: auto;
 }
 
 .module-feedback {

@@ -550,9 +550,6 @@
   </main>
 
   <section id="workspace" class="workspace" hidden>
-    <div class="workspace__top">
-      <h2 id="workspaceTitle">Módulo do Sistema</h2>
-    </div>
 
     <section class="workspace-screen" data-screen-id="form-host">
       <div class="module-card">
@@ -576,7 +573,21 @@
             <label>Data<input type="date" name="dataPreenchimento" required /></label>
           </div>
           <label>Proposta do intercâmbio<textarea name="proposta" rows="3" required></textarea></label>
-          <label>Equipe de apoio<textarea name="equipeApoio" rows="2" required></textarea></label>
+          <div class="dynamic-field-block">
+            <span class="dynamic-field-title">Equipe de apoio</span>
+            <div id="supportTeamList" class="dynamic-list">
+              <div class="dynamic-list__row">
+                <input name="equipeApoioItem" placeholder="Nome do membro da equipe" required />
+                <button type="button" class="dynamic-remove-btn" aria-label="Remover membro da equipe">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            </div>
+            <button type="button" class="btn btn-outline dynamic-add-btn" id="addSupportMember">
+              <i class="fa-solid fa-plus"></i>
+              Adicionar membro
+            </button>
+          </div>
           <div class="check-grid-simple">
             <label><input type="checkbox" name="areaCadastro" /> Cadastro e Atendimento</label>
             <label><input type="checkbox" name="areaConcessao" /> Concessão e Revisão de Benefícios</label>

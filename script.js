@@ -212,6 +212,10 @@ function collectFormData(form) {
 function payloadHostRegister(form) {
   const payload = collectFormData(form);
   payload.cnpj = normalizeDigits(payload.cnpj);
+  payload.equipeApoio = qsa('[name="equipeApoioItem"]')
+    .map((input) => String(input.value || "").trim())
+    .filter(Boolean)
+    .join(", ");
   [
     "areaCadastro",
     "areaConcessao",
@@ -229,6 +233,54 @@ function payloadHostRegister(form) {
     payload[key] = form.querySelector(`[name=\"${key}\"]`)?.checked || false;
   });
   return payload;
+}
+
+function setupSupportTeamField() {
+  const list = qs("#supportTeamList");
+  const addButton = qs("#addSupportMember");
+  if (!list || !addButton) return;
+
+  const updateRemoveButtons = () => {
+    const rows = qsa("#supportTeamList .dynamic-list__row");
+    rows.forEach((row, index) => {
+      const btn = row.querySelector(".dynamic-remove-btn");
+      if (!btn) return;
+      btn.disabled = rows.length === 1;
+      btn.style.opacity = rows.length === 1 ? "0.45" : "1";
+      btn.style.cursor = rows.length === 1 ? "not-allowed" : "pointer";
+      btn.setAttribute("aria-label", `Remover membro ${index + 1}`);
+    });
+  };
+
+  const createRow = () => {
+    const row = document.createElement("div");
+    row.className = "dynamic-list__row";
+    row.innerHTML = `
+      <input name="equipeApoioItem" placeholder="Nome do membro da equipe" required />
+      <button type="button" class="dynamic-remove-btn" aria-label="Remover membro da equipe">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    `;
+    list.appendChild(row);
+    updateRemoveButtons();
+  };
+
+  addButton.addEventListener("click", () => {
+    createRow();
+    const lastInput = list.querySelector(".dynamic-list__row:last-child input");
+    lastInput?.focus();
+  });
+
+  list.addEventListener("click", (event) => {
+    const btn = event.target.closest(".dynamic-remove-btn");
+    if (!btn) return;
+    const rows = qsa("#supportTeamList .dynamic-list__row");
+    if (rows.length === 1) return;
+    btn.closest(".dynamic-list__row")?.remove();
+    updateRemoveButtons();
+  });
+
+  updateRemoveButtons();
 }
 
 function payloadCandidateRegister(form) {
@@ -490,6 +542,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupSystemPanel();
   setupBackToTop();
   setupRevealOnScroll();
+  setupSupportTeamField();
   setupWorkspaceActions();
 });
 
