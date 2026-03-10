@@ -55,7 +55,7 @@ function initMenu() {
   const offcanvasEl = qs("#mainAside");
   const offcanvas = offcanvasEl ? bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl) : null;
 
-  qsa("[data-target]").forEach((btn) => {
+  qsa(".btn-nav[data-target]").forEach((btn) => {
     btn.addEventListener("click", () => {
       showSection(btn.dataset.target);
       offcanvas?.hide();

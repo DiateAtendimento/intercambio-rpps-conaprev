@@ -166,13 +166,42 @@ function toColumnLetter(index) {
 }
 
 function pickServiceAccount() {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!raw) {
-    throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON");
+  const raw = String(process.env.GOOGLE_SERVICE_ACCOUNT_JSON || "").trim();
+
+  if (raw) {
+    // Primary path: full service account JSON in one env var.
+    try {
+      const parsed = JSON.parse(raw);
+      parsed.private_key = String(parsed.private_key || "").replace(/\\n/g, "\n");
+      if (!parsed.client_email || !parsed.private_key) {
+        throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON missing client_email/private_key");
+      }
+      return parsed;
+    } catch (error) {
+      // Fallback path: some platforms store only the PEM key in this var.
+      const maybePem = raw.includes("BEGIN PRIVATE KEY");
+      if (!maybePem) {
+        throw new Error("Invalid GOOGLE_SERVICE_ACCOUNT_JSON");
+      }
+    }
   }
-  const parsed = JSON.parse(raw);
-  parsed.private_key = String(parsed.private_key || "").replace(/\\n/g, "\n");
-  return parsed;
+
+  const clientEmail = String(process.env.GOOGLE_CLIENT_EMAIL || "").trim();
+  const privateKeyRaw = raw || String(process.env.GOOGLE_PRIVATE_KEY || "").trim();
+  const privateKey = privateKeyRaw.replace(/\\n/g, "\n");
+
+  if (!clientEmail || !privateKey) {
+    throw new Error(
+      "Missing Google credentials. Use GOOGLE_SERVICE_ACCOUNT_JSON (full JSON) or GOOGLE_CLIENT_EMAIL + GOOGLE_PRIVATE_KEY."
+    );
+  }
+
+  return {
+    type: "service_account",
+    project_id: process.env.GOOGLE_PROJECT_ID || undefined,
+    private_key: privateKey,
+    client_email: clientEmail,
+  };
 }
 
 const auth = new google.auth.GoogleAuth({
