@@ -1,4 +1,4 @@
-﻿const state = {
+const state = {
   tokens: {
     candidate: "",
     host: "",
@@ -34,7 +34,7 @@ async function apiFetch(url, options = {}) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || "Falha na operacao.");
+    throw new Error(data.error || "Falha na operação.");
   }
   return data;
 }
@@ -61,8 +61,8 @@ function setupSmoothScroll() {
 }
 
 function setupNavbarToggle() {
-  // O menu superior fica sempre visivel no desktop.
-  // O hamburguer controla o painel lateral das areas do sistema.
+  // O menu superior fica sempre visível no desktop.
+  // O hambúrguer controla o painel lateral das áreas do sistema.
 }
 
 function setupBackToTop() {
@@ -175,19 +175,19 @@ function openWorkspace(screenId) {
   });
 
   const titles = {
-    "form-host": "Formulario do Anfitriao",
-    "form-candidate": "Formulario do Intercambista",
-    "candidate-login": "Area Intercambista - Login",
-    "candidate-first-access": "Area Intercambista - Primeiro Acesso",
-    "candidate-area": "Area Intercambista",
-    "host-login": "Area Anfitriao - Login",
-    "host-first-access": "Area Anfitriao - Primeiro Acesso",
-    "host-area": "Area Anfitriao",
+    "form-host": "Formulário do Anfitrião",
+    "form-candidate": "Formulário do Intercambista",
+    "candidate-login": "Área Intercambista - Login",
+    "candidate-first-access": "Área Intercambista - Primeiro Acesso",
+    "candidate-area": "Área Intercambista",
+    "host-login": "Área Anfitrião - Login",
+    "host-first-access": "Área Anfitrião - Primeiro Acesso",
+    "host-area": "Área Anfitrião",
     "admin-login": "Gerenciador Admin - Login",
     "admin-area": "Gerenciador Admin",
   };
   const title = qs("#workspaceTitle");
-  if (title) title.textContent = titles[screenId] || "Modulo do Sistema";
+  if (title) title.textContent = titles[screenId] || "Módulo do Sistema";
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -250,14 +250,14 @@ async function refreshCandidateArea() {
   const hosts = await apiFetch("/api/candidate/hosts", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
 
   const statusBox = qs("#candidateStatusBox");
-  if (statusBox) statusBox.textContent = `Status: ${status.status || "Sem solicitacao"}. Anfitriao: ${status.host || "-"}.`;
+  if (statusBox) statusBox.textContent = `Status: ${status.status || "Sem solicitação"}. Anfitrião: ${status.host || "-"}.`;
 
   const list = qs("#candidateHostsList");
   if (!list) return;
 
   const items = hosts.hosts || [];
   if (!items.length) {
-    list.textContent = "Nenhum anfitriao ativo disponivel.";
+    list.textContent = "Nenhum anfitrião ativo disponível.";
     return;
   }
 
@@ -265,7 +265,7 @@ async function refreshCandidateArea() {
     <div class="item-row">
       <strong>${host.entidade}</strong><br />
       <small>${host.numeroInscricao} | ${host.uf} | Vagas: ${host.vagas || "-"}</small><br />
-      <small>Areas: ${(host.areas || []).join(", ") || "Nao informado"}</small>
+      <small>Áreas: ${(host.areas || []).join(", ") || "Não informado"}</small>
       <div style="margin-top:0.5rem;"><button class="btn btn-primary" type="button" data-select-host="${host.numeroInscricao}">Escolher</button></div>
     </div>`).join("");
 
@@ -292,7 +292,7 @@ async function refreshHostArea() {
 
   const pendentes = data.pendentes || [];
   if (!pendentes.length) {
-    list.textContent = "Nenhuma solicitacao pendente.";
+    list.textContent = "Nenhuma solicitação pendente.";
     return;
   }
 
@@ -310,7 +310,7 @@ async function refreshHostArea() {
 
   qsa("[data-host-decision]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const note = window.prompt("Observacao opcional da decisao:", "") || "";
+      const note = window.prompt("Observação opcional da decisão:", "") || "";
       try {
         await apiFetch("/api/host/decision", {
           method: "POST",
@@ -329,14 +329,14 @@ async function refreshAdminArea() {
   const data = await apiFetch("/api/admin/overview", { headers: { Authorization: `Bearer ${state.tokens.admin}` } });
 
   const metrics = qs("#adminMetrics");
-  if (metrics) metrics.innerHTML = `Anfitrioes: ${data.metrics.totalHosts} | Intercambistas: ${data.metrics.totalCandidates} | Aceitos: ${data.metrics.totalAceitos} | Rejeitados: ${data.metrics.totalRejeitados}`;
+  if (metrics) metrics.innerHTML = `Anfitriões: ${data.metrics.totalHosts} | Intercambistas: ${data.metrics.totalCandidates} | Aceitos: ${data.metrics.totalAceitos} | Rejeitados: ${data.metrics.totalRejeitados}`;
 
   const decisionsList = qs("#adminDecisionsList");
   if (decisionsList) {
     const decisions = data.decisions || [];
     decisionsList.innerHTML = decisions.length
       ? decisions.map((d) => `<div class="item-row"><strong>${d.status}</strong> - ${d.entidadeIntercambista} -> ${d.host}<br /><small>CPF: ${d.cpf || "-"} | Data: ${d.dataDecisao || "-"}</small></div>`).join("")
-      : "Sem decisoes.";
+      : "Sem decisões.";
   }
 
   const hostsList = qs("#adminHostsList");
@@ -344,7 +344,7 @@ async function refreshAdminArea() {
     const hosts = data.hosts || [];
     hostsList.innerHTML = hosts.length
       ? hosts.map((host) => `<div class="item-row"><strong>${host.entidade}</strong><br /><small>${host.numeroInscricao} | ${host.uf} | Status: ${host.status}</small><div style="margin-top:0.5rem; display:flex; gap:0.5rem;"><button class="btn btn-primary" type="button" data-admin-status="Ativo" data-admin-row="${host.rowNumber}">Ativar</button><button class="btn btn-outline" type="button" data-admin-status="Inativo" data-admin-row="${host.rowNumber}">Inativar</button></div></div>`).join("")
-      : "Sem anfitrioes cadastrados.";
+      : "Sem anfitriões cadastrados.";
 
     qsa("[data-admin-status]").forEach((btn) => {
       btn.addEventListener("click", async () => {
@@ -374,9 +374,9 @@ function setupWorkspaceActions() {
     setFeedback("hostRegisterFeedback", "Enviando cadastro...", true);
     try {
       const data = await apiFetch("/api/host/register", { method: "POST", body: JSON.stringify(payloadHostRegister(hostRegisterForm)) });
-      setFeedback("hostRegisterFeedback", "Cadastro concluido.", true);
+      setFeedback("hostRegisterFeedback", "Cadastro concluído.", true);
       const cred = qs("#hostRegisterCredentials");
-      if (cred) cred.textContent = `Numero de inscricao: ${data.numeroInscricao} | CNPJ: ${data.cnpj} | Senha inicial: ${data.senha}`;
+      if (cred) cred.textContent = `Número de inscrição: ${data.numeroInscricao} | CNPJ: ${data.cnpj} | Senha inicial: ${data.senha}`;
       hostRegisterForm.reset();
     } catch (error) {
       setFeedback("hostRegisterFeedback", error.message, false);
@@ -389,7 +389,7 @@ function setupWorkspaceActions() {
     setFeedback("candidateRegisterFeedback", "Enviando cadastro...", true);
     try {
       await apiFetch("/api/candidate/register", { method: "POST", body: JSON.stringify(payloadCandidateRegister(candidateRegisterForm)) });
-      setFeedback("candidateRegisterFeedback", "Cadastro concluido. Realize o primeiro acesso para criar sua senha.", true);
+      setFeedback("candidateRegisterFeedback", "Cadastro concluído. Realize o primeiro acesso para criar sua senha.", true);
       candidateRegisterForm.reset();
     } catch (error) {
       setFeedback("candidateRegisterFeedback", error.message, false);
@@ -400,12 +400,12 @@ function setupWorkspaceActions() {
   candidateFirstAccessForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = collectFormData(candidateFirstAccessForm);
-    if (data.novaSenha !== data.confirmSenha) return setFeedback("candidateFirstAccessFeedback", "As senhas nao conferem.", false);
-    if (!isStrongPassword(data.novaSenha)) return setFeedback("candidateFirstAccessFeedback", "Senha fraca. Use letras, numeros e caractere especial.", false);
+    if (data.novaSenha !== data.confirmSenha) return setFeedback("candidateFirstAccessFeedback", "As senhas não conferem.", false);
+    if (!isStrongPassword(data.novaSenha)) return setFeedback("candidateFirstAccessFeedback", "Senha fraca. Use letras, números e caractere especial.", false);
     setFeedback("candidateFirstAccessFeedback", "Processando primeiro acesso...", true);
     try {
       await apiFetch("/api/candidate/first-access", { method: "POST", body: JSON.stringify({ cpf: normalizeDigits(data.cpf), email: data.email, novaSenha: data.novaSenha }) });
-      setFeedback("candidateFirstAccessFeedback", "Senha criada com sucesso. Faca login.", true);
+      setFeedback("candidateFirstAccessFeedback", "Senha criada com sucesso. Faça login.", true);
       candidateFirstAccessForm.reset();
       openWorkspace("candidate-login");
     } catch (error) {
@@ -417,12 +417,12 @@ function setupWorkspaceActions() {
   hostFirstAccessForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = collectFormData(hostFirstAccessForm);
-    if (data.novaSenha !== data.confirmSenha) return setFeedback("hostFirstAccessFeedback", "As senhas nao conferem.", false);
-    if (!isStrongPassword(data.novaSenha)) return setFeedback("hostFirstAccessFeedback", "Senha fraca. Use letras, numeros e caractere especial.", false);
+    if (data.novaSenha !== data.confirmSenha) return setFeedback("hostFirstAccessFeedback", "As senhas não conferem.", false);
+    if (!isStrongPassword(data.novaSenha)) return setFeedback("hostFirstAccessFeedback", "Senha fraca. Use letras, números e caractere especial.", false);
     setFeedback("hostFirstAccessFeedback", "Processando primeiro acesso...", true);
     try {
       await apiFetch("/api/host/first-access", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(data.cnpj), numeroInscricao: data.numeroInscricao, senhaInicial: data.senhaInicial, novaSenha: data.novaSenha }) });
-      setFeedback("hostFirstAccessFeedback", "Senha criada com sucesso. Faca login.", true);
+      setFeedback("hostFirstAccessFeedback", "Senha criada com sucesso. Faça login.", true);
       hostFirstAccessForm.reset();
       openWorkspace("host-login");
     } catch (error) {
@@ -490,3 +490,5 @@ document.addEventListener("DOMContentLoaded", () => {
   setupRevealOnScroll();
   setupWorkspaceActions();
 });
+
+
