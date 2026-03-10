@@ -47,24 +47,6 @@
     </div>
 
 
-    <div class="navbar__right">
-      <button
-        class="system-menu-toggle"
-        id="systemMenuToggle"
-        type="button"
-        aria-label="Abrir areas do sistema"
-        aria-expanded="false"
-        aria-controls="systemPanel"
-      >
-        <i class="fa-solid fa-bars"></i>
-        <span>Areas do Sistema</span>
-      </button>
-
-      <button class="navbar__toggle" id="navbarToggle" aria-label="Abrir menu">
-        <span></span><span></span><span></span>
-      </button>
-    </div>
-
     <nav class="navbar__menu" id="navbarMenu">
       <a href="#sobre" data-scroll>Sobre</a>
       <a href="#objetivos" data-scroll>Objetivos</a>
@@ -73,6 +55,10 @@
       <a href="#custos" data-scroll>Responsabilidades</a>
       <a href="#resultados" data-scroll>Resultados</a>
     </nav>
+
+    <button class="navbar__toggle" id="navbarToggle" aria-label="Abrir menu de areas do sistema">
+      <span></span><span></span><span></span>
+    </button>
   </header>
 
   <div class="system-panel-overlay" id="systemPanelOverlay" data-system-close></div>
@@ -99,7 +85,6 @@
       <button class="system-nav-btn" type="button" data-screen="host-login"><i class="fa-solid fa-building-user"></i> Area Anfitriao</button>
       <button class="system-nav-btn" type="button" data-screen="admin-login"><i class="fa-solid fa-user-shield"></i> Gerenciador Admin</button>
     </nav>
-    <p class="system-panel__note">Fluxo: cadastro -> escolha -> decisao -> resultado.</p>
   </aside>
 
   <main>

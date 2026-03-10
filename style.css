@@ -114,13 +114,15 @@ body {
 
 /* Toggle mobile */
 .navbar__toggle {
-  display: none;
+  display: flex;
   flex-direction: column;
   gap: 4px;
-  background: transparent;
-  border: none;
+  background: #ffffff;
+  border: 1px solid #c8d9ee;
+  border-radius: 999px;
+  padding: 0.45rem 0.7rem;
   cursor: pointer;
-  padding: 0.3rem;
+  margin-left: 0.8rem;
 }
 
 .navbar__toggle span {
@@ -1067,18 +1069,6 @@ main {
 @media (max-width: 720px) {
   .navbar {
     padding-inline: 1rem;
-  }
-
-  .system-menu-toggle span {
-    display: none;
-  }
-
-  .system-menu-toggle {
-    padding: 0.45rem 0.6rem;
-  }
-
-  .navbar__toggle {
-    display: flex;
   }
 
   .navbar__menu {

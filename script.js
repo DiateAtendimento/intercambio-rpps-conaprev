@@ -60,17 +60,8 @@ function setupSmoothScroll() {
 }
 
 function setupNavbarToggle() {
-  const toggle = qs("#navbarToggle");
-  const menu = qs("#navbarMenu");
-  if (!toggle || !menu) return;
-
-  toggle.addEventListener("click", () => {
-    menu.classList.toggle("open");
-  });
-
-  menu.querySelectorAll("a").forEach((link) => {
-    link.addEventListener("click", () => menu.classList.remove("open"));
-  });
+  // O menu superior fica sempre visivel no desktop.
+  // O hamburguer controla o painel lateral das areas do sistema.
 }
 
 function setupBackToTop() {
@@ -109,7 +100,7 @@ function setupRevealOnScroll() {
 }
 
 function setupSystemPanel() {
-  const toggle = qs("#systemMenuToggle");
+  const toggle = qs("#navbarToggle");
   const panel = qs("#systemPanel");
   const overlay = qs("#systemPanelOverlay");
   const formsToggle = qs("#formsToggleBtn");
