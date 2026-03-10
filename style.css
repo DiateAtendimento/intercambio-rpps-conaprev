@@ -376,12 +376,33 @@ body.system-menu-open {
 
 .module-card h3 {
   font-size: 1.45rem;
-  margin-top: 2rem;
+  margin-top: 1.2rem;
   margin-bottom: 1.15rem;
+  color: #0f2742;
 }
 
 .module-card--login h3 {
   margin-top: 0.45rem;
+}
+
+/* Titulo dentro da barra azul apenas nos formularios principais */
+.workspace-screen[data-screen-id="form-host"] .module-card,
+.workspace-screen[data-screen-id="form-candidate"] .module-card {
+  padding-top: 5.6rem;
+}
+
+.workspace-screen[data-screen-id="form-host"] .module-card h3,
+.workspace-screen[data-screen-id="form-candidate"] .module-card h3 {
+  position: absolute;
+  top: 1.35rem;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
 }
 
 .module-card h4 {
@@ -399,27 +420,28 @@ body.system-menu-open {
 
 .module-form label {
   display: grid;
-  gap: 0.35rem;
-  font-size: 0.84rem;
-  color: #46627f;
+  gap: 0.42rem;
+  font-size: 0.87rem;
+  color: #294766;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  background: linear-gradient(180deg, #fcfeff 0%, #f3f9ff 100%);
-  border: 1px solid #dbe7f4;
-  border-radius: 14px;
-  padding: 0.48rem 0.65rem 0.56rem;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
 }
 
 .module-form input,
 .module-form textarea,
 .module-form select {
-  border: 1px solid #c7d8ec;
-  border-radius: 999px;
-  padding: 0.66rem 0.92rem;
+  border: 1px solid #c9d9ea;
+  border-radius: 12px;
+  padding: 0.72rem 0.92rem;
   font: inherit;
   background: #ffffff;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03), 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease, background 0.2s ease;
 }
 
 .module-form textarea {
@@ -432,14 +454,15 @@ body.system-menu-open {
 .module-form textarea:focus,
 .module-form select:focus {
   outline: none;
-  border-color: #5ca5df;
-  box-shadow: 0 0 0 3px rgba(92, 165, 223, 0.18);
+  border-color: #2f7fbe;
+  box-shadow: 0 0 0 4px rgba(47, 127, 190, 0.15), 0 8px 18px rgba(47, 127, 190, 0.14);
+  background: #fbfeff;
   transform: translateY(-1px);
 }
 
 .form-grid {
   display: grid;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .form-grid.two {
