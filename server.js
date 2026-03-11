@@ -16,6 +16,7 @@ const PORT = Number(process.env.PORT || 3000);
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const ADMIN_USER = process.env.ADMIN_USER;
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
+const ADMIN_PASSWORD_PLAIN = process.env.ADMIN_PASSWORD_PLAIN;
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
@@ -26,8 +27,8 @@ const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
 if (!SHEET_ID) {
   throw new Error("Missing GOOGLE_SHEET_ID");
 }
-if (!ADMIN_USER || !ADMIN_PASSWORD_HASH) {
-  throw new Error("Missing ADMIN_USER or ADMIN_PASSWORD_HASH");
+if (!ADMIN_USER || (!ADMIN_PASSWORD_HASH && !ADMIN_PASSWORD_PLAIN)) {
+  throw new Error("Missing ADMIN_USER and one of ADMIN_PASSWORD_HASH or ADMIN_PASSWORD_PLAIN");
 }
 if (!SESSION_SECRET || SESSION_SECRET.length < 24) {
   throw new Error("SESSION_SECRET must have at least 24 characters");
@@ -959,7 +960,12 @@ app.post("/api/admin/login", loginLimiter, async (req, res) => {
       return res.status(401).json({ error: "Credenciais inválidas." });
     }
 
-    const ok = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    let ok = false;
+    if (ADMIN_PASSWORD_PLAIN) {
+      ok = password === ADMIN_PASSWORD_PLAIN;
+    } else {
+      ok = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    }
     if (!ok) {
       return res.status(401).json({ error: "Credenciais inválidas." });
     }
