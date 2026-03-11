@@ -210,28 +210,46 @@ function collectFormData(form) {
 }
 
 function payloadHostRegister(form) {
-  const payload = collectFormData(form);
-  payload.cnpj = normalizeDigits(payload.cnpj);
-  payload.equipeApoio = qsa('[name="equipeApoioItem"]')
+  const formData = collectFormData(form);
+  const equipeApoio = qsa('[name="equipeApoioItem"]')
     .map((input) => String(input.value || "").trim())
     .filter(Boolean)
     .join(", ");
-  [
-    "areaCadastro",
-    "areaConcessao",
-    "areaCompensacao",
-    "areaAtuaria",
-    "areaInvestimentos",
-    "areaControleInterno",
-    "areaCertificacao",
-    "areaGovernanca",
-    "areaPessoal",
-    "areaTecnologia",
-    "areaContabilidade",
-    "areaOutros",
-  ].forEach((key) => {
-    payload[key] = form.querySelector(`[name=\"${key}\"]`)?.checked || false;
-  });
+
+  const payload = {
+    "UF": String(formData.uf || "").trim().toUpperCase(),
+    "Município": String(formData.municipio || "").trim(),
+    "Município CNPJ": normalizeDigits(formData.municipioCnpj),
+    "Unidade Gestora": String(formData.unidadeGestora || "").trim(),
+    "Endereço": String(formData.endereco || "").trim(),
+    "Nome do Dirigente ou Responsável Legal": String(formData.dirigente || "").trim(),
+    "Cargo/Função (Dirigente)": String(formData.cargoDirigente || "").trim(),
+    "Responsável pela coordenação local": String(formData.coordenadorLocal || "").trim(),
+    "E-mail de contato": String(formData.email || "").trim(),
+    "Telefone de contato": String(formData.telefone || "").trim(),
+    "Nível do Pró-Gestão": String(formData.nivelProGestao || "").trim(),
+    "Número de vagas oferecidas": String(formData.vagas || "").trim(),
+    "Nº de áreas/setores disponíveis": String(formData.totalAreas || "").trim(),
+    "Outros (especificar)": String(formData.areaOutrosTexto || "").trim(),
+    "Equipe de apoio designada (nomes)": equipeApoio,
+    "Breve descrição da proposta de intercâmbio": String(formData.proposta || "").trim(),
+    "Responsável pelo preenchimento": String(formData.responsavel || "").trim(),
+    "Cargo/Função (Responsável)": String(formData.cargoResponsavel || "").trim(),
+    "Data": String(formData.dataPreenchimento || "").trim(),
+    cnpj: normalizeDigits(formData.municipioCnpj),
+  };
+  payload["Área: Cadastro e Atendimento (Sim/Não)"] = form.querySelector('[name="areaCadastro"]')?.checked || false;
+  payload["Área: Concessão e Revisão de Benefícios (Sim/Não)"] = form.querySelector('[name="areaConcessao"]')?.checked || false;
+  payload["Área: Compensação Previdenciária (Sim/Não)"] = form.querySelector('[name="areaCompensacao"]')?.checked || false;
+  payload["Área: Atuária (Sim/Não)"] = form.querySelector('[name="areaAtuaria"]')?.checked || false;
+  payload["Área: Investimentos (Sim/Não)"] = form.querySelector('[name="areaInvestimentos"]')?.checked || false;
+  payload["Área: Controle Interno (Sim/Não)"] = form.querySelector('[name="areaControleInterno"]')?.checked || false;
+  payload["Área: Certificação/Pró-Gestão (Sim/Não)"] = form.querySelector('[name="areaCertificacao"]')?.checked || false;
+  payload["Área: Governança e Transparência (Sim/Não)"] = form.querySelector('[name="areaGovernanca"]')?.checked || false;
+  payload["Área: Gestão de Pessoal (Sim/Não)"] = form.querySelector('[name="areaPessoal"]')?.checked || false;
+  payload["Área: Tecnologia/Sistemas (Sim/Não)"] = form.querySelector('[name="areaTecnologia"]')?.checked || false;
+  payload["Área: Contabilidade (Sim/Não)"] = form.querySelector('[name="areaContabilidade"]')?.checked || false;
+  payload["Outros (Sim/Não)"] = form.querySelector('[name="areaOutros"]')?.checked || false;
   return payload;
 }
 
@@ -284,18 +302,53 @@ function setupSupportTeamField() {
 }
 
 function payloadCandidateRegister(form) {
-  const payload = collectFormData(form);
+  const formData = collectFormData(form);
+  const payload = {
+    "UF": String(formData.uf || "").trim().toUpperCase(),
+    "Município": String(formData.municipio || "").trim(),
+    "Município CNPJ": normalizeDigits(formData.municipioCnpj),
+    "Unidade Gestora": String(formData.unidadeGestora || "").trim(),
+    "Unidade Gestora CNPJ": normalizeDigits(formData.unidadeGestoraCnpj),
+    "Nível do Pró-Gestão": String(formData.nivelProGestao || "").trim(),
+    "Nome do Dirigente ou Responsável Legal": String(formData.dirigente || "").trim(),
+    "Cargo/Função (Dirigente)": String(formData.cargoDirigente || "").trim(),
+    "E-mail institucional": String(formData.email || "").trim(),
+    "Telefone para contato": String(formData.telefone || "").trim(),
+    "Participante - Nome completo": String(formData.p_nome || "").trim(),
+    "Participante - Cargo/Função": String(formData.p_cargo || "").trim(),
+    "Participante - Tipo de vínculo": String(formData.p_vinculo || "").trim(),
+    "Participante - Área de atuação (RPPS/EFPC)": String(formData.p_area || "").trim(),
+    "Participante - Certificação": String(formData.p_certificacao || "").trim(),
+    "Anfitrião de interesse - Prioridade 1": String(formData.prioridade1Host || "").trim(),
+    "Objetivo principal (Prioridade 1)": String(formData.prioridade1Objetivo || "").trim(),
+    "Anfitrião de interesse - Prioridade 2": String(formData.prioridade2Host || "").trim(),
+    "Objetivo principal (Prioridade 2)": String(formData.prioridade2Objetivo || "").trim(),
+    "Anfitrião de interesse - Prioridade 3": String(formData.prioridade3Host || "").trim(),
+    "Objetivo principal (Prioridade 3)": String(formData.prioridade3Objetivo || "").trim(),
+    "Temas/áreas de interesse (texto)": String(formData.temas || "").trim(),
+    "Atividades propostas (agenda por dia)": String(formData.atividades || "").trim(),
+    "Objetivos e compromissos (o que pretende implementar/replicar)": String(formData.objetivosCompromissos || "").trim(),
+    "Declaração: vínculo formal (Sim/Não)": form.querySelector('[name="declaracaoVinculo"]').checked,
+    "Declaração: custeio pelo intercambista (Sim/Não)": form.querySelector('[name="declaracaoCusteio"]').checked,
+    "Declaração: ciência dos termos (Sim/Não)": form.querySelector('[name="declaracaoCiencia"]').checked,
+    "Responsável pelo preenchimento": String(formData.responsavel || "").trim(),
+    "Cargo/Função (Responsável)": String(formData.cargoResponsavel || "").trim(),
+    "Data": String(formData.dataPreenchimento || "").trim(),
+    cpf: normalizeDigits(formData.cpf),
+    genero: String(formData.genero || "").trim(),
+    participantes: [{
+      nome: formData.p_nome || "",
+      cargo: formData.p_cargo || "",
+      vinculo: formData.p_vinculo || "",
+      area: formData.p_area || "",
+      certificacao: formData.p_certificacao || "",
+    }],
+    declaracaoVinculo: form.querySelector('[name="declaracaoVinculo"]').checked,
+    declaracaoCusteio: form.querySelector('[name="declaracaoCusteio"]').checked,
+    declaracaoCiencia: form.querySelector('[name="declaracaoCiencia"]').checked,
+  };
+
   payload.cpf = normalizeDigits(payload.cpf);
-  payload.participantes = [{
-    nome: payload.p_nome || "",
-    cargo: payload.p_cargo || "",
-    vinculo: payload.p_vinculo || "",
-    area: payload.p_area || "",
-    certificacao: payload.p_certificacao || "",
-  }];
-  payload.declaracaoVinculo = form.querySelector('[name="declaracaoVinculo"]').checked;
-  payload.declaracaoCusteio = form.querySelector('[name="declaracaoCusteio"]').checked;
-  payload.declaracaoCiencia = form.querySelector('[name="declaracaoCiencia"]').checked;
   return payload;
 }
 
@@ -383,13 +436,13 @@ async function refreshAdminArea() {
   const data = await apiFetch("/api/admin/overview", { headers: { Authorization: `Bearer ${state.tokens.admin}` } });
 
   const metrics = qs("#adminMetrics");
-  if (metrics) metrics.innerHTML = `Anfitriões: ${data.metrics.totalHosts} | Intercambistas: ${data.metrics.totalCandidates} | Aceitos: ${data.metrics.totalAceitos} | Rejeitados: ${data.metrics.totalRejeitados}`;
+  if (metrics) metrics.innerHTML = `Anfitriões cadastrados: ${data.metrics.totalHosts} | Intercambistas: ${data.metrics.totalCandidates} | Aceitos: ${data.metrics.totalAceitos} | Rejeitados: ${data.metrics.totalRejeitados}`;
 
   const decisionsList = qs("#adminDecisionsList");
   if (decisionsList) {
     const decisions = data.decisions || [];
     decisionsList.innerHTML = decisions.length
-      ? decisions.map((d) => `<div class="item-row"><strong>${d.status}</strong> - ${d.entidadeIntercambista} -> ${d.host}<br /><small>CPF: ${d.cpf || "-"} | Data: ${d.dataDecisao || "-"}</small></div>`).join("")
+      ? decisions.map((d) => `<div class="item-row"><strong>${d.status}</strong> - ${d.entidadeIntercambista} -> ${d.host}<br /><small>CPF: ${d.cpf || "-"} | Data: ${d.dataDecisao || "-"} | Permissão anfitrião: ${d.permissaoAnfitriao || "-"}</small></div>`).join("")
       : "Sem decisões.";
   }
 
@@ -397,7 +450,7 @@ async function refreshAdminArea() {
   if (hostsList) {
     const hosts = data.hosts || [];
     hostsList.innerHTML = hosts.length
-      ? hosts.map((host) => `<div class="item-row"><strong>${host.entidade}</strong><br /><small>${host.numeroInscricao} | ${host.uf} | Status: ${host.status}</small><div style="margin-top:0.5rem; display:flex; gap:0.5rem;"><button class="btn btn-primary" type="button" data-admin-status="Ativo" data-admin-row="${host.rowNumber}">Ativar</button><button class="btn btn-outline" type="button" data-admin-status="Inativo" data-admin-row="${host.rowNumber}">Inativar</button></div></div>`).join("")
+      ? hosts.map((host) => `<div class="item-row"><strong>${host.entidade}</strong><br /><small>${host.numeroInscricao} | ${host.uf} | Status: ${host.status} | Permissão admin: ${host.permissaoAdmin || "Pendente"} | Intercambistas aceitos: ${host.intercambistasAceitos || 0}</small><div style="margin-top:0.5rem; display:flex; gap:0.5rem;"><button class="btn btn-primary" type="button" data-admin-status="Concedido" data-admin-row="${host.rowNumber}">Conceder</button><button class="btn btn-outline" type="button" data-admin-status="Negado" data-admin-row="${host.rowNumber}">Negar</button></div></div>`).join("")
       : "Sem anfitriões cadastrados.";
 
     qsa("[data-admin-status]").forEach((btn) => {
@@ -430,7 +483,7 @@ function setupWorkspaceActions() {
       const data = await apiFetch("/api/host/register", { method: "POST", body: JSON.stringify(payloadHostRegister(hostRegisterForm)) });
       setFeedback("hostRegisterFeedback", "Cadastro concluído.", true);
       const cred = qs("#hostRegisterCredentials");
-      if (cred) cred.textContent = `Número de inscrição: ${data.numeroInscricao} | CNPJ: ${data.cnpj} | Senha inicial: ${data.senha}`;
+      if (cred) cred.textContent = `Número de inscrição: ${data.numeroInscricao} | CNPJ: ${data.cnpj}. Cadastro enviado para aprovação do admin.`;
       hostRegisterForm.reset();
     } catch (error) {
       setFeedback("hostRegisterFeedback", error.message, false);

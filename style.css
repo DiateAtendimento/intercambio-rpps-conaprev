@@ -498,6 +498,12 @@ body.system-menu-open {
   font-weight: 500;
 }
 
+.form-block-note {
+  margin: -0.35rem 0 0.2rem;
+  font-size: 0.9rem;
+  color: #5a7088;
+}
+
 .dynamic-field-block {
   border: 1px solid #d8e6f4;
   border-radius: 14px;
