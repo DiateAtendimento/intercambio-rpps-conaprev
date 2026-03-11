@@ -35,6 +35,13 @@ if (!SESSION_SECRET || SESSION_SECRET.length < 24) {
 }
 
 app.disable("x-powered-by");
+
+// Render and similar platforms run behind a reverse proxy.
+// This is required so express-rate-limit can resolve client IP correctly.
+if (process.env.RENDER || process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
 app.use(
   helmet({
     contentSecurityPolicy: {
