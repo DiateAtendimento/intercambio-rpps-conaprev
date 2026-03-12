@@ -411,10 +411,12 @@ function getHostAreas(hostData) {
 }
 
 function publicHostView(hostData) {
+  const uf = String(hostData.UF || "").toUpperCase();
   return {
     numeroInscricao: hostData["Inscrição"] || "",
     entidade: hostData["Unidade Gestora"] || "",
-    uf: hostData.UF || "",
+    uf,
+    bandeira: uf ? `${uf}.png` : "",
     email: hostData["E-mail de contato"] || "",
     telefone: hostData["Telefone de contato"] || "",
     nivelProGestao: hostData["Nível do Pró-Gestão"] || "",
@@ -422,6 +424,37 @@ function publicHostView(hostData) {
     descricao: hostData["Breve descrição da proposta de intercâmbio"] || "",
     areas: getHostAreas(hostData),
     status: hostData["Status do Anfitrião"] || "Ativo",
+  };
+}
+
+function hostSummaryView(row) {
+  return {
+    rowNumber: row.rowNumber,
+    numeroInscricao: row.data["Inscrição"] || "",
+    municipio: row.data["Município"] || "",
+    uf: row.data.UF || "",
+    unidadeGestora: row.data["Unidade Gestora"] || "",
+    dirigente: row.data["Nome do Dirigente ou Responsável Legal"] || "",
+    cargoDirigente: row.data["Cargo/Função (Dirigente)"] || "",
+    dataSolicitacao: row.data.Data || "",
+    status: row.data["Status do Anfitrião"] || "Ativo",
+    permissaoAdmin: row.data["Permissão admin"] || "Pendente",
+  };
+}
+
+function candidateSummaryView(row) {
+  return {
+    rowNumber: row.rowNumber,
+    inscricao: row.data["Inscrição"] || "",
+    municipio: row.data["Município"] || "",
+    uf: row.data.UF || "",
+    unidadeGestora: row.data["Unidade Gestora"] || "",
+    dirigente: row.data["Nome do Dirigente ou Responsável Legal"] || "",
+    cargoDirigente: row.data["Cargo/Função (Dirigente)"] || "",
+    dataSolicitacao: row.data.Data || "",
+    dataDecisao: row.data["Data da decisão"] || "",
+    statusSolicitacao: row.data["Status da solicitação"] || "",
+    permissaoAnfitriao: row.data["Permissão anfitrião"] || "Pendente",
   };
 }
 
@@ -699,24 +732,66 @@ app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
         const status = normalizeText(row.data["Status da solicitação"] || "");
         return selectedHost === hostNumero && status === "pendente";
       })
-      .map((row) => ({
-        rowNumber: row.rowNumber,
-        cpf: row.data.CPF,
-        entidade: row.data["Unidade Gestora"],
-        participante: row.data["Participante - Nome completo"],
-        objetivo: row.data["Objetivo principal (Prioridade 1)"],
-      }));
+      .map(candidateSummaryView);
+
+    const cadastrados = candidates.rows
+      .filter((row) => {
+        const selectedHost = String(row.data["Anfitrião escolhido - Inscrição"] || "");
+        const status = normalizeText(row.data["Status da solicitação"] || "");
+        return selectedHost === hostNumero && status === "aceito";
+      })
+      .map(candidateSummaryView);
 
     res.json({
       host: {
+        rowNumber: hostRowData.rowNumber,
         numeroInscricao: hostNumero,
         entidade: hostRowData.data["Unidade Gestora"],
+        municipio: hostRowData.data["Município"] || "",
+        uf: hostRowData.data.UF || "",
       },
       pendentes,
+      cadastrados,
     });
   } catch (error) {
     console.error("host/requests", error);
     res.status(500).json({ error: "Falha ao carregar solicitações." });
+  }
+});
+
+app.get("/api/host/candidate-form/:rowNumber", requireAuth("host"), async (req, res) => {
+  try {
+    const candidateRow = Number(req.params.rowNumber);
+    if (!candidateRow) {
+      return res.status(400).json({ error: "Linha do intercambista inválida." });
+    }
+
+    const hostRow = Number(req.session.subject);
+    const hostData = await getRows(HOST_SHEET, hostHeaders);
+    const hostRowData = hostData.rows.find((item) => item.rowNumber === hostRow);
+    if (!hostRowData) {
+      return res.status(404).json({ error: "Anfitrião não encontrado." });
+    }
+
+    const hostNumero = String(hostRowData.data["Inscrição"] || "");
+    const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    const candidate = candidates.rows.find((row) => row.rowNumber === candidateRow);
+    if (!candidate) {
+      return res.status(404).json({ error: "Intercambista não encontrado." });
+    }
+
+    const selectedHost = String(candidate.data["Anfitrião escolhido - Inscrição"] || "");
+    if (selectedHost !== hostNumero) {
+      return res.status(403).json({ error: "Plano não pertence ao anfitrião logado." });
+    }
+
+    res.json({
+      rowNumber: candidate.rowNumber,
+      data: candidate.data,
+    });
+  } catch (error) {
+    console.error("host/candidate-form", error);
+    res.status(500).json({ error: "Falha ao abrir plano de trabalho." });
   }
 });
 
@@ -838,6 +913,46 @@ app.post("/api/candidate/login", loginLimiter, async (req, res) => {
   }
 });
 
+app.post("/api/host/remove-candidate", requireAuth("host"), async (req, res) => {
+  try {
+    const candidateRow = Number(req.body.candidateRow);
+    if (!candidateRow) {
+      return res.status(400).json({ error: "Linha do intercambista inválida." });
+    }
+
+    const hostRow = Number(req.session.subject);
+    const hosts = await getRows(HOST_SHEET, hostHeaders);
+    const host = hosts.rows.find((row) => row.rowNumber === hostRow);
+    if (!host) {
+      return res.status(404).json({ error: "Anfitrião não encontrado." });
+    }
+
+    const hostNumero = String(host.data["Inscrição"] || "");
+    const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    const candidate = candidates.rows.find((row) => row.rowNumber === candidateRow);
+    if (!candidate) {
+      return res.status(404).json({ error: "Intercambista não encontrado." });
+    }
+
+    if (String(candidate.data["Anfitrião escolhido - Inscrição"] || "") !== hostNumero) {
+      return res.status(403).json({ error: "Intercambista não vinculado ao anfitrião logado." });
+    }
+
+    candidate.data["Anfitrião escolhido - Inscrição"] = "";
+    candidate.data["Anfitrião escolhido - Nome"] = "";
+    candidate.data["Status da solicitação"] = "Sem solicitação";
+    candidate.data["Permissão anfitrião"] = "Pendente";
+    candidate.data["Data da decisão"] = "";
+    candidate.data["Observação da decisão"] = "Inscrição removida pelo anfitrião.";
+    await updateRow(CANDIDATE_SHEET, candidates.headers, candidate.rowNumber, candidate.data);
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("host/remove-candidate", error);
+    res.status(500).json({ error: "Falha ao remover inscrição do intercambista." });
+  }
+});
+
 app.post("/api/candidate/first-access", loginLimiter, async (req, res) => {
   try {
     const cpf = onlyDigits(req.body.cpf);
@@ -944,6 +1059,12 @@ app.get("/api/candidate/status", requireAuth("candidate"), async (req, res) => {
     }
 
     res.json({
+      inscricao: candidate.data["Inscrição"] || "",
+      municipio: candidate.data["Município"] || "",
+      uf: candidate.data.UF || "",
+      unidadeGestora: candidate.data["Unidade Gestora"] || "",
+      dirigente: candidate.data["Nome do Dirigente ou Responsável Legal"] || "",
+      dataSolicitacao: candidate.data.Data || "",
       status: candidate.data["Status da solicitação"] || "Sem solicitação",
       host: candidate.data["Anfitrião escolhido - Nome"] || "",
       hostNumero: candidate.data["Anfitrião escolhido - Inscrição"] || "",
@@ -1009,6 +1130,10 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
       intercambistasAceitos: acceptedByHost.get(String(row.data["Inscrição"] || "")) || 0,
       vagas: row.data["Número de vagas oferecidas"] || "",
       uf: row.data["UF"] || "",
+      municipio: row.data["Município"] || "",
+      dirigente: row.data["Nome do Dirigente ou Responsável Legal"] || "",
+      cargoDirigente: row.data["Cargo/Função (Dirigente)"] || "",
+      dataSolicitacao: row.data.Data || "",
     }));
 
     const decisions = candidatesData.rows
@@ -1033,6 +1158,8 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
         totalAceitos: decisions.filter((d) => normalizeText(d.status) === "aceito").length,
         totalRejeitados: decisions.filter((d) => normalizeText(d.status) === "rejeitado").length,
       },
+      solicitacoes: hosts.filter((h) => normalizeText(h.permissaoAdmin) === "pendente"),
+      cadastrados: hosts.filter((h) => normalizeText(h.permissaoAdmin) === "concedido"),
       hosts,
       decisions,
     });
@@ -1082,6 +1209,111 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
   } catch (error) {
     console.error("admin/host-status", error);
     res.status(500).json({ error: "Falha ao alterar permissão do anfitrião." });
+  }
+});
+
+app.post("/api/admin/remove-host", requireAuth("admin"), async (req, res) => {
+  try {
+    const rowNumber = Number(req.body.rowNumber);
+    if (!rowNumber) {
+      return res.status(400).json({ error: "Linha do anfitrião inválida." });
+    }
+
+    const hosts = await getRows(HOST_SHEET, hostHeaders);
+    const host = hosts.rows.find((row) => row.rowNumber === rowNumber);
+    if (!host) {
+      return res.status(404).json({ error: "Anfitrião não encontrado." });
+    }
+
+    host.data["Status do Anfitrião"] = "Inativo";
+    host.data["Permissão admin"] = "Negado";
+    await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("admin/remove-host", error);
+    res.status(500).json({ error: "Falha ao remover inscrição do anfitrião." });
+  }
+});
+
+app.get("/api/admin/host-form/:rowNumber", requireAuth("admin"), async (req, res) => {
+  try {
+    const rowNumber = Number(req.params.rowNumber);
+    if (!rowNumber) {
+      return res.status(400).json({ error: "Linha do anfitrião inválida." });
+    }
+
+    const hostData = await getRows(HOST_SHEET, hostHeaders);
+    const host = hostData.rows.find((row) => row.rowNumber === rowNumber);
+    if (!host) {
+      return res.status(404).json({ error: "Anfitrião não encontrado." });
+    }
+
+    res.json({
+      rowNumber: host.rowNumber,
+      resumo: hostSummaryView(host),
+      data: host.data,
+    });
+  } catch (error) {
+    console.error("admin/host-form", error);
+    res.status(500).json({ error: "Falha ao abrir credenciamento." });
+  }
+});
+
+app.get("/api/admin/host-linked/:rowNumber", requireAuth("admin"), async (req, res) => {
+  try {
+    const rowNumber = Number(req.params.rowNumber);
+    if (!rowNumber) {
+      return res.status(400).json({ error: "Linha do anfitrião inválida." });
+    }
+
+    const hostsData = await getRows(HOST_SHEET, hostHeaders);
+    const host = hostsData.rows.find((row) => row.rowNumber === rowNumber);
+    if (!host) {
+      return res.status(404).json({ error: "Anfitrião não encontrado." });
+    }
+
+    const hostNumero = String(host.data["Inscrição"] || "");
+    const candidatesData = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    const vinculados = candidatesData.rows
+      .filter((row) => {
+        const selectedHost = String(row.data["Anfitrião escolhido - Inscrição"] || "");
+        const status = normalizeText(row.data["Status da solicitação"] || "");
+        return selectedHost === hostNumero && status === "aceito";
+      })
+      .map(candidateSummaryView);
+
+    res.json({
+      host: hostSummaryView(host),
+      vinculados,
+    });
+  } catch (error) {
+    console.error("admin/host-linked", error);
+    res.status(500).json({ error: "Falha ao listar intercambistas vinculados." });
+  }
+});
+
+app.get("/api/admin/candidate-form/:rowNumber", requireAuth("admin"), async (req, res) => {
+  try {
+    const rowNumber = Number(req.params.rowNumber);
+    if (!rowNumber) {
+      return res.status(400).json({ error: "Linha do intercambista inválida." });
+    }
+
+    const candidatesData = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    const candidate = candidatesData.rows.find((row) => row.rowNumber === rowNumber);
+    if (!candidate) {
+      return res.status(404).json({ error: "Intercambista não encontrado." });
+    }
+
+    res.json({
+      rowNumber: candidate.rowNumber,
+      resumo: candidateSummaryView(candidate),
+      data: candidate.data,
+    });
+  } catch (error) {
+    console.error("admin/candidate-form", error);
+    res.status(500).json({ error: "Falha ao abrir plano do intercambista." });
   }
 });
 

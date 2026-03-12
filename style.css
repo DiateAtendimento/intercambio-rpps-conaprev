@@ -595,6 +595,259 @@ body.system-menu-open {
   gap: 0.6rem;
 }
 
+.workspace-env {
+  padding-top: 1.3rem;
+  overflow: visible;
+}
+
+.workspace-env::before {
+  content: none;
+}
+
+.workspace-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  margin-bottom: 1rem;
+}
+
+.workspace-profile img {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #e5eff8;
+  background: #fff;
+}
+
+.env-block {
+  margin-top: 1rem;
+  border-top: 1px dashed #d7e4f1;
+  padding-top: 1rem;
+}
+
+.env-block h3 {
+  margin: 0 0 0.75rem;
+  text-align: left;
+  color: #0b4f8a;
+}
+
+.env-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.search-field {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  color: #244463;
+  font-weight: 600;
+}
+
+.search-field input {
+  min-width: 280px;
+  border: 1px solid #c9d9ea;
+  border-radius: 999px;
+  padding: 0.55rem 0.8rem;
+}
+
+.search-count {
+  color: #cd2f2f;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid #d9e6f3;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.env-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.env-table th,
+.env-table td {
+  border-bottom: 1px solid #edf3f9;
+  padding: 0.58rem 0.5rem;
+  font-size: 0.8rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.env-table th {
+  color: #1f3f60;
+  background: #f5f9fd;
+  font-weight: 700;
+}
+
+.env-table td {
+  color: #20384f;
+}
+
+.action-group {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.btn-sm {
+  min-width: auto;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.75rem;
+  border-radius: 999px;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.icon-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.status {
+  font-weight: 700;
+}
+
+.status--ok {
+  color: #1c9a44;
+}
+
+.status--bad {
+  color: #db2f2f;
+}
+
+.status--pending {
+  color: #7263e9;
+}
+
+.host-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.host-card {
+  border: 1px solid #d7e5f2;
+  border-radius: 12px;
+  padding: 0.65rem;
+  background: #f7fbff;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.host-card h4 {
+  margin: 0;
+  text-align: left;
+  font-size: 0.96rem;
+}
+
+.host-card p {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.host-card__flag {
+  width: 100%;
+  height: 86px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.data-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+}
+
+.data-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 21, 34, 0.58);
+}
+
+.data-modal__dialog {
+  position: relative;
+  z-index: 2;
+  width: min(1040px, calc(100% - 2rem));
+  margin: 3.2rem auto;
+  border-radius: 16px;
+  border: 1px solid #cee0f2;
+  background: #fff;
+  max-height: calc(100vh - 6.4rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.data-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid #e2ebf4;
+}
+
+.data-modal__header h3 {
+  margin: 0;
+  color: #0f3557;
+}
+
+.data-modal__close {
+  border: 0;
+  background: transparent;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #304f6d;
+}
+
+.data-modal__body {
+  padding: 1rem;
+  overflow: auto;
+}
+
+.read-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.read-item {
+  border: 1px solid #e1ebf5;
+  border-radius: 10px;
+  padding: 0.55rem 0.62rem;
+  background: #fbfdff;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.read-item span {
+  font-size: 0.73rem;
+  color: #4b6782;
+}
+
+.read-item strong {
+  font-size: 0.86rem;
+  color: #173c5f;
+  font-weight: 600;
+}
+
 .item-row {
   border: 1px solid #dbe8f5;
   border-radius: 10px;
@@ -645,6 +898,36 @@ body.system-menu-open {
 
 .login-avatar--pair img + img {
   margin-left: -16px;
+}
+
+@media (max-width: 980px) {
+  .host-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .search-field input {
+    min-width: 220px;
+  }
+
+  .read-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .host-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .env-tools {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-field input {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 /* ===== Layout geral ===== */

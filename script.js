@@ -4,6 +4,10 @@ const state = {
     host: "",
     admin: "",
   },
+  ui: {
+    adminApproved: [],
+    hostAccepted: [],
+  },
 };
 
 function qs(selector) {
@@ -352,122 +356,292 @@ function payloadCandidateRegister(form) {
   return payload;
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getStatusClass(status) {
+  const value = String(status || "").toLowerCase();
+  if (value.includes("aceit")) return "status status--ok";
+  if (value.includes("rejeit") || value.includes("negad")) return "status status--bad";
+  if (value.includes("pend")) return "status status--pending";
+  return "status";
+}
+
+function iconButton(action, rowNumber, icon, label, context = "") {
+  return `
+    <button type="button" class="icon-btn" data-action="${action}" data-row="${rowNumber}" data-context="${context}">
+      <img src="${icon}" alt="${label}" />
+    </button>
+  `;
+}
+
+function openModal(title, html) {
+  const modal = qs("#detailsModal");
+  const modalTitle = qs("#detailsModalTitle");
+  const modalBody = qs("#detailsModalBody");
+  if (!modal || !modalTitle || !modalBody) return;
+  modalTitle.textContent = title;
+  modalBody.innerHTML = html;
+  modal.hidden = false;
+}
+
+function closeModal() {
+  const modal = qs("#detailsModal");
+  if (modal) modal.hidden = true;
+}
+
+function renderFieldList(data, fields) {
+  return `
+    <div class="read-grid">
+      ${fields
+        .map(
+          (field) => `
+        <div class="read-item">
+          <span>${escapeHtml(field.label)}</span>
+          <strong>${escapeHtml(data[field.key] || "-")}</strong>
+        </div>`
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+const HOST_FIELDS = [
+  { key: "Município", label: "Município" },
+  { key: "UF", label: "UF" },
+  { key: "Município CNPJ", label: "Município CNPJ" },
+  { key: "Unidade Gestora", label: "Unidade Gestora" },
+  { key: "Endereço", label: "Endereço" },
+  { key: "Nome do Dirigente ou Responsável Legal", label: "Dirigente" },
+  { key: "Cargo/Função (Dirigente)", label: "Cargo/Função (Dirigente)" },
+  { key: "Responsável pela coordenação local", label: "Coordenação local" },
+  { key: "E-mail de contato", label: "E-mail de contato" },
+  { key: "Telefone de contato", label: "Telefone de contato" },
+  { key: "Nível do Pró-Gestão", label: "Nível do Pró-Gestão" },
+  { key: "Número de vagas oferecidas", label: "Número de vagas oferecidas" },
+  { key: "Nº de áreas/setores disponíveis", label: "Nº de áreas/setores disponíveis" },
+  { key: "Equipe de apoio designada (nomes)", label: "Equipe de apoio designada (nomes)" },
+  { key: "Breve descrição da proposta de intercâmbio", label: "Proposta" },
+  { key: "Responsável pelo preenchimento", label: "Responsável pelo preenchimento" },
+  { key: "Cargo/Função (Responsável)", label: "Cargo/Função (Responsável)" },
+  { key: "Data", label: "Data" },
+];
+
+const CANDIDATE_FIELDS = [
+  { key: "Município", label: "Município" },
+  { key: "UF", label: "UF" },
+  { key: "Município CNPJ", label: "Município CNPJ" },
+  { key: "Unidade Gestora", label: "Unidade Gestora" },
+  { key: "Unidade Gestora CNPJ", label: "Unidade Gestora CNPJ" },
+  { key: "CPF", label: "CPF" },
+  { key: "Gênero", label: "Gênero" },
+  { key: "Nível do Pró-Gestão", label: "Nível do Pró-Gestão" },
+  { key: "Nome do Dirigente ou Responsável Legal", label: "Dirigente" },
+  { key: "Cargo/Função (Dirigente)", label: "Cargo/Função (Dirigente)" },
+  { key: "E-mail institucional", label: "E-mail institucional" },
+  { key: "Telefone para contato", label: "Telefone para contato" },
+  { key: "Participante - Nome completo", label: "Participante(s)" },
+  { key: "Participante - Cargo/Função", label: "Cargo/Função participante" },
+  { key: "Participante - Tipo de vínculo", label: "Tipo de vínculo" },
+  { key: "Participante - Área de atuação (RPPS/EFPC)", label: "Área de atuação" },
+  { key: "Participante - Certificação", label: "Certificação" },
+  { key: "Anfitrião de interesse - Prioridade 1", label: "Anfitrião prioridade 1" },
+  { key: "Objetivo principal (Prioridade 1)", label: "Objetivo prioridade 1" },
+  { key: "Anfitrião de interesse - Prioridade 2", label: "Anfitrião prioridade 2" },
+  { key: "Objetivo principal (Prioridade 2)", label: "Objetivo prioridade 2" },
+  { key: "Anfitrião de interesse - Prioridade 3", label: "Anfitrião prioridade 3" },
+  { key: "Objetivo principal (Prioridade 3)", label: "Objetivo prioridade 3" },
+  { key: "Temas/áreas de interesse (texto)", label: "Temas/áreas de interesse" },
+  { key: "Atividades propostas (agenda por dia)", label: "Atividades propostas" },
+  { key: "Objetivos e compromissos (o que pretende implementar/replicar)", label: "Objetivos e compromissos" },
+  { key: "Responsável pelo preenchimento", label: "Responsável pelo preenchimento" },
+  { key: "Cargo/Função (Responsável)", label: "Cargo/Função (Responsável)" },
+  { key: "Data", label: "Data" },
+];
+
+function filterRows(rows, query) {
+  const term = String(query || "").trim().toLowerCase();
+  if (!term) return rows;
+  return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(term));
+}
+
+function renderEmptyRow(targetId, colspan, message) {
+  const body = qs(`#${targetId}`);
+  if (!body) return;
+  body.innerHTML = `<tr><td colspan="${colspan}">${escapeHtml(message)}</td></tr>`;
+}
+
+function formatStatus(status) {
+  const text = String(status || "Sem solicitação");
+  return `<span class="${getStatusClass(text)}">${escapeHtml(text)}</span>`;
+}
+
 async function refreshCandidateArea() {
   const status = await apiFetch("/api/candidate/status", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
-  const hosts = await apiFetch("/api/candidate/hosts", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
+  const hostsData = await apiFetch("/api/candidate/hosts", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
 
-  const statusBox = qs("#candidateStatusBox");
-  if (statusBox) statusBox.textContent = `Status: ${status.status || "Sem solicitação"}. Anfitrião: ${status.host || "-"}.`;
+  const statusBody = qs("#candidateStatusTableBody");
+  if (statusBody) {
+    statusBody.innerHTML = `
+      <tr>
+        <td>${escapeHtml(status.inscricao || "-")}</td>
+        <td>${escapeHtml(status.municipio || "-")}</td>
+        <td>${escapeHtml(status.uf || "-")}</td>
+        <td>${escapeHtml(status.unidadeGestora || "-")}</td>
+        <td>${escapeHtml(status.dirigente || "-")}</td>
+        <td>${escapeHtml(status.dataSolicitacao || "-")}</td>
+        <td>${escapeHtml(status.dataDecisao || "-")}</td>
+        <td>${formatStatus(status.status)}</td>
+      </tr>
+    `;
+  }
 
-  const list = qs("#candidateHostsList");
-  if (!list) return;
+  const cards = qs("#candidateHostsList");
+  if (!cards) return;
 
-  const items = hosts.hosts || [];
-  if (!items.length) {
-    list.textContent = "Nenhum anfitrião ativo disponível.";
+  const hosts = hostsData.hosts || [];
+  if (!hosts.length) {
+    cards.innerHTML = `<p class="module-note">Nenhum anfitrião ativo disponível.</p>`;
     return;
   }
 
-  list.innerHTML = items.map((host) => `
-    <div class="item-row">
-      <strong>${host.entidade}</strong><br />
-      <small>${host.numeroInscricao} | ${host.uf} | Vagas: ${host.vagas || "-"}</small><br />
-      <small>Áreas: ${(host.areas || []).join(", ") || "Não informado"}</small>
-      <div style="margin-top:0.5rem;"><button class="btn btn-primary" type="button" data-select-host="${host.numeroInscricao}">Escolher</button></div>
-    </div>`).join("");
+  cards.innerHTML = hosts
+    .map(
+      (host) => `
+      <article class="host-card">
+        <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
+        <h4>${escapeHtml(host.entidade)}</h4>
+        <p>UF: ${escapeHtml(host.uf || "-")}</p>
+        <p>Número de vagas: ${escapeHtml(host.vagas || "-")}</p>
+        <p>Nº de áreas/setores disponíveis: ${escapeHtml((host.areas || []).length || "-")}</p>
+        <button class="btn btn-primary" type="button" data-action="select-host" data-host="${escapeHtml(host.numeroInscricao)}">Candidatar-se</button>
+      </article>`
+    )
+    .join("");
+}
 
-  qsa("[data-select-host]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      try {
-        await apiFetch("/api/candidate/select-host", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${state.tokens.candidate}` },
-          body: JSON.stringify({ numeroInscricao: btn.dataset.selectHost }),
-        });
-        await refreshCandidateArea();
-      } catch (error) {
-        alert(error.message);
-      }
-    });
-  });
+function buildHostRows(rows, targetId) {
+  const body = qs(`#${targetId}`);
+  if (!body) return;
+  if (!rows.length) return renderEmptyRow(targetId, targetId === "hostPendingTableBody" ? 8 : 10, "Sem registros.");
+
+  body.innerHTML = rows
+    .map(
+      (item, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapeHtml(item.inscricao || "-")}</td>
+        <td>${escapeHtml(item.municipio || "-")}</td>
+        <td>${escapeHtml(item.uf || "-")}</td>
+        <td>${escapeHtml(item.unidadeGestora || "-")}</td>
+        <td>${escapeHtml(item.dataSolicitacao || "-")}</td>
+        ${
+          targetId === "hostPendingTableBody"
+            ? `<td>${iconButton("host-open-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho")}</td>
+               <td>
+                 <div class="action-group">
+                   <button class="btn btn-primary btn-sm" type="button" data-action="host-decision" data-row="${item.rowNumber}" data-decision="aceito">Aceitar</button>
+                   <button class="btn btn-outline btn-sm" type="button" data-action="host-decision" data-row="${item.rowNumber}" data-decision="rejeitado">Rejeitar</button>
+                 </div>
+               </td>`
+            : `<td>${escapeHtml(item.dirigente || "-")}</td>
+               <td>${escapeHtml(item.dataDecisao || "-")}</td>
+               <td>${iconButton("host-open-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho")}</td>
+               <td>${iconButton("host-remove-candidate", item.rowNumber, "icone-lixeira.svg", "Remover inscrição")}</td>`
+        }
+      </tr>`
+    )
+    .join("");
 }
 
 async function refreshHostArea() {
   const data = await apiFetch("/api/host/requests", { headers: { Authorization: `Bearer ${state.tokens.host}` } });
-  const list = qs("#hostRequestsList");
-  if (!list) return;
-
-  const pendentes = data.pendentes || [];
-  if (!pendentes.length) {
-    list.textContent = "Nenhuma solicitação pendente.";
-    return;
+  const profile = qs("#hostProfileMeta");
+  if (profile) {
+    profile.textContent = `${data.host?.municipio || ""} - ${data.host?.uf || ""}`.trim();
   }
 
-  list.innerHTML = pendentes.map((item) => `
-    <div class="item-row">
-      <strong>${item.entidade}</strong><br />
-      <small>CPF: ${item.cpf || "-"}</small><br />
-      <small>Participante: ${item.participante || "-"}</small><br />
-      <small>Objetivo: ${item.objetivo || "-"}</small>
-      <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
-        <button class="btn btn-primary" type="button" data-host-decision="aceito" data-host-row="${item.rowNumber}">Aceitar</button>
-        <button class="btn btn-outline" type="button" data-host-decision="rejeitado" data-host-row="${item.rowNumber}">Rejeitar</button>
-      </div>
-    </div>`).join("");
+  const pendentes = data.pendentes || [];
+  const cadastrados = data.cadastrados || [];
+  state.ui.hostAccepted = cadastrados;
+  buildHostRows(pendentes, "hostPendingTableBody");
+  buildHostRows(cadastrados, "hostAcceptedTableBody");
+  applyHostSearch();
+}
 
-  qsa("[data-host-decision]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const note = window.prompt("Observação opcional da decisão:", "") || "";
-      try {
-        await apiFetch("/api/host/decision", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${state.tokens.host}` },
-          body: JSON.stringify({ candidateRow: Number(btn.dataset.hostRow), decision: btn.dataset.hostDecision, note }),
-        });
-        await refreshHostArea();
-      } catch (error) {
-        alert(error.message);
-      }
-    });
-  });
+function buildAdminRows(rows, targetId) {
+  const body = qs(`#${targetId}`);
+  if (!body) return;
+  if (!rows.length) return renderEmptyRow(targetId, targetId === "adminPendingTableBody" ? 9 : 11, "Sem registros.");
+
+  body.innerHTML = rows
+    .map(
+      (item, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        ${
+          targetId === "adminPendingTableBody"
+            ? `
+              <td>${escapeHtml(item.municipio || "-")}</td>
+              <td>${escapeHtml(item.uf || "-")}</td>
+              <td>${escapeHtml(item.entidade || "-")}</td>
+              <td>${escapeHtml(item.dirigente || "-")}</td>
+              <td>${escapeHtml(item.cargoDirigente || "-")}</td>
+              <td>${escapeHtml(item.dataSolicitacao || "-")}</td>
+              <td>${iconButton("admin-open-cred", item.rowNumber, "icone-credenciamento.svg", "Credenciamento")}</td>
+              <td>
+                <div class="action-group">
+                  <button class="btn btn-primary btn-sm" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Concedido">Aceitar</button>
+                  <button class="btn btn-outline btn-sm" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Negado">Rejeitar</button>
+                </div>
+              </td>`
+            : `
+              <td>${escapeHtml(item.numeroInscricao || "-")}</td>
+              <td>${escapeHtml(item.municipio || "-")}</td>
+              <td>${escapeHtml(item.uf || "-")}</td>
+              <td>${escapeHtml(item.entidade || "-")}</td>
+              <td>${escapeHtml(item.dirigente || "-")}</td>
+              <td>${escapeHtml(item.dataSolicitacao || "-")}</td>
+              <td>-</td>
+              <td>${iconButton("admin-open-cred", item.rowNumber, "icone-credenciamento.svg", "Credenciamento")}</td>
+              <td>${iconButton("admin-open-linked", item.rowNumber, "icone-intercambistas-vinculados.svg", "Intercambistas vinculados")}</td>
+              <td>${iconButton("admin-remove-host", item.rowNumber, "icone-lixeira.svg", "Remover inscrição")}</td>`
+        }
+      </tr>`
+    )
+    .join("");
 }
 
 async function refreshAdminArea() {
   const data = await apiFetch("/api/admin/overview", { headers: { Authorization: `Bearer ${state.tokens.admin}` } });
+  buildAdminRows(data.solicitacoes || [], "adminPendingTableBody");
+  state.ui.adminApproved = data.cadastrados || [];
+  buildAdminRows(state.ui.adminApproved, "adminApprovedTableBody");
+  applyAdminSearch();
+}
 
-  const metrics = qs("#adminMetrics");
-  if (metrics) metrics.innerHTML = `Anfitriões cadastrados: ${data.metrics.totalHosts} | Intercambistas: ${data.metrics.totalCandidates} | Aceitos: ${data.metrics.totalAceitos} | Rejeitados: ${data.metrics.totalRejeitados}`;
+function applyAdminSearch() {
+  const input = qs("#adminSearchInput");
+  if (!input) return;
+  const filtered = filterRows(state.ui.adminApproved, input.value);
+  buildAdminRows(filtered, "adminApprovedTableBody");
+  const count = qs("#adminSearchCount");
+  if (count) count.textContent = `${filtered.length} resultado(s)`;
+}
 
-  const decisionsList = qs("#adminDecisionsList");
-  if (decisionsList) {
-    const decisions = data.decisions || [];
-    decisionsList.innerHTML = decisions.length
-      ? decisions.map((d) => `<div class="item-row"><strong>${d.status}</strong> - ${d.entidadeIntercambista} -> ${d.host}<br /><small>CPF: ${d.cpf || "-"} | Data: ${d.dataDecisao || "-"} | Permissão anfitrião: ${d.permissaoAnfitriao || "-"}</small></div>`).join("")
-      : "Sem decisões.";
-  }
-
-  const hostsList = qs("#adminHostsList");
-  if (hostsList) {
-    const hosts = data.hosts || [];
-    hostsList.innerHTML = hosts.length
-      ? hosts.map((host) => `<div class="item-row"><strong>${host.entidade}</strong><br /><small>${host.numeroInscricao} | ${host.uf} | Status: ${host.status} | Permissão admin: ${host.permissaoAdmin || "Pendente"} | Intercambistas aceitos: ${host.intercambistasAceitos || 0}</small><div style="margin-top:0.5rem; display:flex; gap:0.5rem;"><button class="btn btn-primary" type="button" data-admin-status="Concedido" data-admin-row="${host.rowNumber}">Conceder</button><button class="btn btn-outline" type="button" data-admin-status="Negado" data-admin-row="${host.rowNumber}">Negar</button></div></div>`).join("")
-      : "Sem anfitriões cadastrados.";
-
-    qsa("[data-admin-status]").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        try {
-          await apiFetch("/api/admin/host-status", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${state.tokens.admin}` },
-            body: JSON.stringify({ rowNumber: Number(btn.dataset.adminRow), status: btn.dataset.adminStatus }),
-          });
-          await refreshAdminArea();
-        } catch (error) {
-          alert(error.message);
-        }
-      });
-    });
-  }
+function applyHostSearch() {
+  const input = qs("#hostSearchInput");
+  if (!input) return;
+  const filtered = filterRows(state.ui.hostAccepted, input.value);
+  buildHostRows(filtered, "hostAcceptedTableBody");
+  const count = qs("#hostSearchCount");
+  if (count) count.textContent = `${filtered.length} resultado(s)`;
 }
 
 function setupWorkspaceActions() {
@@ -587,6 +761,145 @@ function setupWorkspaceActions() {
     } catch (error) {
       setFeedback("adminLoginFeedback", error.message, false);
       state.tokens.admin = "";
+    }
+  });
+
+  qs("#adminSearchInput")?.addEventListener("input", applyAdminSearch);
+  qs("#hostSearchInput")?.addEventListener("input", applyHostSearch);
+
+  qsa("[data-close-modal]").forEach((el) => {
+    el.addEventListener("click", closeModal);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeModal();
+  });
+
+  document.addEventListener("click", async (event) => {
+    const actionEl = event.target.closest("[data-action]");
+    if (!actionEl) return;
+
+    const action = actionEl.dataset.action;
+    const rowNumber = Number(actionEl.dataset.row || 0);
+
+    try {
+      if (action === "select-host") {
+        await apiFetch("/api/candidate/select-host", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${state.tokens.candidate}` },
+          body: JSON.stringify({ numeroInscricao: actionEl.dataset.host || "" }),
+        });
+        await refreshCandidateArea();
+      }
+
+      if (action === "host-decision") {
+        const note = window.prompt("Observação opcional da decisão:", "") || "";
+        await apiFetch("/api/host/decision", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${state.tokens.host}` },
+          body: JSON.stringify({ candidateRow: rowNumber, decision: actionEl.dataset.decision, note }),
+        });
+        await refreshHostArea();
+      }
+
+      if (action === "admin-status") {
+        await apiFetch("/api/admin/host-status", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${state.tokens.admin}` },
+          body: JSON.stringify({ rowNumber, status: actionEl.dataset.status }),
+        });
+        await refreshAdminArea();
+      }
+
+      if (action === "admin-open-cred") {
+        const data = await apiFetch(`/api/admin/host-form/${rowNumber}`, {
+          headers: { Authorization: `Bearer ${state.tokens.admin}` },
+        });
+        openModal("Formulário do Anfitrião", renderFieldList(data.data || {}, HOST_FIELDS));
+      }
+
+      if (action === "admin-open-linked") {
+        const data = await apiFetch(`/api/admin/host-linked/${rowNumber}`, {
+          headers: { Authorization: `Bearer ${state.tokens.admin}` },
+        });
+        const rows = data.vinculados || [];
+        const html = rows.length
+          ? `<div class="table-wrap"><table class="env-table">
+              <thead>
+                <tr>
+                  <th>#</th><th>Inscrição</th><th>Município</th><th>UF</th><th>Unidade Gestora</th><th>Data solicitação</th><th>Data aceite anfitrião</th><th>Plano de trabalho</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows
+                  .map(
+                    (row, i) => `
+                    <tr>
+                      <td>${i + 1}</td>
+                      <td>${escapeHtml(row.inscricao || "-")}</td>
+                      <td>${escapeHtml(row.municipio || "-")}</td>
+                      <td>${escapeHtml(row.uf || "-")}</td>
+                      <td>${escapeHtml(row.unidadeGestora || "-")}</td>
+                      <td>${escapeHtml(row.dataSolicitacao || "-")}</td>
+                      <td>${escapeHtml(row.dataDecisao || "-")}</td>
+                      <td>${iconButton("admin-open-plan", row.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho", "modal")}</td>
+                    </tr>`
+                  )
+                  .join("")}
+              </tbody>
+            </table></div>`
+          : "<p>Nenhum intercambista vinculado.</p>";
+        openModal(`Intercambistas vinculados - ${data.host?.unidadeGestora || ""}`, html);
+      }
+
+      if (action === "admin-open-plan") {
+        const data = await apiFetch(`/api/admin/candidate-form/${rowNumber}`, {
+          headers: { Authorization: `Bearer ${state.tokens.admin}` },
+        });
+        openModal("Plano de Trabalho do Intercambista", renderFieldList(data.data || {}, CANDIDATE_FIELDS));
+      }
+
+      if (action === "host-open-plan") {
+        const data = await apiFetch(`/api/host/candidate-form/${rowNumber}`, {
+          headers: { Authorization: `Bearer ${state.tokens.host}` },
+        });
+        openModal("Plano de Trabalho do Intercambista", renderFieldList(data.data || {}, CANDIDATE_FIELDS));
+      }
+
+      if (action === "admin-remove-host") {
+        if (!window.confirm("Deseja remover a inscrição deste anfitrião?")) return;
+        await apiFetch("/api/admin/remove-host", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${state.tokens.admin}` },
+          body: JSON.stringify({ rowNumber }),
+        });
+        await refreshAdminArea();
+      }
+
+      if (action === "host-remove-candidate") {
+        if (!window.confirm("Deseja remover a inscrição deste intercambista?")) return;
+        await apiFetch("/api/host/remove-candidate", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${state.tokens.host}` },
+          body: JSON.stringify({ candidateRow: rowNumber }),
+        });
+        await refreshHostArea();
+      }
+
+      if (action === "logout-admin") {
+        state.tokens.admin = "";
+        openWorkspace("admin-login");
+      }
+      if (action === "logout-host") {
+        state.tokens.host = "";
+        openWorkspace("host-login");
+      }
+      if (action === "logout-candidate") {
+        state.tokens.candidate = "";
+        openWorkspace("candidate-login");
+      }
+    } catch (error) {
+      window.alert(error.message);
     }
   });
 }

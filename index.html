@@ -729,10 +729,40 @@
     </section>
 
     <section class="workspace-screen" data-screen-id="candidate-area">
-      <div class="module-card">
-        <h3>Ambiente Intercambista</h3>
-        <p class="module-note" id="candidateStatusBox">Sem solicitação no momento.</p>
-        <div class="list-box" id="candidateHostsList">Carregando anfitriões...</div>
+      <div class="module-card workspace-env">
+        <div class="workspace-profile">
+          <img src="img_for_woman.svg" alt="Perfil intercambista" />
+          <strong>Intercambista</strong>
+          <button type="button" class="btn btn-outline" data-action="logout-candidate">Sair</button>
+        </div>
+
+        <section class="env-block">
+          <h3>Meu intercâmbio</h3>
+          <div class="table-wrap">
+            <table class="env-table">
+              <thead>
+                <tr>
+                  <th>Inscrição</th>
+                  <th>Município</th>
+                  <th>UF</th>
+                  <th>Unidade Gestora</th>
+                  <th>Dirigente</th>
+                  <th>Data solicitação</th>
+                  <th>Data aceite MPS</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="candidateStatusTableBody">
+                <tr><td colspan="8">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="env-block">
+          <h3>Anfitriões</h3>
+          <div class="host-cards" id="candidateHostsList"></div>
+        </section>
       </div>
     </section>
 
@@ -769,9 +799,68 @@
     </section>
 
     <section class="workspace-screen" data-screen-id="host-area">
-      <div class="module-card">
-        <h3>Ambiente Anfitrião</h3>
-        <div class="list-box" id="hostRequestsList">Carregando solicitações...</div>
+      <div class="module-card workspace-env">
+        <div class="workspace-profile">
+          <img src="img_anfitriao.svg" alt="Perfil anfitrião" />
+          <strong>Anfitrião</strong>
+          <div id="hostProfileMeta"></div>
+          <button type="button" class="btn btn-outline" data-action="logout-host">Sair</button>
+        </div>
+
+        <section class="env-block">
+          <h3>Solicitações</h3>
+          <div class="table-wrap">
+            <table class="env-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Inscrição</th>
+                  <th>Município</th>
+                  <th>UF</th>
+                  <th>Unidade Gestora</th>
+                  <th>Data solicitação</th>
+                  <th>Plano de trabalho</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="hostPendingTableBody">
+                <tr><td colspan="8">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="env-block">
+          <h3>Cadastrados</h3>
+          <div class="env-tools">
+            <label class="search-field">
+              <span>Busca</span>
+              <input id="hostSearchInput" placeholder="Pesquisar por palavra-chave" />
+            </label>
+            <span id="hostSearchCount" class="search-count"></span>
+          </div>
+          <div class="table-wrap">
+            <table class="env-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Inscrição</th>
+                  <th>Município</th>
+                  <th>UF</th>
+                  <th>Unidade Gestora</th>
+                  <th>Dirigente</th>
+                  <th>Data solicitação</th>
+                  <th>Data aceite anfitrião</th>
+                  <th>Plano de trabalho</th>
+                  <th>Remover inscrição</th>
+                </tr>
+              </thead>
+              <tbody id="hostAcceptedTableBody">
+                <tr><td colspan="10">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </section>
 
@@ -791,15 +880,84 @@
     </section>
 
     <section class="workspace-screen" data-screen-id="admin-area">
-      <div class="module-card">
-        <h3>Ambiente Admin</h3>
-        <div id="adminMetrics" class="module-note">Carregando métricas...</div>
-        <h4>Decisões</h4>
-        <div class="list-box" id="adminDecisionsList"></div>
-        <h4>Anfitriões</h4>
-        <div class="list-box" id="adminHostsList"></div>
+      <div class="module-card workspace-env">
+        <div class="workspace-profile">
+          <img src="img_admin.png" alt="Perfil administrador" />
+          <strong>Administrador</strong>
+          <button type="button" class="btn btn-outline" data-action="logout-admin">Sair</button>
+        </div>
+
+        <section class="env-block">
+          <h3>Solicitações</h3>
+          <div class="table-wrap">
+            <table class="env-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Município</th>
+                  <th>UF</th>
+                  <th>Unidade Gestora</th>
+                  <th>Dirigente</th>
+                  <th>Cargo/Função</th>
+                  <th>Data solicitação</th>
+                  <th>Credenciamento</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="adminPendingTableBody">
+                <tr><td colspan="9">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="env-block">
+          <h3>Cadastrados</h3>
+          <div class="env-tools">
+            <label class="search-field">
+              <span>Busca</span>
+              <input id="adminSearchInput" placeholder="Pesquisar por palavra-chave" />
+            </label>
+            <span id="adminSearchCount" class="search-count"></span>
+          </div>
+          <div class="table-wrap">
+            <table class="env-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Inscrição</th>
+                  <th>Município</th>
+                  <th>UF</th>
+                  <th>Unidade Gestora</th>
+                  <th>Dirigente</th>
+                  <th>Data solicitação</th>
+                  <th>Data aceite MPS</th>
+                  <th>Credenciamento</th>
+                  <th>Intercambistas vinculados</th>
+                  <th>Remover inscrição</th>
+                </tr>
+              </thead>
+              <tbody id="adminApprovedTableBody">
+                <tr><td colspan="11">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </section>
+
+    <div id="detailsModal" class="data-modal" hidden>
+      <div class="data-modal__backdrop" data-close-modal></div>
+      <div class="data-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="detailsModalTitle">
+        <header class="data-modal__header">
+          <h3 id="detailsModalTitle">Detalhes</h3>
+          <button type="button" class="data-modal__close" data-close-modal aria-label="Fechar modal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </header>
+        <div id="detailsModalBody" class="data-modal__body"></div>
+      </div>
+    </div>
   </section>
 
   <!-- Rodapé -->
