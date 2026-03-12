@@ -575,9 +575,11 @@ function setupWorkspaceActions() {
   adminLoginForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const payload = collectFormData(adminLoginForm);
+    const adminUser = String(payload.user || "").trim();
+    const adminPassword = String(payload.password || "").trim();
     setFeedback("adminLoginFeedback", "Autenticando...", true);
     try {
-      const data = await apiFetch("/api/admin/login", { method: "POST", body: JSON.stringify({ user: payload.user, password: payload.password }) });
+      const data = await apiFetch("/api/admin/login", { method: "POST", body: JSON.stringify({ user: adminUser, password: adminPassword }) });
       state.tokens.admin = data.token;
       setFeedback("adminLoginFeedback", "Login realizado com sucesso.", true);
       openWorkspace("admin-area");

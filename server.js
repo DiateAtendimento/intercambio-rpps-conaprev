@@ -14,9 +14,9 @@ const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
-const ADMIN_USER = process.env.ADMIN_USER;
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
-const ADMIN_PASSWORD_PLAIN = process.env.ADMIN_PASSWORD_PLAIN;
+const ADMIN_USER = String(process.env.ADMIN_USER || "").trim();
+const ADMIN_PASSWORD_HASH = String(process.env.ADMIN_PASSWORD_HASH || "").trim();
+const ADMIN_PASSWORD_PLAIN = String(process.env.ADMIN_PASSWORD_PLAIN || "");
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
@@ -961,7 +961,7 @@ app.get("/api/candidate/status", requireAuth("candidate"), async (req, res) => {
 app.post("/api/admin/login", loginLimiter, async (req, res) => {
   try {
     const user = sanitizeInput(req.body.user, 120);
-    const password = String(req.body.password || "");
+    const password = String(req.body.password || "").trim();
 
     if (user !== ADMIN_USER) {
       return res.status(401).json({ error: "Credenciais inválidas." });
@@ -969,7 +969,7 @@ app.post("/api/admin/login", loginLimiter, async (req, res) => {
 
     let ok = false;
     if (ADMIN_PASSWORD_PLAIN) {
-      ok = password === ADMIN_PASSWORD_PLAIN;
+      ok = password === ADMIN_PASSWORD_PLAIN.trim();
     } else {
       ok = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
     }
