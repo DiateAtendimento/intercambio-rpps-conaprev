@@ -633,22 +633,17 @@ body.system-menu-open {
   border-radius: 999px;
 }
 
-/* Bloco de perfil do admin fiel ao mock: centralizado e destacado no topo direito */
+/* Bloco de perfil do admin fiel ao mock, sem comprimir a tabela */
 .workspace-screen[data-screen-id="admin-area"] .workspace-env {
-  position: relative;
-  padding-top: 2.1rem;
-  padding-right: 15.5rem;
+  padding-top: 1.4rem;
 }
 
 .workspace-screen[data-screen-id="admin-area"] .workspace-profile {
-  position: absolute;
-  top: 1.25rem;
-  right: 1.2rem;
   align-items: center;
   text-align: center;
   gap: 0.38rem;
-  margin: 0;
-  min-width: 150px;
+  margin: 0 0 0.9rem auto;
+  width: fit-content;
 }
 
 .workspace-screen[data-screen-id="admin-area"] .workspace-profile img {
@@ -671,6 +666,16 @@ body.system-menu-open {
 .workspace-screen[data-screen-id="admin-area"] .workspace-profile .btn:hover {
   background: #e64020;
   border-color: #e64020;
+}
+
+/* Evita barra horizontal "sobrando" no admin */
+.workspace-screen[data-screen-id="admin-area"] .table-wrap {
+  overflow-x: hidden;
+}
+
+.workspace-screen[data-screen-id="admin-area"] .env-table {
+  min-width: 0;
+  width: 100%;
 }
 
 .env-block {
@@ -855,12 +860,13 @@ body.system-menu-open {
 .data-modal__dialog {
   position: relative;
   z-index: 2;
-  width: min(1320px, calc(100% - 2rem));
-  margin: 1.6rem auto;
+  width: calc(100vw - 2rem);
+  max-width: 1680px;
+  margin: 1rem auto;
   border-radius: 20px;
   border: 1px solid #cee0f2;
   background: #fff;
-  max-height: calc(100vh - 3.2rem);
+  max-height: calc(100vh - 2rem);
   display: flex;
   flex-direction: column;
   box-shadow: 0 28px 56px rgba(15, 23, 42, 0.32);
@@ -995,13 +1001,7 @@ body.system-menu-open {
 
 @media (max-width: 700px) {
   .workspace-screen[data-screen-id="admin-area"] .workspace-env {
-    padding-right: 1.4rem;
-    padding-top: 1.4rem;
-  }
-
-  .workspace-screen[data-screen-id="admin-area"] .workspace-profile {
-    position: static;
-    margin-bottom: 0.9rem;
+    padding-top: 1.2rem;
   }
 
   .host-cards {
