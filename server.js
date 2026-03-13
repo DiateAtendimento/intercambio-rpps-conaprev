@@ -523,6 +523,62 @@ function isStrongPassword(password) {
   return true;
 }
 
+function hostRegistrationEmailText(hostData, userValue, passwordValue) {
+  return [
+    "Intercâmbio Técnico entre Regimes Previdenciários",
+    "Troca estruturada de experiências, fortalecimento institucional e melhoria contínua da gestão previdenciária nos RPPS e EFPC.",
+    "",
+    "Prezado(a),",
+    "",
+    "Informamos que a inscrição do regime na condição de Anfitrião foi registrada com sucesso no âmbito do Programa de Intercâmbio Técnico entre Regimes Previdenciários.",
+    "",
+    "A partir das informações prestadas no formulário, seguem abaixo os dados de acesso cadastrados para acompanhamento das etapas do intercâmbio:",
+    "",
+    `Município/Ente: ${hostData["Município"] || "-"}`,
+    `UF: ${hostData.UF || "-"}`,
+    `Usuário: ${userValue || "-"}`,
+    `Senha: ${passwordValue || "-"}`,
+    "",
+    "Esses dados poderão ser utilizados para acesso ao ambiente do programa e para acompanhamento das tratativas relacionadas ao intercâmbio técnico.",
+    "",
+    "Solicitamos que este e-mail não seja respondido, por se tratar de mensagem automática encaminhada pelo sistema.",
+    "",
+    "Atenciosamente,",
+    "",
+    "Departamento dos Regimes Próprios de Previdência Social – DRPPS",
+    "Coordenação de Atendimento Colaborativo – CACO",
+  ].join("\n");
+}
+
+function candidateRegistrationEmailText(candidateData, userValue, passwordValue) {
+  return [
+    "Intercâmbio Técnico entre Regimes Previdenciários",
+    "Troca estruturada de experiências, fortalecimento institucional e melhoria contínua da gestão previdenciária nos RPPS e EFPC.",
+    "",
+    "Prezado(a),",
+    "",
+    "Informamos que sua inscrição na condição de Intercambista foi registrada com sucesso no âmbito do Programa de Intercâmbio Técnico entre Regimes Previdenciários.",
+    "",
+    "Havendo aceite por parte do regime anfitrião selecionado, o intercâmbio será organizado conforme a programação e o plano de trabalho definidos entre as partes, nos termos do programa.",
+    "",
+    "Seguem abaixo os dados de acesso cadastrados:",
+    "",
+    `Município/Ente: ${candidateData["Município"] || "-"}`,
+    `UF: ${candidateData.UF || "-"}`,
+    `Usuário: ${userValue || "-"}`,
+    `Senha: ${passwordValue || "-"}`,
+    "",
+    "Esses dados poderão ser utilizados para acesso ao ambiente do programa e para acompanhamento das etapas relacionadas ao intercâmbio técnico.",
+    "",
+    "Solicitamos que este e-mail não seja respondido, por se tratar de mensagem automática encaminhada pelo sistema.",
+    "",
+    "Atenciosamente,",
+    "",
+    "Departamento dos Regimes Próprios de Previdência Social – DRPPS",
+    "Coordenação de Atendimento Colaborativo – CACO",
+  ].join("\n");
+}
+
 function buildHostValueMap(payload, passwordHash, numeroInscricao) {
   const yesNo = (v) => (v ? "Sim" : "Não");
 
@@ -732,6 +788,15 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
       valueMap["Permissão admin"] = existing.data["Permissão admin"] || "Pendente";
 
       await updateRow(HOST_SHEET, headers, existing.rowNumber, valueMap);
+      await sendEmail(
+        valueMap["E-mail de contato"] || "",
+        "Confirmação de inscrição – Intercâmbio Técnico entre Regimes Previdenciários",
+        hostRegistrationEmailText(
+          valueMap,
+          onlyDigits(valueMap["Município CNPJ"]),
+          "Será disponibilizada após autorização do admin. No primeiro acesso, defina sua senha."
+        )
+      );
 
       return res.json({
         updated: true,
@@ -745,6 +810,15 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
 
     const valueMap = buildHostValueMap(req.body, "", numeroInscricao);
     await appendRow(HOST_SHEET, headers, valueMap);
+    await sendEmail(
+      valueMap["E-mail de contato"] || "",
+      "Confirmação de inscrição – Intercâmbio Técnico entre Regimes Previdenciários",
+      hostRegistrationEmailText(
+        valueMap,
+        onlyDigits(valueMap["Município CNPJ"]),
+        "Será disponibilizada após autorização do admin. No primeiro acesso, defina sua senha."
+      )
+    );
 
     return res.status(201).json({
       created: true,
@@ -1005,6 +1079,15 @@ app.post("/api/candidate/register", loginLimiter, async (req, res) => {
 
     const row = buildCandidateValueMap(req.body);
     await appendRow(CANDIDATE_SHEET, dataset.headers, row);
+    await sendEmail(
+      row["E-mail institucional"] || "",
+      "Confirmação de inscrição – Intercâmbio Técnico entre Regimes Previdenciários",
+      candidateRegistrationEmailText(
+        row,
+        onlyDigits(row.CPF),
+        "Definir no primeiro acesso."
+      )
+    );
 
     res.status(201).json({ ok: true, message: "Cadastro do intercambista realizado." });
   } catch (error) {
