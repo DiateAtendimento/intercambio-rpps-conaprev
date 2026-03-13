@@ -592,6 +592,64 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
+app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
+  try {
+    const cnpj = onlyDigits(req.params.cnpj);
+    if (cnpj.length !== 14) {
+      return res.status(400).json({ error: "CNPJ do município inválido." });
+    }
+
+    const hosts = await getRows(HOST_SHEET, hostHeaders);
+    const host = hosts.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
+    if (host) {
+      return res.json({
+        source: "host",
+        prefill: {
+          municipio: host.data["Município"] || "",
+          uf: host.data.UF || "",
+          municipioCnpj: host.data["Município CNPJ"] || "",
+          unidadeGestora: host.data["Unidade Gestora"] || "",
+          dirigente: host.data["Nome do Dirigente ou Responsável Legal"] || "",
+          cargoDirigente: host.data["Cargo/Função (Dirigente)"] || "",
+          email: host.data["E-mail de contato"] || "",
+          telefone: host.data["Telefone de contato"] || "",
+          nivelProGestao: host.data["Nível do Pró-Gestão"] || "",
+          responsavel: host.data["Responsável pelo preenchimento"] || "",
+          cargoResponsavel: host.data["Cargo/Função (Responsável)"] || "",
+          dataPreenchimento: host.data.Data || "",
+        },
+      });
+    }
+
+    const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    const candidate = candidates.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
+    if (candidate) {
+      return res.json({
+        source: "candidate",
+        prefill: {
+          municipio: candidate.data["Município"] || "",
+          uf: candidate.data.UF || "",
+          municipioCnpj: candidate.data["Município CNPJ"] || "",
+          unidadeGestora: candidate.data["Unidade Gestora"] || "",
+          dirigente: candidate.data["Nome do Dirigente ou Responsável Legal"] || "",
+          cargoDirigente: candidate.data["Cargo/Função (Dirigente)"] || "",
+          email: candidate.data["E-mail institucional"] || "",
+          telefone: candidate.data["Telefone para contato"] || "",
+          nivelProGestao: candidate.data["Nível do Pró-Gestão"] || "",
+          responsavel: candidate.data["Responsável pelo preenchimento"] || "",
+          cargoResponsavel: candidate.data["Cargo/Função (Responsável)"] || "",
+          dataPreenchimento: candidate.data.Data || "",
+        },
+      });
+    }
+
+    return res.status(404).json({ error: "Nenhum registro encontrado para este CNPJ." });
+  } catch (error) {
+    console.error("prefill/municipio", error);
+    return res.status(500).json({ error: "Falha ao consultar dados para pré-preenchimento." });
+  }
+});
+
 app.post("/api/host/register", loginLimiter, async (req, res) => {
   try {
     const cnpj = onlyDigits(req.body.cnpj);
@@ -601,8 +659,24 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
 
     const { headers, rows } = await getRows(HOST_SHEET, hostHeaders);
     const existing = rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
+
     if (existing) {
-      return res.status(409).json({ error: "CNPJ já cadastrado." });
+      const numeroInscricao = String(existing.data["Inscrição"] || "").trim() || (await getNextHostRegistration(rows));
+      const currentPass = existing.data["Senha"] || "";
+      const valueMap = buildHostValueMap(req.body, currentPass, numeroInscricao);
+
+      valueMap["Primeiro Acesso Concluído"] = existing.data["Primeiro Acesso Concluído"] || "Não";
+      valueMap["Status do Anfitrião"] = existing.data["Status do Anfitrião"] || "Ativo";
+      valueMap["Permissão admin"] = existing.data["Permissão admin"] || "Pendente";
+
+      await updateRow(HOST_SHEET, headers, existing.rowNumber, valueMap);
+
+      return res.json({
+        updated: true,
+        numeroInscricao,
+        cnpj,
+        message: "Cadastro atualizado com sucesso.",
+      });
     }
 
     const numeroInscricao = await getNextHostRegistration(rows);
@@ -611,6 +685,7 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
     await appendRow(HOST_SHEET, headers, valueMap);
 
     return res.status(201).json({
+      created: true,
       numeroInscricao,
       cnpj,
       message: "Cadastro de anfitrião realizado. Aguardando autorização do admin.",

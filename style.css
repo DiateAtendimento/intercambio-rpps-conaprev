@@ -444,6 +444,20 @@ body.system-menu-open {
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease, background 0.2s ease;
 }
 
+.prefill-inline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.btn-prefill {
+  min-width: auto;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 .module-form textarea {
   min-height: 108px;
   border-radius: 16px;

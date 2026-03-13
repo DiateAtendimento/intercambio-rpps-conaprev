@@ -559,7 +559,12 @@
           <div class="form-grid two">
             <label>Município<input name="municipio" required /></label>
             <label>Unidade Federativa<input name="uf" maxlength="2" required /></label>
-            <label>Município CNPJ<input name="municipioCnpj" required /></label>
+            <label>Município CNPJ
+              <div class="prefill-inline">
+                <input name="municipioCnpj" required />
+                <button type="button" class="btn btn-outline btn-prefill" id="hostPrefillByCnpj">Buscar CNPJ</button>
+              </div>
+            </label>
             <label>Unidade Gestora<input name="unidadeGestora" required /></label>
             <label>Endereço<input name="endereco" required /></label>
             <label>Nome do Dirigente ou Responsável Legal<input name="dirigente" required /></label>
@@ -635,7 +640,12 @@
           <div class="form-grid two">
             <label>Município<input name="municipio" required /></label>
             <label>Unidade Federativa<input name="uf" maxlength="2" required /></label>
-            <label>Município CNPJ<input name="municipioCnpj" required /></label>
+            <label>Município CNPJ
+              <div class="prefill-inline">
+                <input name="municipioCnpj" required />
+                <button type="button" class="btn btn-outline btn-prefill" id="candidatePrefillByCnpj">Buscar CNPJ</button>
+              </div>
+            </label>
             <label>Unidade Gestora<input name="unidadeGestora" required /></label>
             <label>Unidade Gestora CNPJ<input name="unidadeGestoraCnpj" required /></label>
             <label>CPF<input name="cpf" required /></label>

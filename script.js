@@ -356,6 +356,89 @@ function payloadCandidateRegister(form) {
   return payload;
 }
 
+function applyPrefillToHostForm(form, data) {
+  if (!form || !data) return;
+  const set = (name, value) => {
+    const el = form.querySelector(`[name="${name}"]`);
+    if (el) el.value = String(value || "");
+  };
+
+  set("municipio", data.municipio);
+  set("uf", data.uf);
+  set("municipioCnpj", normalizeDigits(data.municipioCnpj || ""));
+  set("unidadeGestora", data.unidadeGestora);
+  set("dirigente", data.dirigente);
+  set("cargoDirigente", data.cargoDirigente);
+  set("email", data.email);
+  set("telefone", data.telefone);
+  set("nivelProGestao", data.nivelProGestao);
+  set("responsavel", data.responsavel);
+  set("cargoResponsavel", data.cargoResponsavel);
+  set("dataPreenchimento", data.dataPreenchimento);
+}
+
+function applyPrefillToCandidateForm(form, data) {
+  if (!form || !data) return;
+  const set = (name, value) => {
+    const el = form.querySelector(`[name="${name}"]`);
+    if (el) el.value = String(value || "");
+  };
+
+  set("municipio", data.municipio);
+  set("uf", data.uf);
+  set("municipioCnpj", normalizeDigits(data.municipioCnpj || ""));
+  set("unidadeGestora", data.unidadeGestora);
+  set("dirigente", data.dirigente);
+  set("cargoDirigente", data.cargoDirigente);
+  set("email", data.email);
+  set("telefone", data.telefone);
+  set("nivelProGestao", data.nivelProGestao);
+  set("responsavel", data.responsavel);
+  set("cargoResponsavel", data.cargoResponsavel);
+  set("dataPreenchimento", data.dataPreenchimento);
+}
+
+function setupCnpjPrefill() {
+  const hostForm = qs("#hostRegisterForm");
+  const candidateForm = qs("#candidateRegisterForm");
+  const hostBtn = qs("#hostPrefillByCnpj");
+  const candidateBtn = qs("#candidatePrefillByCnpj");
+
+  hostBtn?.addEventListener("click", async () => {
+    const raw = hostForm?.querySelector('[name="municipioCnpj"]')?.value || "";
+    const cnpj = normalizeDigits(raw);
+    if (cnpj.length !== 14) {
+      setFeedback("hostRegisterFeedback", "Informe um CNPJ do município válido para buscar.", false);
+      return;
+    }
+    setFeedback("hostRegisterFeedback", "Buscando dados na planilha...", true);
+    try {
+      const data = await apiFetch(`/api/prefill/municipio/${cnpj}`);
+      applyPrefillToHostForm(hostForm, data.prefill);
+      setFeedback("hostRegisterFeedback", "Dados carregados. Revise e ajuste se necessário.", true);
+    } catch (error) {
+      setFeedback("hostRegisterFeedback", error.message, false);
+    }
+  });
+
+  candidateBtn?.addEventListener("click", async () => {
+    const raw = candidateForm?.querySelector('[name="municipioCnpj"]')?.value || "";
+    const cnpj = normalizeDigits(raw);
+    if (cnpj.length !== 14) {
+      setFeedback("candidateRegisterFeedback", "Informe um CNPJ do município válido para buscar.", false);
+      return;
+    }
+    setFeedback("candidateRegisterFeedback", "Buscando dados na planilha...", true);
+    try {
+      const data = await apiFetch(`/api/prefill/municipio/${cnpj}`);
+      applyPrefillToCandidateForm(candidateForm, data.prefill);
+      setFeedback("candidateRegisterFeedback", "Dados carregados. Revise e ajuste se necessário.", true);
+    } catch (error) {
+      setFeedback("candidateRegisterFeedback", error.message, false);
+    }
+  });
+}
+
 function escapeHtml(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -655,10 +738,14 @@ function setupWorkspaceActions() {
     setFeedback("hostRegisterFeedback", "Enviando cadastro...", true);
     try {
       const data = await apiFetch("/api/host/register", { method: "POST", body: JSON.stringify(payloadHostRegister(hostRegisterForm)) });
-      setFeedback("hostRegisterFeedback", "Cadastro concluído.", true);
+      setFeedback("hostRegisterFeedback", data.updated ? "Cadastro atualizado com sucesso." : "Cadastro concluído.", true);
       const cred = qs("#hostRegisterCredentials");
-      if (cred) cred.textContent = `Número de inscrição: ${data.numeroInscricao} | CNPJ: ${data.cnpj}. Cadastro enviado para aprovação do admin.`;
-      hostRegisterForm.reset();
+      if (cred) {
+        cred.textContent = data.updated
+          ? `Número de inscrição: ${data.numeroInscricao} | CNPJ: ${data.cnpj}. Informações atualizadas na planilha.`
+          : `Número de inscrição: ${data.numeroInscricao} | CNPJ: ${data.cnpj}. Cadastro enviado para aprovação do admin.`;
+      }
+      if (!data.updated) hostRegisterForm.reset();
     } catch (error) {
       setFeedback("hostRegisterFeedback", error.message, false);
     }
@@ -911,6 +998,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupBackToTop();
   setupRevealOnScroll();
   setupSupportTeamField();
+  setupCnpjPrefill();
   setupWorkspaceActions();
 });
 
