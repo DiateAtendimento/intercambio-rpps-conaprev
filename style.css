@@ -1695,16 +1695,15 @@ main {
   z-index: 2100;
   display: grid;
   place-items: center;
-  background: rgba(10, 24, 40, 0.42);
-  backdrop-filter: blur(2px);
+  background: rgba(10, 24, 40, 0.32);
 }
 
 .lottie-overlay__card {
   width: min(420px, calc(100% - 2rem));
-  background: #ffffff;
-  border: 1px solid #cfe0f2;
-  border-radius: 16px;
-  box-shadow: 0 26px 52px rgba(15, 23, 42, 0.28);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   padding: 1rem 1rem 0.85rem;
   text-align: center;
 }
@@ -1717,8 +1716,9 @@ main {
 
 .lottie-overlay__message {
   margin: 0.35rem 0 0;
-  color: #173c5f;
-  font-weight: 600;
+  color: #ffffff;
+  font-weight: 700;
+  text-shadow: 0 2px 6px rgba(10, 24, 40, 0.48);
 }
 
 /* ===== Animações de entrada (scroll reveal) ===== */

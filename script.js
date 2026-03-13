@@ -63,7 +63,7 @@ function playOverlayAnimation(filePath, message, loop = true) {
   const overlay = qs("#lottieOverlay");
   const player = qs("#lottieOverlayPlayer");
   const text = qs("#lottieOverlayMessage");
-  if (!overlay || !player || !window.lottie) return;
+  if (!overlay || !player || !window.lottie || typeof window.lottie.loadAnimation !== "function") return false;
 
   if (lottieUi.animation) {
     lottieUi.animation.destroy();
@@ -74,18 +74,33 @@ function playOverlayAnimation(filePath, message, loop = true) {
   if (text) text.textContent = message || "Processando...";
   overlay.hidden = false;
 
-  lottieUi.animation = window.lottie.loadAnimation({
-    container: player,
-    renderer: "svg",
-    loop,
-    autoplay: true,
-    path: filePath,
-  });
+  try {
+    lottieUi.animation = window.lottie.loadAnimation({
+      container: player,
+      renderer: "svg",
+      loop,
+      autoplay: true,
+      path: filePath,
+    });
+  } catch (error) {
+    return false;
+  }
+  return true;
+}
+
+function forceHideLottieOverlay() {
+  const overlay = qs("#lottieOverlay");
+  if (lottieUi.animation) {
+    lottieUi.animation.destroy();
+    lottieUi.animation = null;
+  }
+  if (overlay) overlay.hidden = true;
 }
 
 async function runWithLottie(task, options = {}) {
-  const hasPlayer = Boolean(window.lottie) && Boolean(qs("#lottieOverlay"));
-  if (!hasPlayer) return task();
+  const hasOverlay = Boolean(qs("#lottieOverlay"));
+  const hasPlayer = Boolean(window.lottie) && typeof window.lottie.loadAnimation === "function";
+  if (!hasOverlay || !hasPlayer) return task();
 
   const loadingPath = options.loadingPath || "lottie_save_progress.json";
   const loadingMessage = options.loadingMessage || "Processando...";
@@ -94,10 +109,11 @@ async function runWithLottie(task, options = {}) {
   const errorPath = options.errorPath || "lottie_error_generic.json";
   const minLoadingMs = Number(options.minLoadingMs || 450);
 
-  lottieUi.startedAt = Date.now();
-  playOverlayAnimation(loadingPath, loadingMessage, true);
-
   try {
+    lottieUi.startedAt = Date.now();
+    const started = playOverlayAnimation(loadingPath, loadingMessage, true);
+    if (!started) return task();
+
     const result = await task();
     const elapsed = Date.now() - lottieUi.startedAt;
     if (elapsed < minLoadingMs) await wait(minLoadingMs - elapsed);
@@ -111,12 +127,7 @@ async function runWithLottie(task, options = {}) {
     await wait(1100);
     throw error;
   } finally {
-    const overlay = qs("#lottieOverlay");
-    if (lottieUi.animation) {
-      lottieUi.animation.destroy();
-      lottieUi.animation = null;
-    }
-    if (overlay) overlay.hidden = true;
+    forceHideLottieOverlay();
   }
 }
 
@@ -1169,6 +1180,7 @@ function setupWorkspaceActions() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  forceHideLottieOverlay();
   setupSmoothScroll();
   setupNavbarToggle();
   setupSystemPanel();
@@ -1178,6 +1190,10 @@ document.addEventListener("DOMContentLoaded", () => {
   setupSmartInputs();
   setupCnpjPrefill();
   setupWorkspaceActions();
+});
+
+window.addEventListener("load", () => {
+  forceHideLottieOverlay();
 });
 
 
