@@ -558,10 +558,10 @@
           <h4>1) Identificação do Regime Anfitrião</h4>
           <div class="form-grid two">
             <label>Município<input name="municipio" required /></label>
-            <label>Unidade Federativa<input name="uf" maxlength="2" required /></label>
+            <label>Unidade Federativa<input name="uf" maxlength="2" placeholder="Ex.: PB" data-input="uf" required /></label>
             <label>Município CNPJ
               <div class="prefill-inline">
-                <input name="municipioCnpj" required />
+                <input name="municipioCnpj" placeholder="Ex.: 12345678000199" data-input="numeric" minlength="14" maxlength="14" required />
                 <button type="button" class="btn btn-outline btn-prefill" id="hostPrefillByCnpj">Buscar CNPJ</button>
               </div>
             </label>
@@ -571,14 +571,14 @@
             <label>Cargo/Função<input name="cargoDirigente" required /></label>
             <label>Nome do responsável pela coordenação local<input name="coordenadorLocal" required /></label>
             <label>E-mail de contato<input type="email" name="email" required /></label>
-            <label>Telefone de contato<input name="telefone" required /></label>
+            <label>Telefone de contato<input name="telefone" placeholder="Ex.: 83999999999" data-input="numeric" minlength="10" maxlength="11" required /></label>
             <label>Nível do Pró-Gestão<input name="nivelProGestao" required /></label>
           </div>
 
           <h4>2) Perfil do intercâmbio técnico</h4>
           <div class="form-grid two">
-            <label>Número de vagas oferecidas<input name="vagas" required /></label>
-            <label>Número de áreas e setores disponíveis para intercâmbio<input name="totalAreas" required /></label>
+            <label>Número de vagas oferecidas<input name="vagas" placeholder="Ex.: 10" data-input="numeric" required /></label>
+            <label>Número de áreas e setores disponíveis para intercâmbio<input name="totalAreas" placeholder="Ex.: 5" data-input="numeric" required /></label>
           </div>
 
           <h4>3) Áreas/Setores disponíveis para intercâmbio (marcar as aplicáveis)</h4>
@@ -596,7 +596,7 @@
             <label><input type="checkbox" name="areaContabilidade" /> Contabilidade</label>
             <label><input type="checkbox" name="areaOutros" /> Outros</label>
           </div>
-          <label>Outros (campo para especificar)<input name="areaOutrosTexto" /></label>
+          <label>Outros (campo para especificar)<input name="areaOutrosTexto" placeholder="Se não houver, informe: Não se aplica" required /></label>
 
           <h4>4) Equipe de apoio designada</h4>
           <p class="form-block-note">Nome(s) do(s) servidor(es) ou colaborador(es) que acompanhará(ão) o intercâmbio</p>
@@ -639,24 +639,24 @@
           <h4>1) Dados do Regime Intercambista</h4>
           <div class="form-grid two">
             <label>Município<input name="municipio" required /></label>
-            <label>Unidade Federativa<input name="uf" maxlength="2" required /></label>
+            <label>Unidade Federativa<input name="uf" maxlength="2" placeholder="Ex.: PB" data-input="uf" required /></label>
             <label>Município CNPJ
               <div class="prefill-inline">
-                <input name="municipioCnpj" required />
+                <input name="municipioCnpj" placeholder="Ex.: 12345678000199" data-input="numeric" minlength="14" maxlength="14" required />
                 <button type="button" class="btn btn-outline btn-prefill" id="candidatePrefillByCnpj">Buscar CNPJ</button>
               </div>
             </label>
             <label>Unidade Gestora<input name="unidadeGestora" required /></label>
-            <label>Unidade Gestora CNPJ<input name="unidadeGestoraCnpj" required /></label>
-            <label>CPF<input name="cpf" required /></label>
+            <label>Unidade Gestora CNPJ<input name="unidadeGestoraCnpj" placeholder="Ex.: 12345678000199" data-input="numeric" minlength="14" maxlength="14" required /></label>
+            <label>CPF<input name="cpf" placeholder="Ex.: 12345678901" data-input="numeric" minlength="11" maxlength="11" required /></label>
             <label>Gênero
-              <select name="genero"><option>Feminino</option><option>Masculino</option></select>
+              <select name="genero" required><option>Feminino</option><option>Masculino</option></select>
             </label>
             <label>Nível do Pró-Gestão<input name="nivelProGestao" required /></label>
             <label>Nome do Dirigente ou Responsável Legal<input name="dirigente" required /></label>
             <label>Cargo/Função<input name="cargoDirigente" required /></label>
             <label>E-mail institucional<input type="email" name="email" required /></label>
-            <label>Telefone para contato<input name="telefone" required /></label>
+            <label>Telefone para contato<input name="telefone" placeholder="Ex.: 83999999999" data-input="numeric" minlength="10" maxlength="11" required /></label>
           </div>
 
           <h4>2) Participantes indicados para o intercâmbio técnico</h4>
@@ -670,12 +670,12 @@
 
           <h4>3) RPPS ou EFPC anfitriões de interesse (ordem de prioridade)</h4>
           <div class="form-grid two">
-            <label>Anfitrião de interesse - Prioridade 1<input name="prioridade1Host" /></label>
-            <label>Objetivo principal (Prioridade 1)<input name="prioridade1Objetivo" /></label>
-            <label>Anfitrião de interesse - Prioridade 2<input name="prioridade2Host" /></label>
-            <label>Objetivo principal (Prioridade 2)<input name="prioridade2Objetivo" /></label>
-            <label>Anfitrião de interesse - Prioridade 3<input name="prioridade3Host" /></label>
-            <label>Objetivo principal (Prioridade 3)<input name="prioridade3Objetivo" /></label>
+            <label>Anfitrião de interesse - Prioridade 1<input name="prioridade1Host" required /></label>
+            <label>Objetivo principal (Prioridade 1)<input name="prioridade1Objetivo" required /></label>
+            <label>Anfitrião de interesse - Prioridade 2<input name="prioridade2Host" required /></label>
+            <label>Objetivo principal (Prioridade 2)<input name="prioridade2Objetivo" required /></label>
+            <label>Anfitrião de interesse - Prioridade 3<input name="prioridade3Host" required /></label>
+            <label>Objetivo principal (Prioridade 3)<input name="prioridade3Objetivo" required /></label>
           </div>
 
           <h4>4) Temas e áreas de interesse</h4>
@@ -714,7 +714,7 @@
         </div>
         <h3>Login Intercambista</h3>
         <form id="candidateLoginForm" class="module-form">
-          <label>CPF<input name="cpf" required /></label>
+          <label>CPF<input name="cpf" placeholder="Ex.: 12345678901" data-input="numeric" maxlength="11" required /></label>
           <label>Senha<input type="password" name="senha" required /></label>
           <button type="submit" class="btn btn-primary">Entrar</button>
           <p class="module-feedback" id="candidateLoginFeedback"></p>
@@ -727,7 +727,7 @@
       <div class="module-card module-card--login">
         <h3>Primeiro Acesso Intercambista</h3>
         <form id="candidateFirstAccessForm" class="module-form">
-          <label>CPF<input name="cpf" required /></label>
+          <label>CPF<input name="cpf" placeholder="Ex.: 12345678901" data-input="numeric" maxlength="11" required /></label>
           <label>Email institucional<input type="email" name="email" required /></label>
           <label>Nova senha<input type="password" name="novaSenha" required /></label>
           <label>Confirmar senha<input type="password" name="confirmSenha" required /></label>
@@ -783,7 +783,7 @@
         </div>
         <h3>Login Anfitrião</h3>
         <form id="hostLoginForm" class="module-form">
-          <label>CNPJ<input name="cnpj" required /></label>
+          <label>CNPJ<input name="cnpj" placeholder="Ex.: 12345678000199" data-input="numeric" maxlength="14" required /></label>
           <label>Senha<input type="password" name="senha" required /></label>
           <button type="submit" class="btn btn-primary">Entrar</button>
           <p class="module-feedback" id="hostLoginFeedback"></p>
@@ -796,7 +796,7 @@
       <div class="module-card module-card--login">
         <h3>Primeiro Acesso Anfitrião</h3>
         <form id="hostFirstAccessForm" class="module-form">
-          <label>CNPJ<input name="cnpj" required /></label>
+          <label>CNPJ<input name="cnpj" placeholder="Ex.: 12345678000199" data-input="numeric" maxlength="14" required /></label>
           <label>Número de inscrição<input name="numeroInscricao" required /></label>
           <label>Senha inicial<input type="password" name="senhaInicial" required /></label>
           <label>Nova senha<input type="password" name="novaSenha" required /></label>

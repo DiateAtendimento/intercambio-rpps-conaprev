@@ -213,6 +213,39 @@ function collectFormData(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
 
+function setupSmartInputs() {
+  qsa('input[data-input="numeric"]').forEach((input) => {
+    input.addEventListener("input", () => {
+      const maxLen = Number(input.getAttribute("maxlength") || 0);
+      let value = normalizeDigits(input.value);
+      if (maxLen > 0) value = value.slice(0, maxLen);
+      input.value = value;
+    });
+  });
+
+  qsa('input[data-input="uf"]').forEach((input) => {
+    input.addEventListener("input", () => {
+      input.value = String(input.value || "")
+        .toUpperCase()
+        .replace(/[^A-Z]/g, "")
+        .slice(0, 2);
+    });
+  });
+}
+
+function validateRequiredFields(form) {
+  if (!form) return true;
+  const requiredFields = [...form.querySelectorAll("[required]")];
+  for (const field of requiredFields) {
+    if (field.type === "checkbox" && !field.checked) return false;
+    if (field.type !== "checkbox") {
+      const value = String(field.value || "").trim();
+      if (!value) return false;
+    }
+  }
+  return true;
+}
+
 function payloadHostRegister(form) {
   const formData = collectFormData(form);
   const equipeApoio = qsa('[name="equipeApoioItem"]')
@@ -735,6 +768,9 @@ function setupWorkspaceActions() {
   const hostRegisterForm = qs("#hostRegisterForm");
   hostRegisterForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!validateRequiredFields(hostRegisterForm)) {
+      return setFeedback("hostRegisterFeedback", "Preencha todos os campos obrigatórios.", false);
+    }
     setFeedback("hostRegisterFeedback", "Enviando cadastro...", true);
     try {
       const data = await apiFetch("/api/host/register", { method: "POST", body: JSON.stringify(payloadHostRegister(hostRegisterForm)) });
@@ -754,6 +790,9 @@ function setupWorkspaceActions() {
   const candidateRegisterForm = qs("#candidateRegisterForm");
   candidateRegisterForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!validateRequiredFields(candidateRegisterForm)) {
+      return setFeedback("candidateRegisterFeedback", "Preencha todos os campos obrigatórios.", false);
+    }
     setFeedback("candidateRegisterFeedback", "Enviando cadastro...", true);
     try {
       await apiFetch("/api/candidate/register", { method: "POST", body: JSON.stringify(payloadCandidateRegister(candidateRegisterForm)) });
@@ -998,6 +1037,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupBackToTop();
   setupRevealOnScroll();
   setupSupportTeamField();
+  setupSmartInputs();
   setupCnpjPrefill();
   setupWorkspaceActions();
 });
