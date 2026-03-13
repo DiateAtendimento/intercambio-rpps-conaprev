@@ -808,7 +808,7 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
       valueMap["Permissão admin"] = existing.data["Permissão admin"] || "Pendente";
 
       await updateRow(HOST_SHEET, headers, existing.rowNumber, valueMap);
-      await sendEmail(
+      const emailSent = await sendEmail(
         valueMap["E-mail de contato"] || "",
         "Confirmação de inscrição – Intercâmbio Técnico entre Regimes Previdenciários",
         hostRegistrationEmailText(
@@ -822,6 +822,7 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
         updated: true,
         numeroInscricao,
         cnpj,
+        emailSent,
         message: "Cadastro atualizado com sucesso.",
       });
     }
@@ -831,7 +832,7 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
     const valueMap = buildHostValueMap(req.body, accessPasswordHash, numeroInscricao);
     valueMap["Primeiro Acesso Concluído"] = "Sim";
     await appendRow(HOST_SHEET, headers, valueMap);
-    await sendEmail(
+    const emailSent = await sendEmail(
       valueMap["E-mail de contato"] || "",
       "Confirmação de inscrição – Intercâmbio Técnico entre Regimes Previdenciários",
       hostRegistrationEmailText(
@@ -845,6 +846,7 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
       created: true,
       numeroInscricao,
       cnpj,
+      emailSent,
       message: "Cadastro de anfitrião realizado. Aguardando autorização do admin.",
     });
   } catch (error) {
@@ -1099,7 +1101,7 @@ app.post("/api/candidate/register", loginLimiter, async (req, res) => {
     row["Senha"] = await bcrypt.hash(accessPassword, 12);
     row["Primeiro Acesso Concluído"] = "Sim";
     await appendRow(CANDIDATE_SHEET, dataset.headers, row);
-    await sendEmail(
+    const emailSent = await sendEmail(
       row["E-mail institucional"] || "",
       "Confirmação de inscrição – Intercâmbio Técnico entre Regimes Previdenciários",
       candidateRegistrationEmailText(
@@ -1109,7 +1111,7 @@ app.post("/api/candidate/register", loginLimiter, async (req, res) => {
       )
     );
 
-    res.status(201).json({ ok: true, message: "Cadastro do intercambista realizado." });
+    res.status(201).json({ ok: true, emailSent, message: "Cadastro do intercambista realizado." });
   } catch (error) {
     console.error("candidate/register", error);
     res.status(500).json({ error: "Falha ao cadastrar intercambista." });

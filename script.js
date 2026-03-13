@@ -520,6 +520,53 @@ function setupSupportTeamField() {
   updateRemoveButtons();
 }
 
+function resetHostRegisterForm(form) {
+  if (!form) return;
+  form.reset();
+
+  const levelInput = form.querySelector('[name="nivelProGestao"]');
+  if (levelInput) {
+    levelInput.classList.remove("progestao-input--none");
+  }
+
+  const list = qs("#supportTeamList");
+  if (!list) return;
+  const rows = qsa("#supportTeamList .dynamic-list__row");
+  rows.slice(1).forEach((row) => row.remove());
+
+  const remainingRows = qsa("#supportTeamList .dynamic-list__row");
+  remainingRows.forEach((row) => {
+    const input = row.querySelector("input");
+    const btn = row.querySelector(".dynamic-remove-btn");
+    if (input) input.value = "";
+    if (!btn) return;
+    btn.disabled = remainingRows.length === 1;
+    btn.style.opacity = remainingRows.length === 1 ? "0.45" : "1";
+    btn.style.cursor = remainingRows.length === 1 ? "not-allowed" : "pointer";
+  });
+}
+
+function resetCandidateRegisterForm(form) {
+  if (!form) return;
+  form.reset();
+  const levelInput = form.querySelector('[name="nivelProGestao"]');
+  if (levelInput) {
+    levelInput.classList.remove("progestao-input--none");
+  }
+}
+
+function setupNoDraftInputs() {
+  qsa("form").forEach((form) => {
+    form.setAttribute("autocomplete", "off");
+  });
+  qsa("input, textarea, select").forEach((field) => {
+    field.setAttribute("autocomplete", "off");
+    field.setAttribute("autocorrect", "off");
+    field.setAttribute("autocapitalize", "off");
+    field.setAttribute("spellcheck", "false");
+  });
+}
+
 function payloadCandidateRegister(form) {
   const formData = collectFormData(form);
   const payload = {
@@ -1024,13 +1071,14 @@ function setupWorkspaceActions() {
         }
       );
       setFeedback("hostRegisterFeedback", data.updated ? "Cadastro atualizado com sucesso." : "Cadastro concluído.", true);
-      const cred = qs("#hostRegisterCredentials");
-      if (cred) {
-        cred.textContent = data.updated
-          ? `Número de inscrição: ${data.numeroInscricao} | CNPJ: ${data.cnpj}. Informações atualizadas na planilha.`
-          : `Número de inscrição: ${data.numeroInscricao} | CNPJ: ${data.cnpj}. Cadastro enviado para aprovação do admin.`;
+      if (data.emailSent === false) {
+        showMessageModal(
+          "Cadastro salvo, e-mail pendente",
+          "As informações foram salvas na planilha, mas houve falha no envio do e-mail automático.",
+          "warning"
+        );
       }
-      if (!data.updated) hostRegisterForm.reset();
+      resetHostRegisterForm(hostRegisterForm);
     } catch (error) {
       setFeedback("hostRegisterFeedback", error.message, false);
     }
@@ -1044,7 +1092,7 @@ function setupWorkspaceActions() {
     }
     setFeedback("candidateRegisterFeedback", "Enviando cadastro...", true);
     try {
-      await runWithLottie(
+      const data = await runWithLottie(
         () => apiFetch("/api/candidate/register", { method: "POST", body: JSON.stringify(payloadCandidateRegister(candidateRegisterForm)) }),
         {
           loadingPath: "lottie_save_progress.json",
@@ -1053,7 +1101,14 @@ function setupWorkspaceActions() {
         }
       );
       setFeedback("candidateRegisterFeedback", "Cadastro concluído. Realize o primeiro acesso para criar sua senha.", true);
-      candidateRegisterForm.reset();
+      if (data?.emailSent === false) {
+        showMessageModal(
+          "Cadastro salvo, e-mail pendente",
+          "As informações foram salvas na planilha, mas houve falha no envio do e-mail automático.",
+          "warning"
+        );
+      }
+      resetCandidateRegisterForm(candidateRegisterForm);
     } catch (error) {
       setFeedback("candidateRegisterFeedback", error.message, false);
     }
@@ -1333,11 +1388,15 @@ function setupWorkspaceActions() {
 document.addEventListener("DOMContentLoaded", () => {
   forceHideLottieOverlay();
   loadTokens();
+  resetHostRegisterForm(qs("#hostRegisterForm"));
+  resetCandidateRegisterForm(qs("#candidateRegisterForm"));
+  qsa("form").forEach((form) => form.reset());
   setupSmoothScroll();
   setupNavbarToggle();
   setupSystemPanel();
   setupBackToTop();
   setupRevealOnScroll();
+  setupNoDraftInputs();
   setupSupportTeamField();
   setupSmartInputs();
   setupCnpjPrefill();
