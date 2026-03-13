@@ -100,19 +100,13 @@ function loadTokens() {
 
 function saveScreen(screenId) {
   try {
-    localStorage.setItem(STORAGE_KEYS.screen, String(screenId || ""));
+    sessionStorage.setItem(STORAGE_KEYS.screen, String(screenId || ""));
   } catch (_) {}
 }
 
 function loadScreen() {
   try {
-    const rawHash = String(window.location.hash || "").replace(/^#/, "");
-    if (rawHash.startsWith("screen=")) {
-      return decodeURIComponent(rawHash.slice("screen=".length));
-    }
-  } catch (_) {}
-  try {
-    return localStorage.getItem(STORAGE_KEYS.screen) || "";
+    return sessionStorage.getItem(STORAGE_KEYS.screen) || "";
   } catch (_) {
     return "";
   }
@@ -120,12 +114,7 @@ function loadScreen() {
 
 function updateScreenHash(screenId) {
   try {
-    if (!screenId || screenId === "home") {
-      history.replaceState(null, "", window.location.pathname + window.location.search);
-      return;
-    }
-    const hash = `#screen=${encodeURIComponent(screenId)}`;
-    history.replaceState(null, "", window.location.pathname + window.location.search + hash);
+    history.replaceState(null, "", window.location.pathname + window.location.search);
   } catch (_) {}
 }
 
@@ -1405,6 +1394,10 @@ function setupWorkspaceActions() {
 document.addEventListener("DOMContentLoaded", () => {
   forceHideLottieOverlay();
   forceModalClosed();
+  try {
+    localStorage.removeItem(STORAGE_KEYS.screen);
+  } catch (_) {}
+  updateScreenHash("home");
   loadTokens();
   resetHostRegisterForm(qs("#hostRegisterForm"));
   resetCandidateRegisterForm(qs("#candidateRegisterForm"));
