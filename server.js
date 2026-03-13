@@ -159,6 +159,7 @@ const candidateHeaders = [
   "Status da solicitação",
   "Data da decisão",
   "Observação da decisão",
+  "Status do Intercambista",
   "Permissão anfitrião",
 ];
 
@@ -274,6 +275,30 @@ function normalizeProGestaoForSheet(value) {
 function isSemProGestaoValue(value) {
   const normalized = normalizeText(value);
   return !normalized || normalized === "sem pro-gestao" || normalized === "sem pro gestao";
+}
+
+function resolveHostStatus(rowData = {}) {
+  const explicit = String(rowData["Status do Anfitrião"] || "").trim();
+  if (explicit) return explicit;
+  return normalizeText(rowData["Permissão admin"] || "") === "concedido" ? "Ativo" : "Pendente";
+}
+
+function resolveCandidateStatus(rowData = {}) {
+  const explicit = String(rowData["Status do Intercambista"] || "").trim();
+  if (explicit) return explicit;
+  return normalizeText(rowData["Permissão anfitrião"] || "") === "concedido" ? "Ativo" : "Pendente";
+}
+
+function resolveHostFirstAccess(rowData = {}) {
+  const approved = normalizeText(rowData["Permissão admin"] || "") === "concedido";
+  const active = normalizeText(resolveHostStatus(rowData)) === "ativo";
+  return approved && active ? "Sim" : "Não";
+}
+
+function resolveCandidateFirstAccess(rowData = {}) {
+  const approved = normalizeText(rowData["Permissão anfitrião"] || "") === "concedido";
+  const active = normalizeText(resolveCandidateStatus(rowData)) === "ativo";
+  return approved && active ? "Sim" : "Não";
 }
 
 const auth = new google.auth.GoogleAuth({
@@ -487,7 +512,7 @@ function publicHostView(hostData, proLookup = null) {
     vagas: hostData["Número de vagas oferecidas"] || "",
     descricao: hostData["Breve descrição da proposta de intercâmbio"] || "",
     areas: getHostAreas(hostData),
-    status: hostData["Status do Anfitrião"] || "Ativo",
+    status: resolveHostStatus(hostData),
   };
 }
 
@@ -501,7 +526,7 @@ function hostSummaryView(row) {
     dirigente: row.data["Nome do Dirigente ou Responsável Legal"] || "",
     cargoDirigente: row.data["Cargo/Função (Dirigente)"] || "",
     dataSolicitacao: row.data.Data || "",
-    status: row.data["Status do Anfitrião"] || "Ativo",
+    status: resolveHostStatus(row.data),
     permissaoAdmin: row.data["Permissão admin"] || "",
   };
 }
@@ -518,6 +543,7 @@ function candidateSummaryView(row) {
     dataSolicitacao: row.data.Data || "",
     dataDecisao: row.data["Data da decisão"] || "",
     statusSolicitacao: row.data["Status da solicitação"] || "",
+    statusIntercambista: row.data["Status do Intercambista"] || "Pendente",
     permissaoAnfitriao: row.data["Permissão anfitrião"] || "Pendente",
   };
 }
@@ -636,7 +662,7 @@ function buildHostValueMap(payload, passwordHash, numeroInscricao) {
     Data: sanitizeInput(payload.Data || nowIsoDate(), 20),
     "Senha": passwordHash || "",
     "Primeiro Acesso Concluído": "Não",
-    "Status do Anfitrião": "Ativo",
+    "Status do Anfitrião": "Pendente",
     "Permissão admin": "Pendente",
   };
 }
@@ -693,6 +719,7 @@ function buildCandidateValueMap(payload) {
     "Status da solicitação": "Sem solicitação",
     "Data da decisão": "",
     "Observação da decisão": "",
+    "Status do Intercambista": "Pendente",
     "Permissão anfitrião": "Pendente",
   };
 }
@@ -803,9 +830,9 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
       const numeroInscricao = String(existing.data["Inscrição"] || "").trim() || (await getNextHostRegistration(rows));
       const valueMap = buildHostValueMap(req.body, accessPasswordHash, numeroInscricao);
 
-      valueMap["Primeiro Acesso Concluído"] = "Sim";
-      valueMap["Status do Anfitrião"] = existing.data["Status do Anfitrião"] || "Ativo";
+      valueMap["Status do Anfitrião"] = existing.data["Status do Anfitrião"] || "Pendente";
       valueMap["Permissão admin"] = existing.data["Permissão admin"] || "Pendente";
+      valueMap["Primeiro Acesso Concluído"] = resolveHostFirstAccess(valueMap);
 
       await updateRow(HOST_SHEET, headers, existing.rowNumber, valueMap);
       const emailSent = await sendEmail(
@@ -830,7 +857,7 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
     const numeroInscricao = await getNextHostRegistration(rows);
 
     const valueMap = buildHostValueMap(req.body, accessPasswordHash, numeroInscricao);
-    valueMap["Primeiro Acesso Concluído"] = "Sim";
+    valueMap["Primeiro Acesso Concluído"] = resolveHostFirstAccess(valueMap);
     await appendRow(HOST_SHEET, headers, valueMap);
     const emailSent = await sendEmail(
       valueMap["E-mail de contato"] || "",
@@ -871,6 +898,10 @@ app.post("/api/host/login", loginLimiter, async (req, res) => {
     if (permissaoAdmin !== "concedido") {
       return res.status(403).json({ error: "Cadastro ainda não autorizado pelo admin." });
     }
+    const statusHost = normalizeText(resolveHostStatus(found.data));
+    if (statusHost !== "ativo") {
+      return res.status(403).json({ error: "Anfitrião inativo. Contate o admin." });
+    }
 
     if (!found.data["Senha"]) {
       return res.status(403).json({ error: "Senha inicial ainda não disponibilizada. Aguarde o e-mail de autorização." });
@@ -887,7 +918,7 @@ app.post("/api/host/login", loginLimiter, async (req, res) => {
       profile: {
         numeroInscricao: found.data["Inscrição"] || "",
         entidade: found.data["Unidade Gestora"] || "",
-        status: found.data["Status do Anfitrião"] || "Ativo",
+        status: resolveHostStatus(found.data),
       },
     });
   } catch (error) {
@@ -929,7 +960,7 @@ app.post("/api/host/first-access", loginLimiter, async (req, res) => {
     }
 
     found.data["Senha"] = await bcrypt.hash(novaSenha, 12);
-    found.data["Primeiro Acesso Concluído"] = "Sim";
+    found.data["Primeiro Acesso Concluído"] = resolveHostFirstAccess(found.data);
     await updateRow(HOST_SHEET, dataset.headers, found.rowNumber, found.data);
 
     return res.json({ ok: true, message: "Primeiro acesso concluído." });
@@ -950,7 +981,7 @@ app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
     }
 
     const hostNumero = hostRowData.data["Inscrição"];
-    const hostStatus = normalizeText(hostRowData.data["Status do Anfitrião"] || "ativo");
+    const hostStatus = normalizeText(resolveHostStatus(hostRowData.data));
     if (hostStatus !== "ativo") {
       return res.status(403).json({ error: "Anfitrião inativo. Contate o admin." });
     }
@@ -1056,6 +1087,8 @@ app.post("/api/host/decision", requireAuth("host"), async (req, res) => {
 
     target.data["Status da solicitação"] = decision === "aceito" ? "Aceito" : "Rejeitado";
     target.data["Permissão anfitrião"] = decision === "aceito" ? "Concedido" : "Negado";
+    target.data["Status do Intercambista"] = decision === "aceito" ? "Ativo" : "Inativo";
+    target.data["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(target.data);
     target.data["Data da decisão"] = nowIsoDate();
     target.data["Observação da decisão"] = note;
 
@@ -1099,7 +1132,7 @@ app.post("/api/candidate/register", loginLimiter, async (req, res) => {
     const row = buildCandidateValueMap(req.body);
     const accessPassword = generateHostPassword();
     row["Senha"] = await bcrypt.hash(accessPassword, 12);
-    row["Primeiro Acesso Concluído"] = "Sim";
+    row["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(row);
     await appendRow(CANDIDATE_SHEET, dataset.headers, row);
     const emailSent = await sendEmail(
       row["E-mail institucional"] || "",
@@ -1180,6 +1213,8 @@ app.post("/api/host/remove-candidate", requireAuth("host"), async (req, res) => 
     candidate.data["Anfitrião escolhido - Nome"] = "";
     candidate.data["Status da solicitação"] = "Sem solicitação";
     candidate.data["Permissão anfitrião"] = "Pendente";
+    candidate.data["Status do Intercambista"] = "Pendente";
+    candidate.data["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(candidate.data);
     candidate.data["Data da decisão"] = "";
     candidate.data["Observação da decisão"] = "Inscrição removida pelo anfitrião.";
     await updateRow(CANDIDATE_SHEET, candidates.headers, candidate.rowNumber, candidate.data);
@@ -1218,7 +1253,7 @@ app.post("/api/candidate/first-access", loginLimiter, async (req, res) => {
     }
 
     found.data["Senha"] = await bcrypt.hash(novaSenha, 12);
-    found.data["Primeiro Acesso Concluído"] = "Sim";
+    found.data["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(found.data);
     await updateRow(CANDIDATE_SHEET, dataset.headers, found.rowNumber, found.data);
 
     return res.json({ ok: true, message: "Primeiro acesso concluído." });
@@ -1233,7 +1268,7 @@ app.get("/api/candidate/hosts", requireAuth("candidate"), async (req, res) => {
     const proLookup = await getProGestaoLookup();
     const hosts = await getRows(HOST_SHEET, hostHeaders);
     const ativos = hosts.rows
-      .filter((row) => normalizeText(row.data["Status do Anfitrião"] || "ativo") === "ativo")
+      .filter((row) => normalizeText(resolveHostStatus(row.data)) === "ativo")
       .filter((row) => normalizeText(row.data["Permissão admin"] || "") === "concedido")
       .map((row) => publicHostView(row.data, proLookup));
 
@@ -1257,7 +1292,7 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }
 
-    if (normalizeText(host.data["Status do Anfitrião"] || "") !== "ativo") {
+    if (normalizeText(resolveHostStatus(host.data)) !== "ativo") {
       return res.status(400).json({ error: "Anfitrião inativo para novas solicitações." });
     }
     if (normalizeText(host.data["Permissão admin"] || "") !== "concedido") {
@@ -1278,6 +1313,8 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
     candidate.data["Data da decisão"] = "";
     candidate.data["Observação da decisão"] = "";
     candidate.data["Permissão anfitrião"] = "Pendente";
+    candidate.data["Status do Intercambista"] = "Pendente";
+    candidate.data["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(candidate.data);
 
     await updateRow(CANDIDATE_SHEET, candidates.headers, candidate.rowNumber, candidate.data);
     res.json({ ok: true, message: "Solicitacao enviada para o anfitriao." });
@@ -1311,6 +1348,7 @@ app.get("/api/candidate/status", requireAuth("candidate"), async (req, res) => {
       dataDecisao: candidate.data["Data da decisão"] || "",
       genero: candidate.data["Gênero"] || "",
       permissaoAnfitriao: candidate.data["Permissão anfitrião"] || "Pendente",
+      statusIntercambista: resolveCandidateStatus(candidate.data),
     });
   } catch (error) {
     console.error("candidate/status", error);
@@ -1364,7 +1402,7 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
       numeroInscricao: row.data["Inscrição"] || "",
       entidade: row.data["Unidade Gestora"] || "",
       cnpj: row.data["Município CNPJ"] || "",
-      status: row.data["Status do Anfitrião"] || "Ativo",
+      status: resolveHostStatus(row.data),
       permissaoAdmin: row.data["Permissão admin"] || "",
       intercambistasAceitos: acceptedByHost.get(String(row.data["Inscrição"] || "")) || 0,
       vagas: row.data["Número de vagas oferecidas"] || "",
@@ -1388,6 +1426,7 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
         status: row.data["Status da solicitação"] || "",
         dataDecisao: row.data["Data da decisão"] || "",
         permissaoAnfitriao: row.data["Permissão anfitrião"] || "",
+        statusIntercambista: resolveCandidateStatus(row.data),
       }));
 
     res.json({
@@ -1420,11 +1459,12 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
     }
 
     host.data["Permissão admin"] = permissao;
+    host.data["Status do Anfitrião"] = permissao === "Concedido" ? "Ativo" : "Inativo";
     if (permissao === "Concedido") {
       if (!host.data["Senha"]) {
         const senhaInicial = generateHostPassword();
         host.data["Senha"] = await bcrypt.hash(senhaInicial, 12);
-        host.data["Primeiro Acesso Concluído"] = "Sim";
+        host.data["Primeiro Acesso Concluído"] = resolveHostFirstAccess(host.data);
         await sendEmail(
           host.data["E-mail de contato"] || "",
           "Intercâmbio RPPS - Cadastro de Anfitrião aprovado",
@@ -1442,6 +1482,7 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
       }
     }
 
+    host.data["Primeiro Acesso Concluído"] = resolveHostFirstAccess(host.data);
     await updateRow(HOST_SHEET, data.headers, host.rowNumber, host.data);
 
     res.json({ ok: true, status: permissao });
@@ -1466,6 +1507,7 @@ app.post("/api/admin/remove-host", requireAuth("admin"), async (req, res) => {
 
     host.data["Status do Anfitrião"] = "Inativo";
     host.data["Permissão admin"] = "Negado";
+    host.data["Primeiro Acesso Concluído"] = resolveHostFirstAccess(host.data);
     await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
 
     res.json({ ok: true });
