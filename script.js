@@ -10,6 +10,11 @@ const state = {
   },
 };
 
+const STORAGE_KEYS = {
+  tokens: "intercambio_tokens_v1",
+  screen: "intercambio_screen_v1",
+};
+
 function qs(selector) {
   return document.querySelector(selector);
 }
@@ -48,6 +53,37 @@ function setFeedback(id, message, ok = false) {
   if (!el) return;
   el.textContent = message || "";
   el.style.color = ok ? "#0a6b43" : "#8d1d1d";
+}
+
+function saveTokens() {
+  try {
+    localStorage.setItem(STORAGE_KEYS.tokens, JSON.stringify(state.tokens));
+  } catch (_) {}
+}
+
+function loadTokens() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.tokens);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    state.tokens.candidate = String(parsed?.candidate || "");
+    state.tokens.host = String(parsed?.host || "");
+    state.tokens.admin = String(parsed?.admin || "");
+  } catch (_) {}
+}
+
+function saveScreen(screenId) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.screen, String(screenId || ""));
+  } catch (_) {}
+}
+
+function loadScreen() {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.screen) || "";
+  } catch (_) {
+    return "";
+  }
 }
 
 const lottieUi = {
@@ -275,6 +311,7 @@ function openWorkspace(screenId) {
   const title = qs("#workspaceTitle");
   if (title) title.textContent = titles[screenId] || "Módulo do Sistema";
   if (workspaceTop) workspaceTop.hidden = screenId === "form-host" || screenId === "form-candidate";
+  saveScreen(screenId);
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -288,6 +325,7 @@ function showHome() {
   if (landing) landing.hidden = false;
   if (footer) footer.hidden = false;
   if (backTop) backTop.hidden = false;
+  saveScreen("home");
 }
 
 function collectFormData(form) {
@@ -980,12 +1018,14 @@ function setupWorkspaceActions() {
         }
       );
       state.tokens.candidate = data.token;
+      saveTokens();
       setFeedback("candidateLoginFeedback", "Login realizado com sucesso.", true);
       openWorkspace("candidate-area");
       await refreshCandidateArea();
     } catch (error) {
       setFeedback("candidateLoginFeedback", error.message, false);
       state.tokens.candidate = "";
+      saveTokens();
     }
   });
 
@@ -1004,12 +1044,14 @@ function setupWorkspaceActions() {
         }
       );
       state.tokens.host = data.token;
+      saveTokens();
       setFeedback("hostLoginFeedback", "Login realizado com sucesso.", true);
       openWorkspace("host-area");
       await refreshHostArea();
     } catch (error) {
       setFeedback("hostLoginFeedback", error.message, false);
       state.tokens.host = "";
+      saveTokens();
     }
   });
 
@@ -1030,12 +1072,14 @@ function setupWorkspaceActions() {
         }
       );
       state.tokens.admin = data.token;
+      saveTokens();
       setFeedback("adminLoginFeedback", "Login realizado com sucesso.", true);
       openWorkspace("admin-area");
       await refreshAdminArea();
     } catch (error) {
       setFeedback("adminLoginFeedback", error.message, false);
       state.tokens.admin = "";
+      saveTokens();
     }
   });
 
@@ -1163,14 +1207,17 @@ function setupWorkspaceActions() {
 
       if (action === "logout-admin") {
         state.tokens.admin = "";
+        saveTokens();
         openWorkspace("admin-login");
       }
       if (action === "logout-host") {
         state.tokens.host = "";
+        saveTokens();
         openWorkspace("host-login");
       }
       if (action === "logout-candidate") {
         state.tokens.candidate = "";
+        saveTokens();
         openWorkspace("candidate-login");
       }
     } catch (error) {
@@ -1181,6 +1228,7 @@ function setupWorkspaceActions() {
 
 document.addEventListener("DOMContentLoaded", () => {
   forceHideLottieOverlay();
+  loadTokens();
   setupSmoothScroll();
   setupNavbarToggle();
   setupSystemPanel();
@@ -1190,6 +1238,54 @@ document.addEventListener("DOMContentLoaded", () => {
   setupSmartInputs();
   setupCnpjPrefill();
   setupWorkspaceActions();
+
+  const restore = async () => {
+    const savedScreen = loadScreen();
+    if (!savedScreen || savedScreen === "home") return;
+
+    if (savedScreen === "admin-area") {
+      if (!state.tokens.admin) return openWorkspace("admin-login");
+      openWorkspace("admin-area");
+      try {
+        await refreshAdminArea();
+      } catch (_) {
+        state.tokens.admin = "";
+        saveTokens();
+        openWorkspace("admin-login");
+      }
+      return;
+    }
+
+    if (savedScreen === "host-area") {
+      if (!state.tokens.host) return openWorkspace("host-login");
+      openWorkspace("host-area");
+      try {
+        await refreshHostArea();
+      } catch (_) {
+        state.tokens.host = "";
+        saveTokens();
+        openWorkspace("host-login");
+      }
+      return;
+    }
+
+    if (savedScreen === "candidate-area") {
+      if (!state.tokens.candidate) return openWorkspace("candidate-login");
+      openWorkspace("candidate-area");
+      try {
+        await refreshCandidateArea();
+      } catch (_) {
+        state.tokens.candidate = "";
+        saveTokens();
+        openWorkspace("candidate-login");
+      }
+      return;
+    }
+
+    openWorkspace(savedScreen);
+  };
+
+  restore();
 });
 
 window.addEventListener("load", () => {
