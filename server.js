@@ -438,7 +438,7 @@ function hostSummaryView(row) {
     cargoDirigente: row.data["Cargo/Função (Dirigente)"] || "",
     dataSolicitacao: row.data.Data || "",
     status: row.data["Status do Anfitrião"] || "Ativo",
-    permissaoAdmin: row.data["Permissão admin"] || "Pendente",
+    permissaoAdmin: row.data["Permissão admin"] || "",
   };
 }
 
@@ -1126,7 +1126,7 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
       entidade: row.data["Unidade Gestora"] || "",
       cnpj: row.data["Município CNPJ"] || "",
       status: row.data["Status do Anfitrião"] || "Ativo",
-      permissaoAdmin: row.data["Permissão admin"] || "Pendente",
+      permissaoAdmin: row.data["Permissão admin"] || "",
       intercambistasAceitos: acceptedByHost.get(String(row.data["Inscrição"] || "")) || 0,
       vagas: row.data["Número de vagas oferecidas"] || "",
       uf: row.data["UF"] || "",

@@ -656,6 +656,23 @@ body.system-menu-open {
   padding: 0.55rem 0.8rem;
 }
 
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.search-input-wrap img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex: 0 0 24px;
+}
+
+.search-input-wrap input {
+  min-width: 240px;
+}
+
 .search-count {
   color: #cd2f2f;
   font-size: 0.85rem;
@@ -909,6 +926,10 @@ body.system-menu-open {
     min-width: 220px;
   }
 
+  .search-input-wrap input {
+    min-width: 180px;
+  }
+
   .read-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -926,6 +947,10 @@ body.system-menu-open {
 
   .search-field input {
     min-width: 0;
+    width: 100%;
+  }
+
+  .search-input-wrap {
     width: 100%;
   }
 }
