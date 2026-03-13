@@ -416,7 +416,7 @@ function publicHostView(hostData) {
     numeroInscricao: hostData["Inscrição"] || "",
     entidade: hostData["Unidade Gestora"] || "",
     uf,
-    bandeira: uf ? `${uf}.png` : "",
+    bandeira: uf ? `img-ufs/${uf}.png` : "",
     email: hostData["E-mail de contato"] || "",
     telefone: hostData["Telefone de contato"] || "",
     nivelProGestao: hostData["Nível do Pró-Gestão"] || "",
