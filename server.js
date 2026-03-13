@@ -278,22 +278,31 @@ const mailer =
         host: SMTP_HOST,
         port: SMTP_PORT,
         secure: SMTP_PORT === 465,
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
         auth: { user: SMTP_USER, pass: SMTP_PASS },
       })
     : null;
 
 async function sendEmail(to, subject, text) {
-  if (!to) return;
+  if (!to) return false;
   if (!mailer) {
     console.warn(`[mail-disabled] ${subject} -> ${to}`);
-    return;
+    return false;
   }
-  await mailer.sendMail({
-    from: SMTP_FROM,
-    to,
-    subject,
-    text,
-  });
+  try {
+    await mailer.sendMail({
+      from: SMTP_FROM,
+      to,
+      subject,
+      text,
+    });
+    return true;
+  } catch (error) {
+    console.error("sendEmail", { to, subject, error: error?.message || error });
+    return false;
+  }
 }
 
 async function getHeader(sheetName) {
@@ -777,13 +786,14 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
 
     const { headers, rows } = await getRows(HOST_SHEET, hostHeaders);
     const existing = rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
+    const accessPassword = generateHostPassword();
+    const accessPasswordHash = await bcrypt.hash(accessPassword, 12);
 
     if (existing) {
       const numeroInscricao = String(existing.data["Inscrição"] || "").trim() || (await getNextHostRegistration(rows));
-      const currentPass = existing.data["Senha"] || "";
-      const valueMap = buildHostValueMap(req.body, currentPass, numeroInscricao);
+      const valueMap = buildHostValueMap(req.body, accessPasswordHash, numeroInscricao);
 
-      valueMap["Primeiro Acesso Concluído"] = existing.data["Primeiro Acesso Concluído"] || "Não";
+      valueMap["Primeiro Acesso Concluído"] = "Sim";
       valueMap["Status do Anfitrião"] = existing.data["Status do Anfitrião"] || "Ativo";
       valueMap["Permissão admin"] = existing.data["Permissão admin"] || "Pendente";
 
@@ -794,7 +804,7 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
         hostRegistrationEmailText(
           valueMap,
           onlyDigits(valueMap["Município CNPJ"]),
-          "Será disponibilizada após autorização do admin. No primeiro acesso, defina sua senha."
+          accessPassword
         )
       );
 
@@ -808,7 +818,8 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
 
     const numeroInscricao = await getNextHostRegistration(rows);
 
-    const valueMap = buildHostValueMap(req.body, "", numeroInscricao);
+    const valueMap = buildHostValueMap(req.body, accessPasswordHash, numeroInscricao);
+    valueMap["Primeiro Acesso Concluído"] = "Sim";
     await appendRow(HOST_SHEET, headers, valueMap);
     await sendEmail(
       valueMap["E-mail de contato"] || "",
@@ -816,7 +827,7 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
       hostRegistrationEmailText(
         valueMap,
         onlyDigits(valueMap["Município CNPJ"]),
-        "Será disponibilizada após autorização do admin. No primeiro acesso, defina sua senha."
+        accessPassword
       )
     );
 
@@ -856,10 +867,6 @@ app.post("/api/host/login", loginLimiter, async (req, res) => {
     const passOk = await bcrypt.compare(senha, found.data["Senha"] || "");
     if (!passOk) {
       return res.status(401).json({ error: "Credenciais inválidas." });
-    }
-
-    if (normalizeText(found.data["Primeiro Acesso Concluído"] || "nao") !== "sim") {
-      return res.status(403).json({ error: "Primeiro acesso obrigatório. Defina sua senha." });
     }
 
     const token = createToken("host", String(found.rowNumber));
@@ -1078,6 +1085,9 @@ app.post("/api/candidate/register", loginLimiter, async (req, res) => {
     }
 
     const row = buildCandidateValueMap(req.body);
+    const accessPassword = generateHostPassword();
+    row["Senha"] = await bcrypt.hash(accessPassword, 12);
+    row["Primeiro Acesso Concluído"] = "Sim";
     await appendRow(CANDIDATE_SHEET, dataset.headers, row);
     await sendEmail(
       row["E-mail institucional"] || "",
@@ -1085,7 +1095,7 @@ app.post("/api/candidate/register", loginLimiter, async (req, res) => {
       candidateRegistrationEmailText(
         row,
         onlyDigits(row.CPF),
-        "Definir no primeiro acesso."
+        accessPassword
       )
     );
 
@@ -1105,10 +1115,6 @@ app.post("/api/candidate/login", loginLimiter, async (req, res) => {
 
     if (!found) {
       return res.status(404).json({ error: "CPF não encontrado." });
-    }
-
-    if (normalizeText(found.data["Primeiro Acesso Concluído"] || "nao") !== "sim") {
-      return res.status(403).json({ error: "Primeiro acesso obrigatório. Defina sua senha." });
     }
 
     const passOk = await bcrypt.compare(senha, found.data["Senha"] || "");
@@ -1403,25 +1409,25 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
 
     host.data["Permissão admin"] = permissao;
     if (permissao === "Concedido") {
-      const senhaInicial = generateHostPassword();
-      host.data["Senha"] = await bcrypt.hash(senhaInicial, 12);
-      host.data["Primeiro Acesso Concluído"] = "Não";
-      await sendEmail(
-        host.data["E-mail de contato"] || "",
-        "Intercâmbio RPPS - Cadastro de Anfitrião aprovado",
-        [
-          "Olá,",
-          "",
-          `Seu cadastro de anfitrião foi aprovado pelo admin.`,
-          `Inscrição: ${host.data["Inscrição"] || "-"}`,
-          `CNPJ: ${host.data["Município CNPJ"] || "-"}`,
-          `Senha inicial: ${senhaInicial}`,
-          "",
-          "Acesse a área do anfitrião e realize o primeiro acesso para definir sua senha definitiva.",
-          "",
-          "Conaprev - Programa de Intercâmbio Técnico",
-        ].join("\n")
-      );
+      if (!host.data["Senha"]) {
+        const senhaInicial = generateHostPassword();
+        host.data["Senha"] = await bcrypt.hash(senhaInicial, 12);
+        host.data["Primeiro Acesso Concluído"] = "Sim";
+        await sendEmail(
+          host.data["E-mail de contato"] || "",
+          "Intercâmbio RPPS - Cadastro de Anfitrião aprovado",
+          [
+            "Olá,",
+            "",
+            "Seu cadastro de anfitrião foi aprovado pelo admin.",
+            `Inscrição: ${host.data["Inscrição"] || "-"}`,
+            `CNPJ (Usuário): ${host.data["Município CNPJ"] || "-"}`,
+            `Senha de acesso: ${senhaInicial}`,
+            "",
+            "Conaprev - Programa de Intercâmbio Técnico",
+          ].join("\n")
+        );
+      }
     }
 
     await updateRow(HOST_SHEET, data.headers, host.rowNumber, host.data);
