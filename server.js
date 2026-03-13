@@ -321,10 +321,10 @@ const mailer =
     : null;
 
 async function sendEmail(to, subject, text) {
-  if (!to) return false;
+  if (!to) return { ok: false, error: "destinatario ausente" };
   if (!mailer) {
     console.warn(`[mail-disabled] ${subject} -> ${to}`);
-    return false;
+    return { ok: false, error: "smtp nao configurado" };
   }
   try {
     await mailer.sendMail({
@@ -333,10 +333,11 @@ async function sendEmail(to, subject, text) {
       subject,
       text,
     });
-    return true;
+    return { ok: true, error: "" };
   } catch (error) {
-    console.error("sendEmail", { to, subject, error: error?.message || error });
-    return false;
+    const errorMessage = String(error?.message || error || "erro desconhecido");
+    console.error("sendEmail", { to, subject, error: errorMessage });
+    return { ok: false, error: errorMessage };
   }
 }
 
@@ -835,7 +836,7 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
       valueMap["Primeiro Acesso Concluído"] = resolveHostFirstAccess(valueMap);
 
       await updateRow(HOST_SHEET, headers, existing.rowNumber, valueMap);
-      const emailSent = await sendEmail(
+      const mailResult = await sendEmail(
         valueMap["E-mail de contato"] || "",
         "Confirmação de inscrição – Intercâmbio Técnico entre Regimes Previdenciários",
         hostRegistrationEmailText(
@@ -849,7 +850,8 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
         updated: true,
         numeroInscricao,
         cnpj,
-        emailSent,
+        emailSent: Boolean(mailResult?.ok),
+        mailError: String(mailResult?.error || ""),
         message: "Cadastro atualizado com sucesso.",
       });
     }
@@ -859,7 +861,7 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
     const valueMap = buildHostValueMap(req.body, accessPasswordHash, numeroInscricao);
     valueMap["Primeiro Acesso Concluído"] = resolveHostFirstAccess(valueMap);
     await appendRow(HOST_SHEET, headers, valueMap);
-    const emailSent = await sendEmail(
+    const mailResult = await sendEmail(
       valueMap["E-mail de contato"] || "",
       "Confirmação de inscrição – Intercâmbio Técnico entre Regimes Previdenciários",
       hostRegistrationEmailText(
@@ -873,7 +875,8 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
       created: true,
       numeroInscricao,
       cnpj,
-      emailSent,
+      emailSent: Boolean(mailResult?.ok),
+      mailError: String(mailResult?.error || ""),
       message: "Cadastro de anfitrião realizado. Aguardando autorização do admin.",
     });
   } catch (error) {
@@ -1134,7 +1137,7 @@ app.post("/api/candidate/register", loginLimiter, async (req, res) => {
     row["Senha"] = await bcrypt.hash(accessPassword, 12);
     row["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(row);
     await appendRow(CANDIDATE_SHEET, dataset.headers, row);
-    const emailSent = await sendEmail(
+    const mailResult = await sendEmail(
       row["E-mail institucional"] || "",
       "Confirmação de inscrição – Intercâmbio Técnico entre Regimes Previdenciários",
       candidateRegistrationEmailText(
@@ -1144,7 +1147,12 @@ app.post("/api/candidate/register", loginLimiter, async (req, res) => {
       )
     );
 
-    res.status(201).json({ ok: true, emailSent, message: "Cadastro do intercambista realizado." });
+    res.status(201).json({
+      ok: true,
+      emailSent: Boolean(mailResult?.ok),
+      mailError: String(mailResult?.error || ""),
+      message: "Cadastro do intercambista realizado.",
+    });
   } catch (error) {
     console.error("candidate/register", error);
     res.status(500).json({ error: "Falha ao cadastrar intercambista." });

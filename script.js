@@ -75,11 +75,9 @@ function showMessageModal(title, message, kind = "info") {
           <i class="fa-solid ${kindClass === "success" ? "fa-circle-check" : kindClass === "warning" ? "fa-triangle-exclamation" : kindClass === "error" ? "fa-circle-xmark" : "fa-circle-info"}"></i>
         </div>
         <p>${escapeHtml(safeMessage)}</p>
-        <div class="message-modal__actions">
-          <button type="button" class="btn btn-primary" data-close-modal>Entendi</button>
-        </div>
       </div>
-    `
+    `,
+    { closeByBackdrop: false, closeByEsc: false }
   );
 }
 
@@ -711,7 +709,7 @@ function setupCnpjPrefill() {
       showMessageModal("CNPJ inválido", "Informe um CNPJ do município válido para buscar.", "warning");
       return;
     }
-    setFeedback("hostRegisterFeedback", "Buscando dados na planilha...", true);
+    setFeedback("hostRegisterFeedback", "Buscando dados no Nosso Banco de dados...", true);
     try {
       const data = await runWithLottie(
         () => apiFetch(`/api/prefill/municipio/${cnpj}`),
@@ -737,7 +735,7 @@ function setupCnpjPrefill() {
       showMessageModal("CNPJ inválido", "Informe um CNPJ do município válido para buscar.", "warning");
       return;
     }
-    setFeedback("candidateRegisterFeedback", "Buscando dados na planilha...", true);
+    setFeedback("candidateRegisterFeedback", "Buscando dados no Nosso Banco de dados...", true);
     try {
       const data = await runWithLottie(
         () => apiFetch(`/api/prefill/municipio/${cnpj}`),
@@ -781,19 +779,24 @@ function iconButton(action, rowNumber, icon, label, context = "") {
   `;
 }
 
-function openModal(title, html) {
+function openModal(title, html, options = {}) {
   const modal = qs("#detailsModal");
   const modalTitle = qs("#detailsModalTitle");
   const modalBody = qs("#detailsModalBody");
   if (!modal || !modalTitle || !modalBody) return;
   modalTitle.textContent = title;
   modalBody.innerHTML = html;
+  modal.dataset.closeByBackdrop = options.closeByBackdrop === false ? "false" : "true";
+  modal.dataset.closeByEsc = options.closeByEsc === false ? "false" : "true";
   modal.hidden = false;
 }
 
 function closeModal() {
   const modal = qs("#detailsModal");
-  if (modal) modal.hidden = true;
+  if (!modal) return;
+  modal.hidden = true;
+  modal.dataset.closeByBackdrop = "true";
+  modal.dataset.closeByEsc = "true";
 }
 
 function renderFieldList(data, fields) {
@@ -1072,9 +1075,10 @@ function setupWorkspaceActions() {
       );
       setFeedback("hostRegisterFeedback", data.updated ? "Cadastro atualizado com sucesso." : "Cadastro concluído.", true);
       if (data.emailSent === false) {
+        console.error("[EMAIL_HOST_REGISTER_FAIL]", data.mailError || "erro nao informado");
         showMessageModal(
           "Cadastro salvo, e-mail pendente",
-          "As informações foram salvas na planilha, mas houve falha no envio do e-mail automático.",
+          "As informações foram salvas no Nosso Banco de dados, mas houve falha no envio do e-mail com as intruções de acesso.",
           "warning"
         );
       }
@@ -1102,9 +1106,10 @@ function setupWorkspaceActions() {
       );
       setFeedback("candidateRegisterFeedback", "Cadastro concluído. Realize o primeiro acesso para criar sua senha.", true);
       if (data?.emailSent === false) {
+        console.error("[EMAIL_CANDIDATE_REGISTER_FAIL]", data.mailError || "erro nao informado");
         showMessageModal(
           "Cadastro salvo, e-mail pendente",
-          "As informações foram salvas na planilha, mas houve falha no envio do e-mail automático.",
+          "As informações foram salvas no Nosso Banco de dados, mas houve falha no envio do e-mail com as intruções de acesso.",
           "warning"
         );
       }
@@ -1246,11 +1251,21 @@ function setupWorkspaceActions() {
   qs("#hostSearchInput")?.addEventListener("input", applyHostSearch);
 
   qsa("[data-close-modal]").forEach((el) => {
-    el.addEventListener("click", closeModal);
+    el.addEventListener("click", (event) => {
+      const modal = qs("#detailsModal");
+      if (!modal) return;
+      const isBackdrop = event.currentTarget.classList.contains("data-modal__backdrop");
+      if (isBackdrop && modal.dataset.closeByBackdrop === "false") return;
+      closeModal();
+    });
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeModal();
+    if (event.key !== "Escape") return;
+    const modal = qs("#detailsModal");
+    if (!modal || modal.hidden) return;
+    if (modal.dataset.closeByEsc === "false") return;
+    closeModal();
   });
 
   document.addEventListener("click", async (event) => {
