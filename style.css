@@ -884,6 +884,10 @@ body.system-menu-open {
   padding: 1rem;
 }
 
+.data-modal[hidden] {
+  display: none !important;
+}
+
 .data-modal__backdrop {
   position: absolute;
   inset: 0;
