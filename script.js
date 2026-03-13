@@ -80,10 +80,43 @@ function saveScreen(screenId) {
 
 function loadScreen() {
   try {
+    const rawHash = String(window.location.hash || "").replace(/^#/, "");
+    if (rawHash.startsWith("screen=")) {
+      return decodeURIComponent(rawHash.slice("screen=".length));
+    }
+  } catch (_) {}
+  try {
     return localStorage.getItem(STORAGE_KEYS.screen) || "";
   } catch (_) {
     return "";
   }
+}
+
+function updateScreenHash(screenId) {
+  try {
+    if (!screenId || screenId === "home") {
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+      return;
+    }
+    const hash = `#screen=${encodeURIComponent(screenId)}`;
+    history.replaceState(null, "", window.location.pathname + window.location.search + hash);
+  } catch (_) {}
+}
+
+function persistCurrentScreenFromDOM() {
+  try {
+    const workspace = qs("#workspace");
+    if (!workspace || workspace.hidden) {
+      saveScreen("home");
+      updateScreenHash("home");
+      return;
+    }
+    const active = qs(".workspace-screen.active");
+    const activeId = active?.dataset?.screenId || "";
+    if (!activeId) return;
+    saveScreen(activeId);
+    updateScreenHash(activeId);
+  } catch (_) {}
 }
 
 const lottieUi = {
@@ -312,6 +345,7 @@ function openWorkspace(screenId) {
   if (title) title.textContent = titles[screenId] || "Módulo do Sistema";
   if (workspaceTop) workspaceTop.hidden = screenId === "form-host" || screenId === "form-candidate";
   saveScreen(screenId);
+  updateScreenHash(screenId);
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -326,6 +360,7 @@ function showHome() {
   if (footer) footer.hidden = false;
   if (backTop) backTop.hidden = false;
   saveScreen("home");
+  updateScreenHash("home");
 }
 
 function collectFormData(form) {
@@ -1290,6 +1325,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
 window.addEventListener("load", () => {
   forceHideLottieOverlay();
+});
+
+window.addEventListener("pagehide", () => {
+  persistCurrentScreenFromDOM();
+});
+
+window.addEventListener("beforeunload", () => {
+  persistCurrentScreenFromDOM();
 });
 
 
