@@ -475,6 +475,11 @@ body.system-menu-open {
   transform: translateY(-1px);
 }
 
+.module-form input.progestao-input--none {
+  color: #c62828;
+  font-weight: 600;
+}
+
 .form-grid {
   display: grid;
   gap: 1rem;
@@ -922,6 +927,61 @@ body.system-menu-open {
 .data-modal__body {
   padding: 1.25rem;
   overflow: auto;
+}
+
+.message-modal {
+  max-width: 620px;
+  margin: 0.2rem auto;
+  border: 1px solid #dce8f4;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  padding: 1rem 1rem 0.9rem;
+  text-align: center;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+.message-modal__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  margin: 0 auto 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+}
+
+.message-modal p {
+  margin: 0;
+  color: #173c5f;
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+
+.message-modal__actions {
+  margin-top: 0.95rem;
+  display: flex;
+  justify-content: center;
+}
+
+.message-modal--info .message-modal__icon {
+  background: #e8f2fd;
+  color: #0b63ad;
+}
+
+.message-modal--success .message-modal__icon {
+  background: #e8f8ef;
+  color: #1b8f4d;
+}
+
+.message-modal--warning .message-modal__icon {
+  background: #fff4e8;
+  color: #d97706;
+}
+
+.message-modal--error .message-modal__icon {
+  background: #ffecec;
+  color: #d62839;
 }
 
 .read-grid {

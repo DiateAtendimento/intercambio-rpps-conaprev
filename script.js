@@ -27,6 +27,14 @@ function normalizeDigits(value) {
   return String(value || "").replace(/\D/g, "");
 }
 
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 function isStrongPassword(password) {
   const value = String(password || "");
   return value.length >= 8 && /[A-Za-z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
@@ -53,6 +61,26 @@ function setFeedback(id, message, ok = false) {
   if (!el) return;
   el.textContent = message || "";
   el.style.color = ok ? "#0a6b43" : "#8d1d1d";
+}
+
+function showMessageModal(title, message, kind = "info") {
+  const safeTitle = title || "Aviso";
+  const safeMessage = message || "Não foi possível concluir a ação.";
+  const kindClass = ["info", "success", "warning", "error"].includes(kind) ? kind : "info";
+  openModal(
+    safeTitle,
+    `
+      <div class="message-modal message-modal--${kindClass}">
+        <div class="message-modal__icon" aria-hidden="true">
+          <i class="fa-solid ${kindClass === "success" ? "fa-circle-check" : kindClass === "warning" ? "fa-triangle-exclamation" : kindClass === "error" ? "fa-circle-xmark" : "fa-circle-info"}"></i>
+        </div>
+        <p>${escapeHtml(safeMessage)}</p>
+        <div class="message-modal__actions">
+          <button type="button" class="btn btn-primary" data-close-modal>Entendi</button>
+        </div>
+      </div>
+    `
+  );
 }
 
 function saveTokens() {
@@ -418,7 +446,7 @@ function payloadHostRegister(form) {
     "Responsável pela coordenação local": String(formData.coordenadorLocal || "").trim(),
     "E-mail de contato": String(formData.email || "").trim(),
     "Telefone de contato": String(formData.telefone || "").trim(),
-    "Nível do Pró-Gestão": String(formData.nivelProGestao || "").trim(),
+    "Nível do Pró-Gestão": normalizeProGestaoValue(formData.nivelProGestao),
     "Número de vagas oferecidas": String(formData.vagas || "").trim(),
     "Nº de áreas/setores disponíveis": String(formData.totalAreas || "").trim(),
     "Outros (especificar)": String(formData.areaOutrosTexto || "").trim(),
@@ -500,7 +528,7 @@ function payloadCandidateRegister(form) {
     "Município CNPJ": normalizeDigits(formData.municipioCnpj),
     "Unidade Gestora": String(formData.unidadeGestora || "").trim(),
     "Unidade Gestora CNPJ": normalizeDigits(formData.unidadeGestoraCnpj),
-    "Nível do Pró-Gestão": String(formData.nivelProGestao || "").trim(),
+    "Nível do Pró-Gestão": normalizeProGestaoValue(formData.nivelProGestao),
     "Nome do Dirigente ou Responsável Legal": String(formData.dirigente || "").trim(),
     "Cargo/Função (Dirigente)": String(formData.cargoDirigente || "").trim(),
     "E-mail institucional": String(formData.email || "").trim(),
@@ -543,6 +571,21 @@ function payloadCandidateRegister(form) {
   return payload;
 }
 
+function normalizeProGestaoValue(value) {
+  const clean = String(value || "").trim();
+  return clean || "Sem Pró-gestão";
+}
+
+function applyProGestaoFieldState(form, value) {
+  if (!form) return;
+  const input = form.querySelector('[name="nivelProGestao"]');
+  if (!input) return;
+  const normalized = normalizeProGestaoValue(value);
+  input.value = normalized;
+  const isNone = normalizeText(normalized) === normalizeText("Sem Pró-gestão");
+  input.classList.toggle("progestao-input--none", isNone);
+}
+
 function applyPrefillToHostForm(form, data) {
   if (!form || !data) return;
   const set = (name, value) => {
@@ -558,7 +601,7 @@ function applyPrefillToHostForm(form, data) {
   set("cargoDirigente", data.cargoDirigente);
   set("email", data.email);
   set("telefone", data.telefone);
-  set("nivelProGestao", data.nivelProGestao);
+  applyProGestaoFieldState(form, data.nivelProGestao);
   set("responsavel", data.responsavel);
   set("cargoResponsavel", data.cargoResponsavel);
   set("dataPreenchimento", data.dataPreenchimento);
@@ -579,7 +622,7 @@ function applyPrefillToCandidateForm(form, data) {
   set("cargoDirigente", data.cargoDirigente);
   set("email", data.email);
   set("telefone", data.telefone);
-  set("nivelProGestao", data.nivelProGestao);
+  applyProGestaoFieldState(form, data.nivelProGestao);
   set("responsavel", data.responsavel);
   set("cargoResponsavel", data.cargoResponsavel);
   set("dataPreenchimento", data.dataPreenchimento);
@@ -590,12 +633,35 @@ function setupCnpjPrefill() {
   const candidateForm = qs("#candidateRegisterForm");
   const hostBtn = qs("#hostPrefillByCnpj");
   const candidateBtn = qs("#candidatePrefillByCnpj");
+  const hostProGestao = hostForm?.querySelector('[name="nivelProGestao"]');
+  const candidateProGestao = candidateForm?.querySelector('[name="nivelProGestao"]');
+
+  hostProGestao?.addEventListener("input", () => {
+    const isNone = normalizeText(hostProGestao.value) === normalizeText("Sem Pró-gestão");
+    hostProGestao.classList.toggle("progestao-input--none", isNone);
+  });
+
+  candidateProGestao?.addEventListener("input", () => {
+    const isNone = normalizeText(candidateProGestao.value) === normalizeText("Sem Pró-gestão");
+    candidateProGestao.classList.toggle("progestao-input--none", isNone);
+  });
+
+  if (hostProGestao) {
+    const isNone = normalizeText(hostProGestao.value) === normalizeText("Sem Pró-gestão");
+    hostProGestao.classList.toggle("progestao-input--none", isNone);
+  }
+
+  if (candidateProGestao) {
+    const isNone = normalizeText(candidateProGestao.value) === normalizeText("Sem Pró-gestão");
+    candidateProGestao.classList.toggle("progestao-input--none", isNone);
+  }
 
   hostBtn?.addEventListener("click", async () => {
     const raw = hostForm?.querySelector('[name="municipioCnpj"]')?.value || "";
     const cnpj = normalizeDigits(raw);
     if (cnpj.length !== 14) {
-      setFeedback("hostRegisterFeedback", "Informe um CNPJ do município válido para buscar.", false);
+      setFeedback("hostRegisterFeedback", "", false);
+      showMessageModal("CNPJ inválido", "Informe um CNPJ do município válido para buscar.", "warning");
       return;
     }
     setFeedback("hostRegisterFeedback", "Buscando dados na planilha...", true);
@@ -611,7 +677,8 @@ function setupCnpjPrefill() {
       applyPrefillToHostForm(hostForm, data.prefill);
       setFeedback("hostRegisterFeedback", "Dados carregados. Revise e ajuste se necessário.", true);
     } catch (error) {
-      setFeedback("hostRegisterFeedback", error.message, false);
+      setFeedback("hostRegisterFeedback", "", false);
+      showMessageModal("Falha na busca", error.message, "error");
     }
   });
 
@@ -619,7 +686,8 @@ function setupCnpjPrefill() {
     const raw = candidateForm?.querySelector('[name="municipioCnpj"]')?.value || "";
     const cnpj = normalizeDigits(raw);
     if (cnpj.length !== 14) {
-      setFeedback("candidateRegisterFeedback", "Informe um CNPJ do município válido para buscar.", false);
+      setFeedback("candidateRegisterFeedback", "", false);
+      showMessageModal("CNPJ inválido", "Informe um CNPJ do município válido para buscar.", "warning");
       return;
     }
     setFeedback("candidateRegisterFeedback", "Buscando dados na planilha...", true);
@@ -635,7 +703,8 @@ function setupCnpjPrefill() {
       applyPrefillToCandidateForm(candidateForm, data.prefill);
       setFeedback("candidateRegisterFeedback", "Dados carregados. Revise e ajuste se necessário.", true);
     } catch (error) {
-      setFeedback("candidateRegisterFeedback", error.message, false);
+      setFeedback("candidateRegisterFeedback", "", false);
+      showMessageModal("Falha na busca", error.message, "error");
     }
   });
 }

@@ -266,6 +266,16 @@ function resolveProGestaoLevel(proLookup, municipio, uf, fallback) {
   return String(fallback || "").trim().toUpperCase();
 }
 
+function normalizeProGestaoForSheet(value) {
+  const clean = String(value || "").trim();
+  return clean || "Sem Pró-gestão";
+}
+
+function isSemProGestaoValue(value) {
+  const normalized = normalizeText(value);
+  return !normalized || normalized === "sem pro-gestao" || normalized === "sem pro gestao";
+}
+
 const auth = new google.auth.GoogleAuth({
   credentials: pickServiceAccount(),
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -473,7 +483,7 @@ function publicHostView(hostData, proLookup = null) {
     email: hostData["E-mail de contato"] || "",
     telefone: hostData["Telefone de contato"] || "",
     nivelProGestao,
-    semProGestao: !nivelProGestao,
+    semProGestao: isSemProGestaoValue(nivelProGestao),
     vagas: hostData["Número de vagas oferecidas"] || "",
     descricao: hostData["Breve descrição da proposta de intercâmbio"] || "",
     areas: getHostAreas(hostData),
@@ -603,7 +613,7 @@ function buildHostValueMap(payload, passwordHash, numeroInscricao) {
     "Responsável pela coordenação local": sanitizeInput(payload["Responsável pela coordenação local"], 200),
     "E-mail de contato": sanitizeInput(payload["E-mail de contato"], 150),
     "Telefone de contato": sanitizeInput(payload["Telefone de contato"], 40),
-    "Nível do Pró-Gestão": sanitizeInput(payload["Nível do Pró-Gestão"], 60),
+    "Nível do Pró-Gestão": sanitizeInput(normalizeProGestaoForSheet(payload["Nível do Pró-Gestão"]), 60),
     "Número de vagas oferecidas": sanitizeInput(payload["Número de vagas oferecidas"], 20),
     "Nº de áreas/setores disponíveis": sanitizeInput(payload["Nº de áreas/setores disponíveis"], 20),
     "Área: Cadastro e Atendimento (Sim/Não)": yesNo(payload["Área: Cadastro e Atendimento (Sim/Não)"]),
@@ -649,7 +659,7 @@ function buildCandidateValueMap(payload) {
     "Município CNPJ": onlyDigits(payload["Município CNPJ"]),
     "Unidade Gestora": sanitizeInput(payload["Unidade Gestora"], 250),
     "Unidade Gestora CNPJ": onlyDigits(payload["Unidade Gestora CNPJ"]),
-    "Nível do Pró-Gestão": sanitizeInput(payload["Nível do Pró-Gestão"], 60),
+    "Nível do Pró-Gestão": sanitizeInput(normalizeProGestaoForSheet(payload["Nível do Pró-Gestão"]), 60),
     "Nome do Dirigente ou Responsável Legal": sanitizeInput(payload["Nome do Dirigente ou Responsável Legal"], 200),
     "Cargo/Função (Dirigente)": sanitizeInput(payload["Cargo/Função (Dirigente)"], 120),
     "E-mail institucional": sanitizeInput(payload["E-mail institucional"], 150),
