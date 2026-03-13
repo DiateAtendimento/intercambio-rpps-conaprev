@@ -1698,6 +1698,10 @@ main {
   background: rgba(10, 24, 40, 0.32);
 }
 
+.lottie-overlay[hidden] {
+  display: none !important;
+}
+
 .lottie-overlay__card {
   width: min(420px, calc(100% - 2rem));
   background: transparent;
