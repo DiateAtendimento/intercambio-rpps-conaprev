@@ -77,6 +77,7 @@ const loginLimiter = rateLimit({
 
 const HOST_SHEET = "Anfitrião";
 const CANDIDATE_SHEET = "Intercambista";
+const PRO_GESTAO_SHEET = "Pro-gestao";
 
 const hostHeaders = [
   "Inscrição",
@@ -161,6 +162,12 @@ const candidateHeaders = [
   "Permissão anfitrião",
 ];
 
+const proGestaoHeaders = [
+  "ENTE FEDERATIVO",
+  "UF",
+  "NÍVEL ATUAL",
+];
+
 function normalizeText(value) {
   return String(value || "")
     .trim()
@@ -226,6 +233,37 @@ function pickServiceAccount() {
     private_key: privateKey,
     client_email: clientEmail,
   };
+}
+
+function buildProGestaoKey(enteFederativo, uf) {
+  return `${normalizeText(enteFederativo)}|${String(uf || "").trim().toUpperCase()}`;
+}
+
+async function getProGestaoLookup() {
+  const map = new Map();
+  try {
+    const dataset = await getRows(PRO_GESTAO_SHEET, proGestaoHeaders);
+    dataset.rows.forEach((row) => {
+      const ente = row.data["ENTE FEDERATIVO"] || "";
+      const uf = row.data.UF || "";
+      const key = buildProGestaoKey(ente, uf);
+      if (!key || key.startsWith("|")) return;
+      map.set(key, String(row.data["NÍVEL ATUAL"] || "").trim().toUpperCase());
+    });
+  } catch (error) {
+    // Fallback silencioso: se a aba não estiver disponível, usa dados já existentes.
+  }
+  return map;
+}
+
+function resolveProGestaoLevel(proLookup, municipio, uf, fallback) {
+  if (proLookup instanceof Map && municipio && uf) {
+    const key = buildProGestaoKey(municipio, uf);
+    if (proLookup.has(key)) {
+      return String(proLookup.get(key) || "").trim().toUpperCase();
+    }
+  }
+  return String(fallback || "").trim().toUpperCase();
 }
 
 const auth = new google.auth.GoogleAuth({
@@ -410,8 +448,14 @@ function getHostAreas(hostData) {
     .map((key) => key.replace("Área: ", "").replace(" (Sim/Não)", ""));
 }
 
-function publicHostView(hostData) {
+function publicHostView(hostData, proLookup = null) {
   const uf = String(hostData.UF || "").toUpperCase();
+  const nivelProGestao = resolveProGestaoLevel(
+    proLookup,
+    hostData["Município"] || "",
+    uf,
+    hostData["Nível do Pró-Gestão"] || ""
+  );
   return {
     numeroInscricao: hostData["Inscrição"] || "",
     entidade: hostData["Unidade Gestora"] || "",
@@ -419,7 +463,8 @@ function publicHostView(hostData) {
     bandeira: uf ? `img-ufs/${uf}.png` : "",
     email: hostData["E-mail de contato"] || "",
     telefone: hostData["Telefone de contato"] || "",
-    nivelProGestao: hostData["Nível do Pró-Gestão"] || "",
+    nivelProGestao,
+    semProGestao: !nivelProGestao,
     vagas: hostData["Número de vagas oferecidas"] || "",
     descricao: hostData["Breve descrição da proposta de intercâmbio"] || "",
     areas: getHostAreas(hostData),
@@ -599,21 +644,30 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
       return res.status(400).json({ error: "CNPJ do município inválido." });
     }
 
+    const proLookup = await getProGestaoLookup();
     const hosts = await getRows(HOST_SHEET, hostHeaders);
     const host = hosts.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
     if (host) {
+      const uf = host.data.UF || "";
+      const municipio = host.data["Município"] || "";
+      const nivelProGestao = resolveProGestaoLevel(
+        proLookup,
+        municipio,
+        uf,
+        host.data["Nível do Pró-Gestão"] || ""
+      );
       return res.json({
         source: "host",
         prefill: {
-          municipio: host.data["Município"] || "",
-          uf: host.data.UF || "",
+          municipio,
+          uf,
           municipioCnpj: host.data["Município CNPJ"] || "",
           unidadeGestora: host.data["Unidade Gestora"] || "",
           dirigente: host.data["Nome do Dirigente ou Responsável Legal"] || "",
           cargoDirigente: host.data["Cargo/Função (Dirigente)"] || "",
           email: host.data["E-mail de contato"] || "",
           telefone: host.data["Telefone de contato"] || "",
-          nivelProGestao: host.data["Nível do Pró-Gestão"] || "",
+          nivelProGestao,
           responsavel: host.data["Responsável pelo preenchimento"] || "",
           cargoResponsavel: host.data["Cargo/Função (Responsável)"] || "",
           dataPreenchimento: host.data.Data || "",
@@ -624,18 +678,26 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
     const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
     const candidate = candidates.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
     if (candidate) {
+      const uf = candidate.data.UF || "";
+      const municipio = candidate.data["Município"] || "";
+      const nivelProGestao = resolveProGestaoLevel(
+        proLookup,
+        municipio,
+        uf,
+        candidate.data["Nível do Pró-Gestão"] || ""
+      );
       return res.json({
         source: "candidate",
         prefill: {
-          municipio: candidate.data["Município"] || "",
-          uf: candidate.data.UF || "",
+          municipio,
+          uf,
           municipioCnpj: candidate.data["Município CNPJ"] || "",
           unidadeGestora: candidate.data["Unidade Gestora"] || "",
           dirigente: candidate.data["Nome do Dirigente ou Responsável Legal"] || "",
           cargoDirigente: candidate.data["Cargo/Função (Dirigente)"] || "",
           email: candidate.data["E-mail institucional"] || "",
           telefone: candidate.data["Telefone para contato"] || "",
-          nivelProGestao: candidate.data["Nível do Pró-Gestão"] || "",
+          nivelProGestao,
           responsavel: candidate.data["Responsável pelo preenchimento"] || "",
           cargoResponsavel: candidate.data["Cargo/Função (Responsável)"] || "",
           dataPreenchimento: candidate.data.Data || "",
@@ -1067,11 +1129,12 @@ app.post("/api/candidate/first-access", loginLimiter, async (req, res) => {
 
 app.get("/api/candidate/hosts", requireAuth("candidate"), async (req, res) => {
   try {
+    const proLookup = await getProGestaoLookup();
     const hosts = await getRows(HOST_SHEET, hostHeaders);
     const ativos = hosts.rows
       .filter((row) => normalizeText(row.data["Status do Anfitrião"] || "ativo") === "ativo")
       .filter((row) => normalizeText(row.data["Permissão admin"] || "") === "concedido")
-      .map((row) => publicHostView(row.data));
+      .map((row) => publicHostView(row.data, proLookup));
 
     res.json({ hosts: ativos });
   } catch (error) {

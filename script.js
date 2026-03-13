@@ -50,6 +50,76 @@ function setFeedback(id, message, ok = false) {
   el.style.color = ok ? "#0a6b43" : "#8d1d1d";
 }
 
+const lottieUi = {
+  animation: null,
+  startedAt: 0,
+};
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function playOverlayAnimation(filePath, message, loop = true) {
+  const overlay = qs("#lottieOverlay");
+  const player = qs("#lottieOverlayPlayer");
+  const text = qs("#lottieOverlayMessage");
+  if (!overlay || !player || !window.lottie) return;
+
+  if (lottieUi.animation) {
+    lottieUi.animation.destroy();
+    lottieUi.animation = null;
+  }
+
+  player.innerHTML = "";
+  if (text) text.textContent = message || "Processando...";
+  overlay.hidden = false;
+
+  lottieUi.animation = window.lottie.loadAnimation({
+    container: player,
+    renderer: "svg",
+    loop,
+    autoplay: true,
+    path: filePath,
+  });
+}
+
+async function runWithLottie(task, options = {}) {
+  const hasPlayer = Boolean(window.lottie) && Boolean(qs("#lottieOverlay"));
+  if (!hasPlayer) return task();
+
+  const loadingPath = options.loadingPath || "lottie_save_progress.json";
+  const loadingMessage = options.loadingMessage || "Processando...";
+  const successPath = options.successPath || "lottie_success_check.json";
+  const successMessage = options.successMessage || "Concluído com sucesso.";
+  const errorPath = options.errorPath || "lottie_error_generic.json";
+  const minLoadingMs = Number(options.minLoadingMs || 450);
+
+  lottieUi.startedAt = Date.now();
+  playOverlayAnimation(loadingPath, loadingMessage, true);
+
+  try {
+    const result = await task();
+    const elapsed = Date.now() - lottieUi.startedAt;
+    if (elapsed < minLoadingMs) await wait(minLoadingMs - elapsed);
+    playOverlayAnimation(successPath, successMessage, false);
+    await wait(700);
+    return result;
+  } catch (error) {
+    const elapsed = Date.now() - lottieUi.startedAt;
+    if (elapsed < minLoadingMs) await wait(minLoadingMs - elapsed);
+    playOverlayAnimation(errorPath, error?.message || "Falha na operação.", false);
+    await wait(1100);
+    throw error;
+  } finally {
+    const overlay = qs("#lottieOverlay");
+    if (lottieUi.animation) {
+      lottieUi.animation.destroy();
+      lottieUi.animation = null;
+    }
+    if (overlay) overlay.hidden = true;
+  }
+}
+
 function setupSmoothScroll() {
   qsa("[data-scroll]").forEach((el) => {
     el.addEventListener("click", (event) => {
@@ -446,7 +516,14 @@ function setupCnpjPrefill() {
     }
     setFeedback("hostRegisterFeedback", "Buscando dados na planilha...", true);
     try {
-      const data = await apiFetch(`/api/prefill/municipio/${cnpj}`);
+      const data = await runWithLottie(
+        () => apiFetch(`/api/prefill/municipio/${cnpj}`),
+        {
+          loadingPath: "lottie_search_loading.json",
+          loadingMessage: "Buscando dados do município...",
+          successMessage: "Dados encontrados.",
+        }
+      );
       applyPrefillToHostForm(hostForm, data.prefill);
       setFeedback("hostRegisterFeedback", "Dados carregados. Revise e ajuste se necessário.", true);
     } catch (error) {
@@ -463,7 +540,14 @@ function setupCnpjPrefill() {
     }
     setFeedback("candidateRegisterFeedback", "Buscando dados na planilha...", true);
     try {
-      const data = await apiFetch(`/api/prefill/municipio/${cnpj}`);
+      const data = await runWithLottie(
+        () => apiFetch(`/api/prefill/municipio/${cnpj}`),
+        {
+          loadingPath: "lottie_search_loading.json",
+          loadingMessage: "Buscando dados do município...",
+          successMessage: "Dados encontrados.",
+        }
+      );
       applyPrefillToCandidateForm(candidateForm, data.prefill);
       setFeedback("candidateRegisterFeedback", "Dados carregados. Revise e ajuste se necessário.", true);
     } catch (error) {
@@ -634,6 +718,11 @@ async function refreshCandidateArea() {
         <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
         <h4>${escapeHtml(host.entidade)}</h4>
         <p>UF: ${escapeHtml(host.uf || "-")}</p>
+        <p>Nível Pró-Gestão:
+          <span class="${host.semProGestao ? "progestao-level progestao-level--none" : "progestao-level"}">
+            ${escapeHtml(host.nivelProGestao || "Sem Pró-gestão")}
+          </span>
+        </p>
         <p>Número de vagas: ${escapeHtml(host.vagas || "-")}</p>
         <p>Nº de áreas/setores disponíveis: ${escapeHtml((host.areas || []).length || "-")}</p>
         <button class="btn btn-primary" type="button" data-action="select-host" data-host="${escapeHtml(host.numeroInscricao)}">Candidatar-se</button>
@@ -773,7 +862,14 @@ function setupWorkspaceActions() {
     }
     setFeedback("hostRegisterFeedback", "Enviando cadastro...", true);
     try {
-      const data = await apiFetch("/api/host/register", { method: "POST", body: JSON.stringify(payloadHostRegister(hostRegisterForm)) });
+      const data = await runWithLottie(
+        () => apiFetch("/api/host/register", { method: "POST", body: JSON.stringify(payloadHostRegister(hostRegisterForm)) }),
+        {
+          loadingPath: "lottie_save_progress.json",
+          loadingMessage: "Enviando cadastro do anfitrião...",
+          successMessage: "Cadastro processado com sucesso.",
+        }
+      );
       setFeedback("hostRegisterFeedback", data.updated ? "Cadastro atualizado com sucesso." : "Cadastro concluído.", true);
       const cred = qs("#hostRegisterCredentials");
       if (cred) {
@@ -795,7 +891,14 @@ function setupWorkspaceActions() {
     }
     setFeedback("candidateRegisterFeedback", "Enviando cadastro...", true);
     try {
-      await apiFetch("/api/candidate/register", { method: "POST", body: JSON.stringify(payloadCandidateRegister(candidateRegisterForm)) });
+      await runWithLottie(
+        () => apiFetch("/api/candidate/register", { method: "POST", body: JSON.stringify(payloadCandidateRegister(candidateRegisterForm)) }),
+        {
+          loadingPath: "lottie_save_progress.json",
+          loadingMessage: "Enviando cadastro do intercambista...",
+          successMessage: "Cadastro enviado com sucesso.",
+        }
+      );
       setFeedback("candidateRegisterFeedback", "Cadastro concluído. Realize o primeiro acesso para criar sua senha.", true);
       candidateRegisterForm.reset();
     } catch (error) {
@@ -811,7 +914,14 @@ function setupWorkspaceActions() {
     if (!isStrongPassword(data.novaSenha)) return setFeedback("candidateFirstAccessFeedback", "Senha fraca. Use letras, números e caractere especial.", false);
     setFeedback("candidateFirstAccessFeedback", "Processando primeiro acesso...", true);
     try {
-      await apiFetch("/api/candidate/first-access", { method: "POST", body: JSON.stringify({ cpf: normalizeDigits(data.cpf), email: data.email, novaSenha: data.novaSenha }) });
+      await runWithLottie(
+        () => apiFetch("/api/candidate/first-access", { method: "POST", body: JSON.stringify({ cpf: normalizeDigits(data.cpf), email: data.email, novaSenha: data.novaSenha }) }),
+        {
+          loadingPath: "lottie_lock_unauthorized.json",
+          loadingMessage: "Validando e criando senha...",
+          successMessage: "Primeiro acesso concluído.",
+        }
+      );
       setFeedback("candidateFirstAccessFeedback", "Senha criada com sucesso. Faça login.", true);
       candidateFirstAccessForm.reset();
       openWorkspace("candidate-login");
@@ -828,7 +938,14 @@ function setupWorkspaceActions() {
     if (!isStrongPassword(data.novaSenha)) return setFeedback("hostFirstAccessFeedback", "Senha fraca. Use letras, números e caractere especial.", false);
     setFeedback("hostFirstAccessFeedback", "Processando primeiro acesso...", true);
     try {
-      await apiFetch("/api/host/first-access", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(data.cnpj), numeroInscricao: data.numeroInscricao, senhaInicial: data.senhaInicial, novaSenha: data.novaSenha }) });
+      await runWithLottie(
+        () => apiFetch("/api/host/first-access", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(data.cnpj), numeroInscricao: data.numeroInscricao, senhaInicial: data.senhaInicial, novaSenha: data.novaSenha }) }),
+        {
+          loadingPath: "lottie_lock_unauthorized.json",
+          loadingMessage: "Validando e criando senha...",
+          successMessage: "Primeiro acesso concluído.",
+        }
+      );
       setFeedback("hostFirstAccessFeedback", "Senha criada com sucesso. Faça login.", true);
       hostFirstAccessForm.reset();
       openWorkspace("host-login");
@@ -843,7 +960,14 @@ function setupWorkspaceActions() {
     const payload = collectFormData(candidateLoginForm);
     setFeedback("candidateLoginFeedback", "Autenticando...", true);
     try {
-      const data = await apiFetch("/api/candidate/login", { method: "POST", body: JSON.stringify({ cpf: normalizeDigits(payload.cpf), senha: payload.senha }) });
+      const data = await runWithLottie(
+        () => apiFetch("/api/candidate/login", { method: "POST", body: JSON.stringify({ cpf: normalizeDigits(payload.cpf), senha: payload.senha }) }),
+        {
+          loadingPath: "lottie_lock_unauthorized.json",
+          loadingMessage: "Autenticando intercambista...",
+          successMessage: "Login realizado.",
+        }
+      );
       state.tokens.candidate = data.token;
       setFeedback("candidateLoginFeedback", "Login realizado com sucesso.", true);
       openWorkspace("candidate-area");
@@ -860,7 +984,14 @@ function setupWorkspaceActions() {
     const payload = collectFormData(hostLoginForm);
     setFeedback("hostLoginFeedback", "Autenticando...", true);
     try {
-      const data = await apiFetch("/api/host/login", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(payload.cnpj), senha: payload.senha }) });
+      const data = await runWithLottie(
+        () => apiFetch("/api/host/login", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(payload.cnpj), senha: payload.senha }) }),
+        {
+          loadingPath: "lottie_lock_unauthorized.json",
+          loadingMessage: "Autenticando anfitrião...",
+          successMessage: "Login realizado.",
+        }
+      );
       state.tokens.host = data.token;
       setFeedback("hostLoginFeedback", "Login realizado com sucesso.", true);
       openWorkspace("host-area");
@@ -879,7 +1010,14 @@ function setupWorkspaceActions() {
     const adminPassword = String(payload.password || "").trim();
     setFeedback("adminLoginFeedback", "Autenticando...", true);
     try {
-      const data = await apiFetch("/api/admin/login", { method: "POST", body: JSON.stringify({ user: adminUser, password: adminPassword }) });
+      const data = await runWithLottie(
+        () => apiFetch("/api/admin/login", { method: "POST", body: JSON.stringify({ user: adminUser, password: adminPassword }) }),
+        {
+          loadingPath: "lottie_lock_unauthorized.json",
+          loadingMessage: "Autenticando administrador...",
+          successMessage: "Login realizado.",
+        }
+      );
       state.tokens.admin = data.token;
       setFeedback("adminLoginFeedback", "Login realizado com sucesso.", true);
       openWorkspace("admin-area");
