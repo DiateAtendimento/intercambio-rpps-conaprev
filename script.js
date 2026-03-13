@@ -799,6 +799,16 @@ function closeModal() {
   modal.dataset.closeByEsc = "true";
 }
 
+function forceModalClosed() {
+  const modal = qs("#detailsModal");
+  const modalBody = qs("#detailsModalBody");
+  if (!modal) return;
+  modal.hidden = true;
+  modal.dataset.closeByBackdrop = "true";
+  modal.dataset.closeByEsc = "true";
+  if (modalBody) modalBody.innerHTML = "";
+}
+
 function renderFieldList(data, fields) {
   return `
     <div class="read-grid">
@@ -1250,25 +1260,17 @@ function setupWorkspaceActions() {
   qs("#adminSearchInput")?.addEventListener("input", applyAdminSearch);
   qs("#hostSearchInput")?.addEventListener("input", applyHostSearch);
 
-  qsa("[data-close-modal]").forEach((el) => {
-    el.addEventListener("click", (event) => {
+  document.addEventListener("click", async (event) => {
+    const closeEl = event.target.closest("[data-close-modal]");
+    if (closeEl) {
       const modal = qs("#detailsModal");
       if (!modal) return;
-      const isBackdrop = event.currentTarget.classList.contains("data-modal__backdrop");
+      const isBackdrop = closeEl.classList.contains("data-modal__backdrop");
       if (isBackdrop && modal.dataset.closeByBackdrop === "false") return;
       closeModal();
-    });
-  });
+      return;
+    }
 
-  document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") return;
-    const modal = qs("#detailsModal");
-    if (!modal || modal.hidden) return;
-    if (modal.dataset.closeByEsc === "false") return;
-    closeModal();
-  });
-
-  document.addEventListener("click", async (event) => {
     const actionEl = event.target.closest("[data-action]");
     if (!actionEl) return;
 
@@ -1402,6 +1404,7 @@ function setupWorkspaceActions() {
 
 document.addEventListener("DOMContentLoaded", () => {
   forceHideLottieOverlay();
+  forceModalClosed();
   loadTokens();
   resetHostRegisterForm(qs("#hostRegisterForm"));
   resetCandidateRegisterForm(qs("#candidateRegisterForm"));
@@ -1416,6 +1419,14 @@ document.addEventListener("DOMContentLoaded", () => {
   setupSmartInputs();
   setupCnpjPrefill();
   setupWorkspaceActions();
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    const modal = qs("#detailsModal");
+    if (!modal || modal.hidden) return;
+    if (modal.dataset.closeByEsc === "false") return;
+    closeModal();
+  });
 
   const restore = async () => {
     const savedScreen = loadScreen();
@@ -1468,6 +1479,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 window.addEventListener("load", () => {
   forceHideLottieOverlay();
+  forceModalClosed();
 });
 
 window.addEventListener("pagehide", () => {
