@@ -620,6 +620,12 @@ body.system-menu-open {
   overflow: visible;
 }
 
+.workspace-screen[data-screen-id="admin-area"] .module-card,
+.workspace-screen[data-screen-id="host-area"] .module-card,
+.workspace-screen[data-screen-id="candidate-area"] .module-card {
+  max-width: 1280px;
+}
+
 .workspace-env::before {
   content: none;
 }
@@ -688,14 +694,13 @@ body.system-menu-open {
   border-color: #e64020;
 }
 
-/* Evita barra horizontal "sobrando" no admin */
+/* Admin com mais largura e sem esmagar botões */
 .workspace-screen[data-screen-id="admin-area"] .table-wrap {
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .workspace-screen[data-screen-id="admin-area"] .env-table {
-  min-width: 0;
-  width: 100%;
+  min-width: 1180px;
 }
 
 .env-block {
@@ -739,10 +744,14 @@ body.system-menu-open {
   gap: 0.45rem;
 }
 
-.search-input-wrap img {
+.search-input-wrap i {
   width: 24px;
   height: 24px;
-  object-fit: contain;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff5a2e;
+  font-size: 1.12rem;
   flex: 0 0 24px;
 }
 
@@ -791,7 +800,8 @@ body.system-menu-open {
 .action-group {
   display: flex;
   gap: 0.35rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
 }
 
 .btn-sm {
@@ -799,6 +809,33 @@ body.system-menu-open {
   padding: 0.45rem 0.75rem;
   font-size: 0.75rem;
   border-radius: 999px;
+  white-space: nowrap;
+}
+
+.btn-action-accept {
+  background: #44a834;
+  border: 1px solid #44a834;
+  color: #fff;
+  min-width: 92px;
+}
+
+.btn-action-accept:hover {
+  background: #38912b;
+  border-color: #38912b;
+  color: #fff;
+}
+
+.btn-action-reject {
+  background: #f04a1f;
+  border: 1px solid #f04a1f;
+  color: #fff;
+  min-width: 86px;
+}
+
+.btn-action-reject:hover {
+  background: #d9431b;
+  border-color: #d9431b;
+  color: #fff;
 }
 
 .icon-btn {
@@ -995,6 +1032,13 @@ body.system-menu-open {
 .message-modal--error .message-modal__icon {
   background: #ffecec;
   color: #d62839;
+}
+
+.confirm-actions {
+  margin-top: 0.95rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
 }
 
 .read-grid {

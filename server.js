@@ -1458,10 +1458,18 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
 app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
   try {
     const rowNumber = Number(req.body.rowNumber);
+    const numeroInscricao = sanitizeInput(req.body.numeroInscricao, 60);
+    const cnpj = onlyDigits(req.body.cnpj);
     const permissao = normalizeText(req.body.status) === "negado" ? "Negado" : "Concedido";
 
     const data = await getRows(HOST_SHEET, hostHeaders);
-    const host = data.rows.find((row) => row.rowNumber === rowNumber);
+    let host = data.rows.find((row) => row.rowNumber === rowNumber);
+    if (!host && numeroInscricao) {
+      host = data.rows.find((row) => String(row.data["Inscrição"] || "") === numeroInscricao);
+    }
+    if (!host && cnpj) {
+      host = data.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
+    }
     if (!host) {
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }

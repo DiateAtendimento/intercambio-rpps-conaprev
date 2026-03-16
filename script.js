@@ -1,4 +1,4 @@
-const state = {
+﻿const state = {
   tokens: {
     candidate: "",
     host: "",
@@ -9,6 +9,8 @@ const state = {
     hostAccepted: [],
   },
 };
+
+let modalChoiceResolver = null;
 
 const STORAGE_KEYS = {
   tokens: "intercambio_tokens_v1",
@@ -51,7 +53,7 @@ async function apiFetch(url, options = {}) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || "Falha na operação.");
+    throw new Error(data.error || "Falha na operaÃ§Ã£o.");
   }
   return data;
 }
@@ -65,7 +67,7 @@ function setFeedback(id, message, ok = false) {
 
 function showMessageModal(title, message, kind = "info") {
   const safeTitle = title || "Aviso";
-  const safeMessage = message || "Não foi possível concluir a ação.";
+  const safeMessage = message || "NÃ£o foi possÃ­vel concluir a aÃ§Ã£o.";
   const kindClass = ["info", "success", "warning", "error"].includes(kind) ? kind : "info";
   openModal(
     safeTitle,
@@ -189,7 +191,7 @@ async function runWithLottie(task, options = {}) {
   const loadingPath = options.loadingPath || "lottie_save_progress.json";
   const loadingMessage = options.loadingMessage || "Processando...";
   const successPath = options.successPath || "lottie_success_check.json";
-  const successMessage = options.successMessage || "Concluído com sucesso.";
+  const successMessage = options.successMessage || "ConcluÃ­do com sucesso.";
   const errorPath = options.errorPath || "lottie_error_generic.json";
   const minLoadingMs = Number(options.minLoadingMs || 450);
 
@@ -207,7 +209,7 @@ async function runWithLottie(task, options = {}) {
   } catch (error) {
     const elapsed = Date.now() - lottieUi.startedAt;
     if (elapsed < minLoadingMs) await wait(minLoadingMs - elapsed);
-    playOverlayAnimation(errorPath, error?.message || "Falha na operação.", false);
+    playOverlayAnimation(errorPath, error?.message || "Falha na operaÃ§Ã£o.", false);
     await wait(1100);
     throw error;
   } finally {
@@ -230,8 +232,8 @@ function setupSmoothScroll() {
 }
 
 function setupNavbarToggle() {
-  // O menu superior fica sempre visível no desktop.
-  // O hambúrguer controla o painel lateral das áreas do sistema.
+  // O menu superior fica sempre visÃ­vel no desktop.
+  // O hambÃºrguer controla o painel lateral das Ã¡reas do sistema.
 }
 
 function setupBackToTop() {
@@ -345,19 +347,19 @@ function openWorkspace(screenId) {
   });
 
   const titles = {
-    "form-host": "Formulário do Anfitrião",
-    "form-candidate": "Formulário do Intercambista",
-    "candidate-login": "Área Intercambista - Login",
-    "candidate-first-access": "Área Intercambista - Primeiro Acesso",
-    "candidate-area": "Área Intercambista",
-    "host-login": "Área Anfitrião - Login",
-    "host-first-access": "Área Anfitrião - Primeiro Acesso",
-    "host-area": "Área Anfitrião",
+    "form-host": "FormulÃ¡rio do AnfitriÃ£o",
+    "form-candidate": "FormulÃ¡rio do Intercambista",
+    "candidate-login": "Ãrea Intercambista - Login",
+    "candidate-first-access": "Ãrea Intercambista - Primeiro Acesso",
+    "candidate-area": "Ãrea Intercambista",
+    "host-login": "Ãrea AnfitriÃ£o - Login",
+    "host-first-access": "Ãrea AnfitriÃ£o - Primeiro Acesso",
+    "host-area": "Ãrea AnfitriÃ£o",
     "admin-login": "Gerenciador Admin - Login",
     "admin-area": "Gerenciador Admin",
   };
   const title = qs("#workspaceTitle");
-  if (title) title.textContent = titles[screenId] || "Módulo do Sistema";
+  if (title) title.textContent = titles[screenId] || "MÃ³dulo do Sistema";
   if (workspaceTop) workspaceTop.hidden = screenId === "form-host" || screenId === "form-candidate";
   saveScreen(screenId);
   updateScreenHash(screenId);
@@ -424,38 +426,38 @@ function payloadHostRegister(form) {
 
   const payload = {
     "UF": String(formData.uf || "").trim().toUpperCase(),
-    "Município": String(formData.municipio || "").trim(),
-    "Município CNPJ": normalizeDigits(formData.municipioCnpj),
+    "MunicÃ­pio": String(formData.municipio || "").trim(),
+    "MunicÃ­pio CNPJ": normalizeDigits(formData.municipioCnpj),
     "Unidade Gestora": String(formData.unidadeGestora || "").trim(),
-    "Endereço": String(formData.endereco || "").trim(),
-    "Nome do Dirigente ou Responsável Legal": String(formData.dirigente || "").trim(),
-    "Cargo/Função (Dirigente)": String(formData.cargoDirigente || "").trim(),
-    "Responsável pela coordenação local": String(formData.coordenadorLocal || "").trim(),
+    "EndereÃ§o": String(formData.endereco || "").trim(),
+    "Nome do Dirigente ou ResponsÃ¡vel Legal": String(formData.dirigente || "").trim(),
+    "Cargo/FunÃ§Ã£o (Dirigente)": String(formData.cargoDirigente || "").trim(),
+    "ResponsÃ¡vel pela coordenaÃ§Ã£o local": String(formData.coordenadorLocal || "").trim(),
     "E-mail de contato": String(formData.email || "").trim(),
     "Telefone de contato": String(formData.telefone || "").trim(),
-    "Nível do Pró-Gestão": normalizeProGestaoValue(formData.nivelProGestao),
-    "Número de vagas oferecidas": String(formData.vagas || "").trim(),
-    "Nº de áreas/setores disponíveis": String(formData.totalAreas || "").trim(),
+    "NÃ­vel do PrÃ³-GestÃ£o": normalizeProGestaoValue(formData.nivelProGestao),
+    "NÃºmero de vagas oferecidas": String(formData.vagas || "").trim(),
+    "NÂº de Ã¡reas/setores disponÃ­veis": String(formData.totalAreas || "").trim(),
     "Outros (especificar)": String(formData.areaOutrosTexto || "").trim(),
     "Equipe de apoio designada (nomes)": equipeApoio,
-    "Breve descrição da proposta de intercâmbio": String(formData.proposta || "").trim(),
-    "Responsável pelo preenchimento": String(formData.responsavel || "").trim(),
-    "Cargo/Função (Responsável)": String(formData.cargoResponsavel || "").trim(),
+    "Breve descriÃ§Ã£o da proposta de intercÃ¢mbio": String(formData.proposta || "").trim(),
+    "ResponsÃ¡vel pelo preenchimento": String(formData.responsavel || "").trim(),
+    "Cargo/FunÃ§Ã£o (ResponsÃ¡vel)": String(formData.cargoResponsavel || "").trim(),
     "Data": String(formData.dataPreenchimento || "").trim(),
     cnpj: normalizeDigits(formData.municipioCnpj),
   };
-  payload["Área: Cadastro e Atendimento (Sim/Não)"] = form.querySelector('[name="areaCadastro"]')?.checked || false;
-  payload["Área: Concessão e Revisão de Benefícios (Sim/Não)"] = form.querySelector('[name="areaConcessao"]')?.checked || false;
-  payload["Área: Compensação Previdenciária (Sim/Não)"] = form.querySelector('[name="areaCompensacao"]')?.checked || false;
-  payload["Área: Atuária (Sim/Não)"] = form.querySelector('[name="areaAtuaria"]')?.checked || false;
-  payload["Área: Investimentos (Sim/Não)"] = form.querySelector('[name="areaInvestimentos"]')?.checked || false;
-  payload["Área: Controle Interno (Sim/Não)"] = form.querySelector('[name="areaControleInterno"]')?.checked || false;
-  payload["Área: Certificação/Pró-Gestão (Sim/Não)"] = form.querySelector('[name="areaCertificacao"]')?.checked || false;
-  payload["Área: Governança e Transparência (Sim/Não)"] = form.querySelector('[name="areaGovernanca"]')?.checked || false;
-  payload["Área: Gestão de Pessoal (Sim/Não)"] = form.querySelector('[name="areaPessoal"]')?.checked || false;
-  payload["Área: Tecnologia/Sistemas (Sim/Não)"] = form.querySelector('[name="areaTecnologia"]')?.checked || false;
-  payload["Área: Contabilidade (Sim/Não)"] = form.querySelector('[name="areaContabilidade"]')?.checked || false;
-  payload["Outros (Sim/Não)"] = form.querySelector('[name="areaOutros"]')?.checked || false;
+  payload["Ãrea: Cadastro e Atendimento (Sim/NÃ£o)"] = form.querySelector('[name="areaCadastro"]')?.checked || false;
+  payload["Ãrea: ConcessÃ£o e RevisÃ£o de BenefÃ­cios (Sim/NÃ£o)"] = form.querySelector('[name="areaConcessao"]')?.checked || false;
+  payload["Ãrea: CompensaÃ§Ã£o PrevidenciÃ¡ria (Sim/NÃ£o)"] = form.querySelector('[name="areaCompensacao"]')?.checked || false;
+  payload["Ãrea: AtuÃ¡ria (Sim/NÃ£o)"] = form.querySelector('[name="areaAtuaria"]')?.checked || false;
+  payload["Ãrea: Investimentos (Sim/NÃ£o)"] = form.querySelector('[name="areaInvestimentos"]')?.checked || false;
+  payload["Ãrea: Controle Interno (Sim/NÃ£o)"] = form.querySelector('[name="areaControleInterno"]')?.checked || false;
+  payload["Ãrea: CertificaÃ§Ã£o/PrÃ³-GestÃ£o (Sim/NÃ£o)"] = form.querySelector('[name="areaCertificacao"]')?.checked || false;
+  payload["Ãrea: GovernanÃ§a e TransparÃªncia (Sim/NÃ£o)"] = form.querySelector('[name="areaGovernanca"]')?.checked || false;
+  payload["Ãrea: GestÃ£o de Pessoal (Sim/NÃ£o)"] = form.querySelector('[name="areaPessoal"]')?.checked || false;
+  payload["Ãrea: Tecnologia/Sistemas (Sim/NÃ£o)"] = form.querySelector('[name="areaTecnologia"]')?.checked || false;
+  payload["Ãrea: Contabilidade (Sim/NÃ£o)"] = form.querySelector('[name="areaContabilidade"]')?.checked || false;
+  payload["Outros (Sim/NÃ£o)"] = form.querySelector('[name="areaOutros"]')?.checked || false;
   return payload;
 }
 
@@ -558,34 +560,34 @@ function payloadCandidateRegister(form) {
   const formData = collectFormData(form);
   const payload = {
     "UF": String(formData.uf || "").trim().toUpperCase(),
-    "Município": String(formData.municipio || "").trim(),
-    "Município CNPJ": normalizeDigits(formData.municipioCnpj),
+    "MunicÃ­pio": String(formData.municipio || "").trim(),
+    "MunicÃ­pio CNPJ": normalizeDigits(formData.municipioCnpj),
     "Unidade Gestora": String(formData.unidadeGestora || "").trim(),
     "Unidade Gestora CNPJ": normalizeDigits(formData.unidadeGestoraCnpj),
-    "Nível do Pró-Gestão": normalizeProGestaoValue(formData.nivelProGestao),
-    "Nome do Dirigente ou Responsável Legal": String(formData.dirigente || "").trim(),
-    "Cargo/Função (Dirigente)": String(formData.cargoDirigente || "").trim(),
+    "NÃ­vel do PrÃ³-GestÃ£o": normalizeProGestaoValue(formData.nivelProGestao),
+    "Nome do Dirigente ou ResponsÃ¡vel Legal": String(formData.dirigente || "").trim(),
+    "Cargo/FunÃ§Ã£o (Dirigente)": String(formData.cargoDirigente || "").trim(),
     "E-mail institucional": String(formData.email || "").trim(),
     "Telefone para contato": String(formData.telefone || "").trim(),
     "Participante - Nome completo": String(formData.p_nome || "").trim(),
-    "Participante - Cargo/Função": String(formData.p_cargo || "").trim(),
-    "Participante - Tipo de vínculo": String(formData.p_vinculo || "").trim(),
-    "Participante - Área de atuação (RPPS/EFPC)": String(formData.p_area || "").trim(),
-    "Participante - Certificação": String(formData.p_certificacao || "").trim(),
-    "Anfitrião de interesse - Prioridade 1": String(formData.prioridade1Host || "").trim(),
+    "Participante - Cargo/FunÃ§Ã£o": String(formData.p_cargo || "").trim(),
+    "Participante - Tipo de vÃ­nculo": String(formData.p_vinculo || "").trim(),
+    "Participante - Ãrea de atuaÃ§Ã£o (RPPS/EFPC)": String(formData.p_area || "").trim(),
+    "Participante - CertificaÃ§Ã£o": String(formData.p_certificacao || "").trim(),
+    "AnfitriÃ£o de interesse - Prioridade 1": String(formData.prioridade1Host || "").trim(),
     "Objetivo principal (Prioridade 1)": String(formData.prioridade1Objetivo || "").trim(),
-    "Anfitrião de interesse - Prioridade 2": String(formData.prioridade2Host || "").trim(),
+    "AnfitriÃ£o de interesse - Prioridade 2": String(formData.prioridade2Host || "").trim(),
     "Objetivo principal (Prioridade 2)": String(formData.prioridade2Objetivo || "").trim(),
-    "Anfitrião de interesse - Prioridade 3": String(formData.prioridade3Host || "").trim(),
+    "AnfitriÃ£o de interesse - Prioridade 3": String(formData.prioridade3Host || "").trim(),
     "Objetivo principal (Prioridade 3)": String(formData.prioridade3Objetivo || "").trim(),
-    "Temas/áreas de interesse (texto)": String(formData.temas || "").trim(),
+    "Temas/Ã¡reas de interesse (texto)": String(formData.temas || "").trim(),
     "Atividades propostas (agenda por dia)": String(formData.atividades || "").trim(),
     "Objetivos e compromissos (o que pretende implementar/replicar)": String(formData.objetivosCompromissos || "").trim(),
-    "Declaração: vínculo formal (Sim/Não)": form.querySelector('[name="declaracaoVinculo"]').checked,
-    "Declaração: custeio pelo intercambista (Sim/Não)": form.querySelector('[name="declaracaoCusteio"]').checked,
-    "Declaração: ciência dos termos (Sim/Não)": form.querySelector('[name="declaracaoCiencia"]').checked,
-    "Responsável pelo preenchimento": String(formData.responsavel || "").trim(),
-    "Cargo/Função (Responsável)": String(formData.cargoResponsavel || "").trim(),
+    "DeclaraÃ§Ã£o: vÃ­nculo formal (Sim/NÃ£o)": form.querySelector('[name="declaracaoVinculo"]').checked,
+    "DeclaraÃ§Ã£o: custeio pelo intercambista (Sim/NÃ£o)": form.querySelector('[name="declaracaoCusteio"]').checked,
+    "DeclaraÃ§Ã£o: ciÃªncia dos termos (Sim/NÃ£o)": form.querySelector('[name="declaracaoCiencia"]').checked,
+    "ResponsÃ¡vel pelo preenchimento": String(formData.responsavel || "").trim(),
+    "Cargo/FunÃ§Ã£o (ResponsÃ¡vel)": String(formData.cargoResponsavel || "").trim(),
     "Data": String(formData.dataPreenchimento || "").trim(),
     cpf: normalizeDigits(formData.cpf),
     genero: String(formData.genero || "").trim(),
@@ -607,7 +609,7 @@ function payloadCandidateRegister(form) {
 
 function normalizeProGestaoValue(value) {
   const clean = String(value || "").trim();
-  return clean || "Sem Pró-gestão";
+  return clean || "Sem PrÃ³-gestÃ£o";
 }
 
 function applyProGestaoFieldState(form, value) {
@@ -616,7 +618,7 @@ function applyProGestaoFieldState(form, value) {
   if (!input) return;
   const normalized = normalizeProGestaoValue(value);
   input.value = normalized;
-  const isNone = normalizeText(normalized) === normalizeText("Sem Pró-gestão");
+  const isNone = normalizeText(normalized) === normalizeText("Sem PrÃ³-gestÃ£o");
   input.classList.toggle("progestao-input--none", isNone);
 }
 
@@ -671,22 +673,22 @@ function setupCnpjPrefill() {
   const candidateProGestao = candidateForm?.querySelector('[name="nivelProGestao"]');
 
   hostProGestao?.addEventListener("input", () => {
-    const isNone = normalizeText(hostProGestao.value) === normalizeText("Sem Pró-gestão");
+    const isNone = normalizeText(hostProGestao.value) === normalizeText("Sem PrÃ³-gestÃ£o");
     hostProGestao.classList.toggle("progestao-input--none", isNone);
   });
 
   candidateProGestao?.addEventListener("input", () => {
-    const isNone = normalizeText(candidateProGestao.value) === normalizeText("Sem Pró-gestão");
+    const isNone = normalizeText(candidateProGestao.value) === normalizeText("Sem PrÃ³-gestÃ£o");
     candidateProGestao.classList.toggle("progestao-input--none", isNone);
   });
 
   if (hostProGestao) {
-    const isNone = normalizeText(hostProGestao.value) === normalizeText("Sem Pró-gestão");
+    const isNone = normalizeText(hostProGestao.value) === normalizeText("Sem PrÃ³-gestÃ£o");
     hostProGestao.classList.toggle("progestao-input--none", isNone);
   }
 
   if (candidateProGestao) {
-    const isNone = normalizeText(candidateProGestao.value) === normalizeText("Sem Pró-gestão");
+    const isNone = normalizeText(candidateProGestao.value) === normalizeText("Sem PrÃ³-gestÃ£o");
     candidateProGestao.classList.toggle("progestao-input--none", isNone);
   }
 
@@ -695,7 +697,7 @@ function setupCnpjPrefill() {
     const cnpj = normalizeDigits(raw);
     if (cnpj.length !== 14) {
       setFeedback("hostRegisterFeedback", "", false);
-      showMessageModal("CNPJ inválido", "Informe um CNPJ do município válido para buscar.", "warning");
+      showMessageModal("CNPJ invÃ¡lido", "Informe um CNPJ do municÃ­pio vÃ¡lido para buscar.", "warning");
       return;
     }
     setFeedback("hostRegisterFeedback", "Buscando dados no Nosso Banco de dados...", true);
@@ -704,12 +706,12 @@ function setupCnpjPrefill() {
         () => apiFetch(`/api/prefill/municipio/${cnpj}`),
         {
           loadingPath: "lottie_search_loading.json",
-          loadingMessage: "Buscando dados do município...",
+          loadingMessage: "Buscando dados do municÃ­pio...",
           successMessage: "Dados encontrados.",
         }
       );
       applyPrefillToHostForm(hostForm, data.prefill);
-      setFeedback("hostRegisterFeedback", "Dados carregados. Revise e ajuste se necessário.", true);
+      setFeedback("hostRegisterFeedback", "Dados carregados. Revise e ajuste se necessÃ¡rio.", true);
     } catch (error) {
       setFeedback("hostRegisterFeedback", "", false);
       showMessageModal("Falha na busca", error.message, "error");
@@ -721,7 +723,7 @@ function setupCnpjPrefill() {
     const cnpj = normalizeDigits(raw);
     if (cnpj.length !== 14) {
       setFeedback("candidateRegisterFeedback", "", false);
-      showMessageModal("CNPJ inválido", "Informe um CNPJ do município válido para buscar.", "warning");
+      showMessageModal("CNPJ invÃ¡lido", "Informe um CNPJ do municÃ­pio vÃ¡lido para buscar.", "warning");
       return;
     }
     setFeedback("candidateRegisterFeedback", "Buscando dados no Nosso Banco de dados...", true);
@@ -730,12 +732,12 @@ function setupCnpjPrefill() {
         () => apiFetch(`/api/prefill/municipio/${cnpj}`),
         {
           loadingPath: "lottie_search_loading.json",
-          loadingMessage: "Buscando dados do município...",
+          loadingMessage: "Buscando dados do municÃ­pio...",
           successMessage: "Dados encontrados.",
         }
       );
       applyPrefillToCandidateForm(candidateForm, data.prefill);
-      setFeedback("candidateRegisterFeedback", "Dados carregados. Revise e ajuste se necessário.", true);
+      setFeedback("candidateRegisterFeedback", "Dados carregados. Revise e ajuste se necessÃ¡rio.", true);
     } catch (error) {
       setFeedback("candidateRegisterFeedback", "", false);
       showMessageModal("Falha na busca", error.message, "error");
@@ -783,6 +785,11 @@ function openModal(title, html, options = {}) {
 function closeModal() {
   const modal = qs("#detailsModal");
   if (!modal) return;
+  if (typeof modalChoiceResolver === "function") {
+    const resolver = modalChoiceResolver;
+    modalChoiceResolver = null;
+    resolver(false);
+  }
   modal.hidden = true;
   modal.dataset.closeByBackdrop = "true";
   modal.dataset.closeByEsc = "true";
@@ -796,6 +803,25 @@ function forceModalClosed() {
   modal.dataset.closeByBackdrop = "true";
   modal.dataset.closeByEsc = "true";
   if (modalBody) modalBody.innerHTML = "";
+}
+
+function showConfirmModal(title, message, confirmLabel = "Confirmar", cancelLabel = "Cancelar") {
+  return new Promise((resolve) => {
+    modalChoiceResolver = resolve;
+    openModal(
+      title || "ConfirmaÃ§Ã£o",
+      `
+        <div class="message-modal message-modal--info">
+          <p>${escapeHtml(message || "Deseja continuar?")}</p>
+          <div class="confirm-actions">
+            <button type="button" class="btn btn-outline" data-modal-choice="cancel">${escapeHtml(cancelLabel)}</button>
+            <button type="button" class="btn btn-primary" data-modal-choice="confirm">${escapeHtml(confirmLabel)}</button>
+          </div>
+        </div>
+      `,
+      { closeByBackdrop: true, closeByEsc: true }
+    );
+  });
 }
 
 function renderFieldList(data, fields) {
@@ -815,55 +841,55 @@ function renderFieldList(data, fields) {
 }
 
 const HOST_FIELDS = [
-  { key: "Município", label: "Município" },
+  { key: "MunicÃ­pio", label: "MunicÃ­pio" },
   { key: "UF", label: "UF" },
-  { key: "Município CNPJ", label: "Município CNPJ" },
+  { key: "MunicÃ­pio CNPJ", label: "MunicÃ­pio CNPJ" },
   { key: "Unidade Gestora", label: "Unidade Gestora" },
-  { key: "Endereço", label: "Endereço" },
-  { key: "Nome do Dirigente ou Responsável Legal", label: "Dirigente" },
-  { key: "Cargo/Função (Dirigente)", label: "Cargo/Função (Dirigente)" },
-  { key: "Responsável pela coordenação local", label: "Coordenação local" },
+  { key: "EndereÃ§o", label: "EndereÃ§o" },
+  { key: "Nome do Dirigente ou ResponsÃ¡vel Legal", label: "Dirigente" },
+  { key: "Cargo/FunÃ§Ã£o (Dirigente)", label: "Cargo/FunÃ§Ã£o (Dirigente)" },
+  { key: "ResponsÃ¡vel pela coordenaÃ§Ã£o local", label: "CoordenaÃ§Ã£o local" },
   { key: "E-mail de contato", label: "E-mail de contato" },
   { key: "Telefone de contato", label: "Telefone de contato" },
-  { key: "Nível do Pró-Gestão", label: "Nível do Pró-Gestão" },
-  { key: "Número de vagas oferecidas", label: "Número de vagas oferecidas" },
-  { key: "Nº de áreas/setores disponíveis", label: "Nº de áreas/setores disponíveis" },
+  { key: "NÃ­vel do PrÃ³-GestÃ£o", label: "NÃ­vel do PrÃ³-GestÃ£o" },
+  { key: "NÃºmero de vagas oferecidas", label: "NÃºmero de vagas oferecidas" },
+  { key: "NÂº de Ã¡reas/setores disponÃ­veis", label: "NÂº de Ã¡reas/setores disponÃ­veis" },
   { key: "Equipe de apoio designada (nomes)", label: "Equipe de apoio designada (nomes)" },
-  { key: "Breve descrição da proposta de intercâmbio", label: "Proposta" },
-  { key: "Responsável pelo preenchimento", label: "Responsável pelo preenchimento" },
-  { key: "Cargo/Função (Responsável)", label: "Cargo/Função (Responsável)" },
+  { key: "Breve descriÃ§Ã£o da proposta de intercÃ¢mbio", label: "Proposta" },
+  { key: "ResponsÃ¡vel pelo preenchimento", label: "ResponsÃ¡vel pelo preenchimento" },
+  { key: "Cargo/FunÃ§Ã£o (ResponsÃ¡vel)", label: "Cargo/FunÃ§Ã£o (ResponsÃ¡vel)" },
   { key: "Data", label: "Data" },
 ];
 
 const CANDIDATE_FIELDS = [
-  { key: "Município", label: "Município" },
+  { key: "MunicÃ­pio", label: "MunicÃ­pio" },
   { key: "UF", label: "UF" },
-  { key: "Município CNPJ", label: "Município CNPJ" },
+  { key: "MunicÃ­pio CNPJ", label: "MunicÃ­pio CNPJ" },
   { key: "Unidade Gestora", label: "Unidade Gestora" },
   { key: "Unidade Gestora CNPJ", label: "Unidade Gestora CNPJ" },
   { key: "CPF", label: "CPF" },
-  { key: "Gênero", label: "Gênero" },
-  { key: "Nível do Pró-Gestão", label: "Nível do Pró-Gestão" },
-  { key: "Nome do Dirigente ou Responsável Legal", label: "Dirigente" },
-  { key: "Cargo/Função (Dirigente)", label: "Cargo/Função (Dirigente)" },
+  { key: "GÃªnero", label: "GÃªnero" },
+  { key: "NÃ­vel do PrÃ³-GestÃ£o", label: "NÃ­vel do PrÃ³-GestÃ£o" },
+  { key: "Nome do Dirigente ou ResponsÃ¡vel Legal", label: "Dirigente" },
+  { key: "Cargo/FunÃ§Ã£o (Dirigente)", label: "Cargo/FunÃ§Ã£o (Dirigente)" },
   { key: "E-mail institucional", label: "E-mail institucional" },
   { key: "Telefone para contato", label: "Telefone para contato" },
   { key: "Participante - Nome completo", label: "Participante(s)" },
-  { key: "Participante - Cargo/Função", label: "Cargo/Função participante" },
-  { key: "Participante - Tipo de vínculo", label: "Tipo de vínculo" },
-  { key: "Participante - Área de atuação (RPPS/EFPC)", label: "Área de atuação" },
-  { key: "Participante - Certificação", label: "Certificação" },
-  { key: "Anfitrião de interesse - Prioridade 1", label: "Anfitrião prioridade 1" },
+  { key: "Participante - Cargo/FunÃ§Ã£o", label: "Cargo/FunÃ§Ã£o participante" },
+  { key: "Participante - Tipo de vÃ­nculo", label: "Tipo de vÃ­nculo" },
+  { key: "Participante - Ãrea de atuaÃ§Ã£o (RPPS/EFPC)", label: "Ãrea de atuaÃ§Ã£o" },
+  { key: "Participante - CertificaÃ§Ã£o", label: "CertificaÃ§Ã£o" },
+  { key: "AnfitriÃ£o de interesse - Prioridade 1", label: "AnfitriÃ£o prioridade 1" },
   { key: "Objetivo principal (Prioridade 1)", label: "Objetivo prioridade 1" },
-  { key: "Anfitrião de interesse - Prioridade 2", label: "Anfitrião prioridade 2" },
+  { key: "AnfitriÃ£o de interesse - Prioridade 2", label: "AnfitriÃ£o prioridade 2" },
   { key: "Objetivo principal (Prioridade 2)", label: "Objetivo prioridade 2" },
-  { key: "Anfitrião de interesse - Prioridade 3", label: "Anfitrião prioridade 3" },
+  { key: "AnfitriÃ£o de interesse - Prioridade 3", label: "AnfitriÃ£o prioridade 3" },
   { key: "Objetivo principal (Prioridade 3)", label: "Objetivo prioridade 3" },
-  { key: "Temas/áreas de interesse (texto)", label: "Temas/áreas de interesse" },
+  { key: "Temas/Ã¡reas de interesse (texto)", label: "Temas/Ã¡reas de interesse" },
   { key: "Atividades propostas (agenda por dia)", label: "Atividades propostas" },
   { key: "Objetivos e compromissos (o que pretende implementar/replicar)", label: "Objetivos e compromissos" },
-  { key: "Responsável pelo preenchimento", label: "Responsável pelo preenchimento" },
-  { key: "Cargo/Função (Responsável)", label: "Cargo/Função (Responsável)" },
+  { key: "ResponsÃ¡vel pelo preenchimento", label: "ResponsÃ¡vel pelo preenchimento" },
+  { key: "Cargo/FunÃ§Ã£o (ResponsÃ¡vel)", label: "Cargo/FunÃ§Ã£o (ResponsÃ¡vel)" },
   { key: "Data", label: "Data" },
 ];
 
@@ -880,7 +906,7 @@ function renderEmptyRow(targetId, colspan, message) {
 }
 
 function formatStatus(status) {
-  const text = String(status || "Sem solicitação");
+  const text = String(status || "Sem solicitaÃ§Ã£o");
   return `<span class="${getStatusClass(text)}">${escapeHtml(text)}</span>`;
 }
 
@@ -909,7 +935,7 @@ async function refreshCandidateArea() {
 
   const hosts = hostsData.hosts || [];
   if (!hosts.length) {
-    cards.innerHTML = `<p class="module-note">Nenhum anfitrião ativo disponível.</p>`;
+    cards.innerHTML = `<p class="module-note">Nenhum anfitriÃ£o ativo disponÃ­vel.</p>`;
     return;
   }
 
@@ -920,13 +946,13 @@ async function refreshCandidateArea() {
         <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
         <h4>${escapeHtml(host.entidade)}</h4>
         <p>UF: ${escapeHtml(host.uf || "-")}</p>
-        <p>Nível Pró-Gestão:
+        <p>NÃ­vel PrÃ³-GestÃ£o:
           <span class="${host.semProGestao ? "progestao-level progestao-level--none" : "progestao-level"}">
-            ${escapeHtml(host.nivelProGestao || "Sem Pró-gestão")}
+            ${escapeHtml(host.nivelProGestao || "Sem PrÃ³-gestÃ£o")}
           </span>
         </p>
-        <p>Número de vagas: ${escapeHtml(host.vagas || "-")}</p>
-        <p>Nº de áreas/setores disponíveis: ${escapeHtml((host.areas || []).length || "-")}</p>
+        <p>NÃºmero de vagas: ${escapeHtml(host.vagas || "-")}</p>
+        <p>NÂº de Ã¡reas/setores disponÃ­veis: ${escapeHtml((host.areas || []).length || "-")}</p>
         <button class="btn btn-primary" type="button" data-action="select-host" data-host="${escapeHtml(host.numeroInscricao)}">Candidatar-se</button>
       </article>`
     )
@@ -953,14 +979,14 @@ function buildHostRows(rows, targetId) {
             ? `<td>${iconButton("host-open-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho")}</td>
                <td>
                  <div class="action-group">
-                   <button class="btn btn-primary btn-sm" type="button" data-action="host-decision" data-row="${item.rowNumber}" data-decision="aceito">Aceitar</button>
-                   <button class="btn btn-outline btn-sm" type="button" data-action="host-decision" data-row="${item.rowNumber}" data-decision="rejeitado">Rejeitar</button>
+                   <button class="btn btn-sm btn-action-accept" type="button" data-action="host-decision" data-row="${item.rowNumber}" data-decision="aceito">Aceitar</button>
+                   <button class="btn btn-sm btn-action-reject" type="button" data-action="host-decision" data-row="${item.rowNumber}" data-decision="rejeitado">Rejeitar</button>
                  </div>
                </td>`
             : `<td>${escapeHtml(item.dirigente || "-")}</td>
                <td>${escapeHtml(item.dataDecisao || "-")}</td>
                <td>${iconButton("host-open-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho")}</td>
-               <td>${iconButton("host-remove-candidate", item.rowNumber, "icone-lixeira.svg", "Remover inscrição")}</td>`
+               <td>${iconButton("host-remove-candidate", item.rowNumber, "icone-lixeira.svg", "Remover inscriÃ§Ã£o")}</td>`
         }
       </tr>`
     )
@@ -1004,8 +1030,8 @@ function buildAdminRows(rows, targetId) {
               <td>${iconButton("admin-open-cred", item.rowNumber, "icone-credenciamento.svg", "Credenciamento")}</td>
               <td>
                 <div class="action-group">
-                  <button class="btn btn-primary btn-sm" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Concedido">Aceitar</button>
-                  <button class="btn btn-outline btn-sm" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Negado">Rejeitar</button>
+                  <button class="btn btn-sm btn-action-accept" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Concedido" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}">Aceitar</button>
+                  <button class="btn btn-sm btn-action-reject" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Negado" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}">Rejeitar</button>
                 </div>
               </td>`
             : `
@@ -1018,7 +1044,7 @@ function buildAdminRows(rows, targetId) {
               <td>-</td>
               <td>${iconButton("admin-open-cred", item.rowNumber, "icone-credenciamento.svg", "Credenciamento")}</td>
               <td>${iconButton("admin-open-linked", item.rowNumber, "icone-intercambistas-vinculados.svg", "Intercambistas vinculados")}</td>
-              <td>${iconButton("admin-remove-host", item.rowNumber, "icone-lixeira.svg", "Remover inscrição")}</td>`
+              <td>${iconButton("admin-remove-host", item.rowNumber, "icone-lixeira.svg", "Remover inscriÃ§Ã£o")}</td>`
         }
       </tr>`
     )
@@ -1060,7 +1086,7 @@ function setupWorkspaceActions() {
   hostRegisterForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!validateRequiredFields(hostRegisterForm)) {
-      return setFeedback("hostRegisterFeedback", "Preencha todos os campos obrigatórios.", false);
+      return setFeedback("hostRegisterFeedback", "Preencha todos os campos obrigatÃ³rios.", false);
     }
     setFeedback("hostRegisterFeedback", "Enviando cadastro...", true);
     try {
@@ -1068,16 +1094,16 @@ function setupWorkspaceActions() {
         () => apiFetch("/api/host/register", { method: "POST", body: JSON.stringify(payloadHostRegister(hostRegisterForm)) }),
         {
           loadingPath: "lottie_save_progress.json",
-          loadingMessage: "Enviando cadastro do anfitrião...",
+          loadingMessage: "Enviando cadastro do anfitriÃ£o...",
           successMessage: "Cadastro processado com sucesso.",
         }
       );
-      setFeedback("hostRegisterFeedback", data.updated ? "Cadastro atualizado com sucesso." : "Cadastro concluído.", true);
+      setFeedback("hostRegisterFeedback", data.updated ? "Cadastro atualizado com sucesso." : "Cadastro concluÃ­do.", true);
       if (data.emailSent === false) {
         console.error("[EMAIL_HOST_REGISTER_FAIL]", data.mailError || "erro nao informado");
         showMessageModal(
           "Cadastro salvo, e-mail pendente",
-          "As informações foram salvas no Nosso Banco de dados, mas houve falha no envio do e-mail com as intruções de acesso.",
+          "As informaÃ§Ãµes foram salvas no Nosso Banco de dados, mas houve falha no envio do e-mail com as intruÃ§Ãµes de acesso.",
           "warning"
         );
       }
@@ -1091,7 +1117,7 @@ function setupWorkspaceActions() {
   candidateRegisterForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!validateRequiredFields(candidateRegisterForm)) {
-      return setFeedback("candidateRegisterFeedback", "Preencha todos os campos obrigatórios.", false);
+      return setFeedback("candidateRegisterFeedback", "Preencha todos os campos obrigatÃ³rios.", false);
     }
     setFeedback("candidateRegisterFeedback", "Enviando cadastro...", true);
     try {
@@ -1103,12 +1129,12 @@ function setupWorkspaceActions() {
           successMessage: "Cadastro enviado com sucesso.",
         }
       );
-      setFeedback("candidateRegisterFeedback", "Cadastro concluído. Realize o primeiro acesso para criar sua senha.", true);
+      setFeedback("candidateRegisterFeedback", "Cadastro concluÃ­do. Realize o primeiro acesso para criar sua senha.", true);
       if (data?.emailSent === false) {
         console.error("[EMAIL_CANDIDATE_REGISTER_FAIL]", data.mailError || "erro nao informado");
         showMessageModal(
           "Cadastro salvo, e-mail pendente",
-          "As informações foram salvas no Nosso Banco de dados, mas houve falha no envio do e-mail com as intruções de acesso.",
+          "As informaÃ§Ãµes foram salvas no Nosso Banco de dados, mas houve falha no envio do e-mail com as intruÃ§Ãµes de acesso.",
           "warning"
         );
       }
@@ -1122,8 +1148,8 @@ function setupWorkspaceActions() {
   candidateFirstAccessForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = collectFormData(candidateFirstAccessForm);
-    if (data.novaSenha !== data.confirmSenha) return setFeedback("candidateFirstAccessFeedback", "As senhas não conferem.", false);
-    if (!isStrongPassword(data.novaSenha)) return setFeedback("candidateFirstAccessFeedback", "Senha fraca. Use letras, números e caractere especial.", false);
+    if (data.novaSenha !== data.confirmSenha) return setFeedback("candidateFirstAccessFeedback", "As senhas nÃ£o conferem.", false);
+    if (!isStrongPassword(data.novaSenha)) return setFeedback("candidateFirstAccessFeedback", "Senha fraca. Use letras, nÃºmeros e caractere especial.", false);
     setFeedback("candidateFirstAccessFeedback", "Processando primeiro acesso...", true);
     try {
       await runWithLottie(
@@ -1131,10 +1157,10 @@ function setupWorkspaceActions() {
         {
           loadingPath: "lottie_lock_unauthorized.json",
           loadingMessage: "Validando e criando senha...",
-          successMessage: "Primeiro acesso concluído.",
+          successMessage: "Primeiro acesso concluÃ­do.",
         }
       );
-      setFeedback("candidateFirstAccessFeedback", "Senha criada com sucesso. Faça login.", true);
+      setFeedback("candidateFirstAccessFeedback", "Senha criada com sucesso. FaÃ§a login.", true);
       candidateFirstAccessForm.reset();
       openWorkspace("candidate-login");
     } catch (error) {
@@ -1146,8 +1172,8 @@ function setupWorkspaceActions() {
   hostFirstAccessForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = collectFormData(hostFirstAccessForm);
-    if (data.novaSenha !== data.confirmSenha) return setFeedback("hostFirstAccessFeedback", "As senhas não conferem.", false);
-    if (!isStrongPassword(data.novaSenha)) return setFeedback("hostFirstAccessFeedback", "Senha fraca. Use letras, números e caractere especial.", false);
+    if (data.novaSenha !== data.confirmSenha) return setFeedback("hostFirstAccessFeedback", "As senhas nÃ£o conferem.", false);
+    if (!isStrongPassword(data.novaSenha)) return setFeedback("hostFirstAccessFeedback", "Senha fraca. Use letras, nÃºmeros e caractere especial.", false);
     setFeedback("hostFirstAccessFeedback", "Processando primeiro acesso...", true);
     try {
       await runWithLottie(
@@ -1155,10 +1181,10 @@ function setupWorkspaceActions() {
         {
           loadingPath: "lottie_lock_unauthorized.json",
           loadingMessage: "Validando e criando senha...",
-          successMessage: "Primeiro acesso concluído.",
+          successMessage: "Primeiro acesso concluÃ­do.",
         }
       );
-      setFeedback("hostFirstAccessFeedback", "Senha criada com sucesso. Faça login.", true);
+      setFeedback("hostFirstAccessFeedback", "Senha criada com sucesso. FaÃ§a login.", true);
       hostFirstAccessForm.reset();
       openWorkspace("host-login");
     } catch (error) {
@@ -1202,7 +1228,7 @@ function setupWorkspaceActions() {
         () => apiFetch("/api/host/login", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(payload.cnpj), senha: payload.senha }) }),
         {
           loadingPath: "lottie_lock_unauthorized.json",
-          loadingMessage: "Autenticando anfitrião...",
+          loadingMessage: "Autenticando anfitriÃ£o...",
           successMessage: "Login realizado.",
         }
       );
@@ -1250,6 +1276,20 @@ function setupWorkspaceActions() {
   qs("#hostSearchInput")?.addEventListener("input", applyHostSearch);
 
   document.addEventListener("click", async (event) => {
+    const modalChoiceEl = event.target.closest("[data-modal-choice]");
+    if (modalChoiceEl && typeof modalChoiceResolver === "function") {
+      const resolver = modalChoiceResolver;
+      modalChoiceResolver = null;
+      const confirmed = modalChoiceEl.dataset.modalChoice === "confirm";
+      const modal = qs("#detailsModal");
+      if (modal) {
+        modal.hidden = true;
+        modal.dataset.closeByBackdrop = "true";
+        modal.dataset.closeByEsc = "true";
+      }
+      resolver(confirmed);
+      return;
+    }
     const closeEl = event.target.closest("[data-close-modal]");
     if (closeEl) {
       const modal = qs("#detailsModal");
@@ -1277,7 +1317,7 @@ function setupWorkspaceActions() {
       }
 
       if (action === "host-decision") {
-        const note = window.prompt("Observação opcional da decisão:", "") || "";
+        const note = "";
         await apiFetch("/api/host/decision", {
           method: "POST",
           headers: { Authorization: `Bearer ${state.tokens.host}` },
@@ -1290,7 +1330,12 @@ function setupWorkspaceActions() {
         await apiFetch("/api/admin/host-status", {
           method: "POST",
           headers: { Authorization: `Bearer ${state.tokens.admin}` },
-          body: JSON.stringify({ rowNumber, status: actionEl.dataset.status }),
+          body: JSON.stringify({
+            rowNumber,
+            status: actionEl.dataset.status,
+            cnpj: actionEl.dataset.cnpj || "",
+            numeroInscricao: actionEl.dataset.inscricao || "",
+          }),
         });
         await refreshAdminArea();
       }
@@ -1299,7 +1344,7 @@ function setupWorkspaceActions() {
         const data = await apiFetch(`/api/admin/host-form/${rowNumber}`, {
           headers: { Authorization: `Bearer ${state.tokens.admin}` },
         });
-        openModal("Formulário do Anfitrião", renderFieldList(data.data || {}, HOST_FIELDS));
+        openModal("FormulÃ¡rio do AnfitriÃ£o", renderFieldList(data.data || {}, HOST_FIELDS));
       }
 
       if (action === "admin-open-linked") {
@@ -1311,7 +1356,7 @@ function setupWorkspaceActions() {
           ? `<div class="table-wrap"><table class="env-table">
               <thead>
                 <tr>
-                  <th>#</th><th>Inscrição</th><th>Município</th><th>UF</th><th>Unidade Gestora</th><th>Data solicitação</th><th>Data aceite anfitrião</th><th>Plano de trabalho</th>
+                  <th>#</th><th>InscriÃ§Ã£o</th><th>MunicÃ­pio</th><th>UF</th><th>Unidade Gestora</th><th>Data solicitaÃ§Ã£o</th><th>Data aceite anfitriÃ£o</th><th>Plano de trabalho</th>
                 </tr>
               </thead>
               <tbody>
@@ -1351,7 +1396,8 @@ function setupWorkspaceActions() {
       }
 
       if (action === "admin-remove-host") {
-        if (!window.confirm("Deseja remover a inscrição deste anfitrião?")) return;
+        const ok = await showConfirmModal("Confirmação", "Deseja remover a inscrição deste anfitrião?", "Remover");
+        if (!ok) return;
         await apiFetch("/api/admin/remove-host", {
           method: "POST",
           headers: { Authorization: `Bearer ${state.tokens.admin}` },
@@ -1361,7 +1407,8 @@ function setupWorkspaceActions() {
       }
 
       if (action === "host-remove-candidate") {
-        if (!window.confirm("Deseja remover a inscrição deste intercambista?")) return;
+        const ok = await showConfirmModal("Confirmação", "Deseja remover a inscrição deste intercambista?", "Remover");
+        if (!ok) return;
         await apiFetch("/api/host/remove-candidate", {
           method: "POST",
           headers: { Authorization: `Bearer ${state.tokens.host}` },
@@ -1386,7 +1433,7 @@ function setupWorkspaceActions() {
         openWorkspace("candidate-login");
       }
     } catch (error) {
-      window.alert(error.message);
+      showMessageModal("Erro", error.message, "error");
     }
   });
 }
