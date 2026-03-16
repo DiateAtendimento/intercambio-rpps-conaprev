@@ -1479,6 +1479,9 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
     const rowNumber = Number(req.body.rowNumber);
     const numeroInscricao = sanitizeInput(req.body.numeroInscricao, 60);
     const cnpj = onlyDigits(req.body.cnpj);
+    const municipio = sanitizeInput(req.body.municipio, 200);
+    const uf = sanitizeInput(req.body.uf, 2).toUpperCase();
+    const entidade = sanitizeInput(req.body.entidade, 250);
     const permissao = normalizeText(req.body.status) === "negado" ? "Negado" : "Concedido";
 
     const data = await getRows(HOST_SHEET, hostHeaders);
@@ -1488,6 +1491,14 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
     }
     if (!host && cnpj) {
       host = data.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
+    }
+    if (!host && (municipio || entidade)) {
+      host = data.rows.find((row) => {
+        const sameMunicipio = !municipio || normalizeText(row.data["Município"] || "") === normalizeText(municipio);
+        const sameUf = !uf || String(row.data.UF || "").toUpperCase() === uf;
+        const sameEntidade = !entidade || normalizeText(row.data["Unidade Gestora"] || "") === normalizeText(entidade);
+        return sameMunicipio && sameUf && sameEntidade;
+      });
     }
     if (!host) {
       return res.status(404).json({ error: "Anfitrião não encontrado." });

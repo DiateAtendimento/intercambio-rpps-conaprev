@@ -104,10 +104,15 @@ function showMessageModal(title, message, kind = "info") {
     safeTitle,
     `
       <div class="message-modal message-modal--${kindClass}">
-        <div class="message-modal__icon" aria-hidden="true">
-          <i class="fa-solid ${kindClass === "success" ? "fa-circle-check" : kindClass === "warning" ? "fa-triangle-exclamation" : kindClass === "error" ? "fa-circle-xmark" : "fa-circle-info"}"></i>
+        <div class="message-modal__hero">
+          <div class="message-modal__icon" aria-hidden="true">
+            <i class="fa-solid ${kindClass === "success" ? "fa-circle-check" : kindClass === "warning" ? "fa-triangle-exclamation" : kindClass === "error" ? "fa-circle-xmark" : "fa-circle-info"}"></i>
+          </div>
+          <div class="message-modal__copy">
+            <strong>${escapeHtml(safeTitle)}</strong>
+            <p>${escapeHtml(safeMessage)}</p>
+          </div>
         </div>
-        <p>${escapeHtml(safeMessage)}</p>
       </div>
     `,
     { closeByBackdrop: false, closeByEsc: false }
@@ -1018,7 +1023,7 @@ function renderEmptyRow(targetId, colspan, message) {
 
 function withActionLottie(task, loadingMessage) {
   return runWithLottie(task, {
-    loadingPath: "lottie_search_loading.json",
+    loadingPath: "lottie_confirm_progress.json",
     loadingMessage,
     successMessage: "Concluído com sucesso.",
     overlayDelayMs: 1000,
@@ -1150,8 +1155,8 @@ function buildAdminRows(rows, targetId) {
               <td>${iconButton("admin-open-cred", item.rowNumber, "icone-credenciamento.svg", "Credenciamento")}</td>
               <td>
                 <div class="action-group">
-                  <button class="btn btn-sm btn-action-accept" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Concedido" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}">Aceitar</button>
-                  <button class="btn btn-sm btn-action-reject" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Negado" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}">Rejeitar</button>
+                  <button class="btn btn-sm btn-action-accept" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Concedido" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}" data-municipio="${escapeHtml(item.municipio || "")}" data-uf="${escapeHtml(item.uf || "")}" data-entidade="${escapeHtml(item.entidade || "")}">Aceitar</button>
+                  <button class="btn btn-sm btn-action-reject" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Negado" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}" data-municipio="${escapeHtml(item.municipio || "")}" data-uf="${escapeHtml(item.uf || "")}" data-entidade="${escapeHtml(item.entidade || "")}">Rejeitar</button>
                 </div>
               </td>`
             : `
@@ -1478,6 +1483,9 @@ function setupWorkspaceActions() {
                 status: actionEl.dataset.status,
                 cnpj: actionEl.dataset.cnpj || "",
                 numeroInscricao: actionEl.dataset.inscricao || "",
+                municipio: actionEl.dataset.municipio || "",
+                uf: actionEl.dataset.uf || "",
+                entidade: actionEl.dataset.entidade || "",
               }),
             }),
           "Atualizando status do anfitrião..."
