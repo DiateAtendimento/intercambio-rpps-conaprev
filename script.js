@@ -1147,12 +1147,8 @@ function setupWorkspaceActions() {
           successMessage: "Cadastro processado com sucesso.",
         }
       );
-<<<<<<< HEAD
-      setFeedback("hostRegisterFeedback", data.updated ? "Cadastro atualizado com sucesso." : "Cadastro concluÃ­do.", true);
-=======
       setFeedback("hostRegisterFeedback", data.updated ? "Cadastro atualizado com sucesso." : "Cadastro concluído.", true);
       showAccessInfoModal(data.accessInfo);
->>>>>>> 9439355caaacac864d475aa3118fcdc6a5f750b8
       if (data.emailSent === false) {
         console.error("[EMAIL_HOST_REGISTER_FAIL]", data.mailError || "erro nao informado");
         showMessageModal(
@@ -1183,12 +1179,8 @@ function setupWorkspaceActions() {
           successMessage: "Cadastro enviado com sucesso.",
         }
       );
-<<<<<<< HEAD
-      setFeedback("candidateRegisterFeedback", "Cadastro concluÃ­do. Realize o primeiro acesso para criar sua senha.", true);
-=======
       setFeedback("candidateRegisterFeedback", "Cadastro concluído. Realize o primeiro acesso para criar sua senha.", true);
       showAccessInfoModal(data.accessInfo);
->>>>>>> 9439355caaacac864d475aa3118fcdc6a5f750b8
       if (data?.emailSent === false) {
         console.error("[EMAIL_CANDIDATE_REGISTER_FAIL]", data.mailError || "erro nao informado");
         showMessageModal(
