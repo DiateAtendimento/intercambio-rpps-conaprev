@@ -1214,7 +1214,7 @@ function setupWorkspaceActions() {
       await runWithLottie(
         () => apiFetch("/api/candidate/first-access", { method: "POST", body: JSON.stringify({ cpf: normalizeDigits(data.cpf), email: data.email, novaSenha: data.novaSenha }) }),
         {
-          loadingPath: "lottie_lock_unauthorized.json",
+          loadingPath: "lottie_search_loading.json",
           loadingMessage: "Validando e criando senha...",
           successMessage: "Primeiro acesso concluÃ­do.",
         }
@@ -1238,7 +1238,7 @@ function setupWorkspaceActions() {
       await runWithLottie(
         () => apiFetch("/api/host/first-access", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(data.cnpj), numeroInscricao: data.numeroInscricao, senhaInicial: data.senhaInicial, novaSenha: data.novaSenha }) }),
         {
-          loadingPath: "lottie_lock_unauthorized.json",
+          loadingPath: "lottie_search_loading.json",
           loadingMessage: "Validando e criando senha...",
           successMessage: "Primeiro acesso concluÃ­do.",
         }
@@ -1260,8 +1260,8 @@ function setupWorkspaceActions() {
       const data = await runWithLottie(
         () => apiFetch("/api/candidate/login", { method: "POST", body: JSON.stringify({ cpf: normalizeDigits(payload.cpf), senha: payload.senha }) }),
         {
-          loadingPath: "lottie_lock_unauthorized.json",
-          loadingMessage: "Autenticando intercambista...",
+          loadingPath: "lottie_search_loading.json",
+          loadingMessage: "Carregando informações para acesso do intercambista...",
           successMessage: "Login realizado.",
         }
       );
@@ -1286,8 +1286,8 @@ function setupWorkspaceActions() {
       const data = await runWithLottie(
         () => apiFetch("/api/host/login", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(payload.cnpj), senha: payload.senha }) }),
         {
-          loadingPath: "lottie_lock_unauthorized.json",
-          loadingMessage: "Autenticando anfitriÃ£o...",
+          loadingPath: "lottie_search_loading.json",
+          loadingMessage: "Carregando informações para acesso do anfitrião...",
           successMessage: "Login realizado.",
         }
       );
@@ -1314,8 +1314,8 @@ function setupWorkspaceActions() {
       const data = await runWithLottie(
         () => apiFetch("/api/admin/login", { method: "POST", body: JSON.stringify({ user: adminUser, password: adminPassword }) }),
         {
-          loadingPath: "lottie_lock_unauthorized.json",
-          loadingMessage: "Autenticando administrador...",
+          loadingPath: "lottie_search_loading.json",
+          loadingMessage: "Carregando informações para acesso do administrador...",
           successMessage: "Login realizado.",
         }
       );
