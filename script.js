@@ -115,7 +115,7 @@ function showMessageModal(title, message, kind = "info") {
         </div>
       </div>
     `,
-    { closeByBackdrop: false, closeByEsc: false }
+    { closeByBackdrop: false, closeByEsc: false, variant: "message" }
   );
 }
 
@@ -899,6 +899,7 @@ function openModal(title, html, options = {}) {
   modalBody.innerHTML = html;
   modal.dataset.closeByBackdrop = options.closeByBackdrop === false ? "false" : "true";
   modal.dataset.closeByEsc = options.closeByEsc === false ? "false" : "true";
+  modal.dataset.modalVariant = options.variant || "default";
   modal.hidden = false;
 }
 
@@ -913,6 +914,7 @@ function closeModal() {
   modal.hidden = true;
   modal.dataset.closeByBackdrop = "true";
   modal.dataset.closeByEsc = "true";
+  modal.dataset.modalVariant = "default";
 }
 
 function forceModalClosed() {
@@ -922,6 +924,7 @@ function forceModalClosed() {
   modal.hidden = true;
   modal.dataset.closeByBackdrop = "true";
   modal.dataset.closeByEsc = "true";
+  modal.dataset.modalVariant = "default";
   if (modalBody) modalBody.innerHTML = "";
 }
 
@@ -939,7 +942,7 @@ function showConfirmModal(title, message, confirmLabel = "Confirmar", cancelLabe
           </div>
         </div>
       `,
-      { closeByBackdrop: true, closeByEsc: true }
+      { closeByBackdrop: true, closeByEsc: true, variant: "message" }
     );
   });
 }

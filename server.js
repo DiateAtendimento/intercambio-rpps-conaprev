@@ -994,6 +994,11 @@ app.post("/api/host/first-access", loginLimiter, async (req, res) => {
     }
 
     const dataset = await getRows(HOST_SHEET, hostHeaders);
+    logLookup("host-first-access", "start", {
+      cnpj: maskValue(cnpj),
+      numeroInscricao,
+      totalHosts: dataset.rows.length,
+    });
     const found = dataset.rows.find(
       (row) =>
         onlyDigits(row.data["Município CNPJ"]) === cnpj &&
@@ -1001,8 +1006,18 @@ app.post("/api/host/first-access", loginLimiter, async (req, res) => {
     );
 
     if (!found) {
+      logLookup("host-first-access", "not_found", {
+        cnpj: maskValue(cnpj),
+        numeroInscricao,
+      });
       return res.status(404).json({ error: "Anfitrião não encontrado para primeiro acesso." });
     }
+    logLookup("host-first-access", "matched", {
+      by: "cnpj+numeroInscricao",
+      rowNumber: found.rowNumber,
+      cnpj: maskValue(cnpj),
+      numeroInscricao,
+    });
 
     const initialOk = await bcrypt.compare(senhaInicial, found.data["Senha"] || "");
     if (!initialOk) {
@@ -1023,10 +1038,22 @@ app.post("/api/host/first-access", loginLimiter, async (req, res) => {
 app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
   try {
     const hostData = await getRows(HOST_SHEET, hostHeaders);
+    logLookup("host-requests", "start", {
+      sessionSubject: req.session.subject,
+      totalHosts: hostData.rows.length,
+    });
     const hostRowData = findHostBySessionSubject(hostData.rows, req.session.subject);
     if (!hostRowData) {
+      logLookup("host-requests", "host_not_found", {
+        sessionSubject: req.session.subject,
+      });
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }
+    logLookup("host-requests", "host_matched", {
+      rowNumber: hostRowData.rowNumber,
+      inscricao: hostRowData.data["Inscrição"] || "",
+      cnpj: maskValue(onlyDigits(hostRowData.data["Município CNPJ"] || "")),
+    });
 
     const hostNumero = hostRowData.data["Inscrição"];
     const hostStatus = normalizeText(resolveHostStatus(hostRowData.data));
@@ -1114,18 +1141,44 @@ app.post("/api/host/decision", requireAuth("host"), async (req, res) => {
     }
 
     const hostData = await getRows(HOST_SHEET, hostHeaders);
+    logLookup("host-decision", "start", {
+      sessionSubject: req.session.subject,
+      candidateRow,
+      decision,
+      totalHosts: hostData.rows.length,
+    });
     const hostRowData = findHostBySessionSubject(hostData.rows, req.session.subject);
     if (!hostRowData) {
+      logLookup("host-decision", "host_not_found", {
+        sessionSubject: req.session.subject,
+        candidateRow,
+      });
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }
+    logLookup("host-decision", "host_matched", {
+      rowNumber: hostRowData.rowNumber,
+      inscricao: hostRowData.data["Inscrição"] || "",
+      candidateRow,
+      decision,
+    });
 
     const hostNumero = hostRowData.data["Inscrição"];
     const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
     const target = candidates.rows.find((row) => row.rowNumber === candidateRow);
 
     if (!target) {
+      logLookup("host-decision", "candidate_not_found", {
+        candidateRow,
+        hostNumero,
+      });
       return res.status(404).json({ error: "Solicitação não encontrada." });
     }
+    logLookup("host-decision", "candidate_matched", {
+      candidateRow: target.rowNumber,
+      hostNumero,
+      selectedHost: String(target.data["Anfitrião escolhido - Inscrição"] || ""),
+      candidateCpf: maskValue(onlyDigits(target.data.CPF || "")),
+    });
 
     if (String(target.data["Anfitrião escolhido - Inscrição"] || "") !== hostNumero) {
       return res.status(403).json({ error: "Solicitação não pertence ao anfitrião logado." });
