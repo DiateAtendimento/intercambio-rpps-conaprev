@@ -23,6 +23,9 @@ const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
 const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
 const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
+const SMTP_CONNECTION_TIMEOUT = Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 4000);
+const SMTP_GREETING_TIMEOUT = Number(process.env.SMTP_GREETING_TIMEOUT_MS || 4000);
+const SMTP_SOCKET_TIMEOUT = Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 6000);
 
 if (!SHEET_ID) {
   throw new Error("Missing GOOGLE_SHEET_ID");
@@ -313,9 +316,9 @@ const mailer =
         host: SMTP_HOST,
         port: SMTP_PORT,
         secure: SMTP_PORT === 465,
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 15000,
+        connectionTimeout: SMTP_CONNECTION_TIMEOUT,
+        greetingTimeout: SMTP_GREETING_TIMEOUT,
+        socketTimeout: SMTP_SOCKET_TIMEOUT,
         auth: { user: SMTP_USER, pass: SMTP_PASS },
       })
     : null;
