@@ -17,6 +17,11 @@ const STORAGE_KEYS = {
   screen: "intercambio_screen_v1",
 };
 
+const API_BASE =
+  typeof window !== "undefined" && window.location.hostname.endsWith("netlify.app")
+    ? "https://intercambio-rpps-conaprev.onrender.com"
+    : "";
+
 function qs(selector) {
   return document.querySelector(selector);
 }
@@ -74,7 +79,8 @@ function isStrongPassword(password) {
 }
 
 async function apiFetch(url, options = {}) {
-  const response = await fetch(url, {
+  const requestUrl = String(url || "").startsWith("/api/") ? `${API_BASE}${url}` : url;
+  const response = await fetch(requestUrl, {
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),

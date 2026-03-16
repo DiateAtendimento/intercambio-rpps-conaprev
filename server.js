@@ -46,6 +46,29 @@ if (process.env.RENDER || process.env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
 
+app.use((req, res, next) => {
+  const origin = String(req.headers.origin || "");
+  const allowedOrigin =
+    !origin ||
+    /^https:\/\/.*\.netlify\.app$/i.test(origin) ||
+    /^https:\/\/.*\.onrender\.com$/i.test(origin) ||
+    /^http:\/\/localhost(?::\d+)?$/i.test(origin);
+
+  if (allowedOrigin && origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
+
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  next();
+});
+
 app.use(
   helmet({
     contentSecurityPolicy: {

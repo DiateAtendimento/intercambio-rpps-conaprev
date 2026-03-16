@@ -973,8 +973,11 @@ body.system-menu-open {
 }
 
 .data-modal[data-modal-variant="message"] .data-modal__dialog {
-  width: min(640px, calc(100vw - 2rem));
+  width: min(460px, calc(100vw - 2rem));
   max-height: none;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .data-modal[data-modal-variant="message"] .data-modal__header {
@@ -989,7 +992,7 @@ body.system-menu-open {
 }
 
 .data-modal[data-modal-variant="message"] .data-modal__body {
-  padding: 0.35rem 1rem 1rem;
+  padding: 0.15rem 0.35rem 0.35rem;
 }
 
 .data-modal__header h3 {
