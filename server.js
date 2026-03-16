@@ -503,6 +503,24 @@ function logLookup(scope, stage, payload = {}) {
   console.info(`[lookup:${scope}] ${stage}`, payload);
 }
 
+function buildHostFingerprint(rowData = {}) {
+  return crypto
+    .createHash("sha1")
+    .update(
+      [
+        String(rowData["Inscrição"] || "").trim(),
+        onlyDigits(rowData["Município CNPJ"] || ""),
+        String(rowData["Município"] || "").trim(),
+        String(rowData.UF || "").trim().toUpperCase(),
+        String(rowData["Unidade Gestora"] || "").trim(),
+        String(rowData["E-mail de contato"] || "").trim().toLowerCase(),
+        String(rowData["Nome do Dirigente ou Responsável Legal"] || "").trim(),
+        normalizeDateBr(rowData.Data || ""),
+      ].join("|")
+    )
+    .digest("hex");
+}
+
 function findHostBySessionSubject(rows, subject) {
   const cnpj = onlyDigits(subject);
   if (cnpj.length === 14) {
@@ -1543,6 +1561,7 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
 
     const hosts = hostsData.rows.map((row) => ({
       rowNumber: row.rowNumber,
+      fingerprint: buildHostFingerprint(row.data),
       numeroInscricao: row.data["Inscrição"] || "",
       entidade: row.data["Unidade Gestora"] || "",
       cnpj: row.data["Município CNPJ"] || "",
@@ -1595,6 +1614,7 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
 app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
   try {
     const rowNumber = Number(req.body.rowNumber);
+    const fingerprint = sanitizeInput(req.body.fingerprint, 80);
     const numeroInscricao = sanitizeInput(req.body.numeroInscricao, 60);
     const cnpj = onlyDigits(req.body.cnpj);
     const municipio = sanitizeInput(req.body.municipio, 200);
@@ -1608,6 +1628,7 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
     const data = await getRows(HOST_SHEET, hostHeaders);
     logLookup("admin-host-status", "start", {
       rowNumber,
+      fingerprint,
       numeroInscricao,
       cnpj: maskValue(cnpj),
       municipio,
@@ -1622,6 +1643,10 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
 
     let host = data.rows.find((row) => row.rowNumber === rowNumber);
     if (host) logLookup("admin-host-status", "matched", { by: "rowNumber", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });
+    if (!host && fingerprint) {
+      host = data.rows.find((row) => buildHostFingerprint(row.data) === fingerprint);
+      if (host) logLookup("admin-host-status", "matched", { by: "fingerprint", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });
+    }
     if (!host && numeroInscricao) {
       host = data.rows.find((row) => String(row.data["Inscrição"] || "") === numeroInscricao);
       if (host) logLookup("admin-host-status", "matched", { by: "numeroInscricao", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });

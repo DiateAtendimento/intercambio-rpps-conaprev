@@ -1171,8 +1171,8 @@ function buildAdminRows(rows, targetId) {
               <td>${iconButton("admin-open-cred", item.rowNumber, "icone-credenciamento.svg", "Credenciamento")}</td>
               <td>
                 <div class="action-group">
-                  <button class="btn btn-sm btn-action-accept" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Concedido" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}" data-municipio="${escapeHtml(item.municipio || "")}" data-uf="${escapeHtml(item.uf || "")}" data-entidade="${escapeHtml(item.entidade || "")}" data-email="${escapeHtml(item.email || "")}" data-dirigente="${escapeHtml(item.dirigente || "")}" data-data="${escapeHtml(item.dataSolicitacao || "")}">Aceitar</button>
-                  <button class="btn btn-sm btn-action-reject" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Negado" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}" data-municipio="${escapeHtml(item.municipio || "")}" data-uf="${escapeHtml(item.uf || "")}" data-entidade="${escapeHtml(item.entidade || "")}" data-email="${escapeHtml(item.email || "")}" data-dirigente="${escapeHtml(item.dirigente || "")}" data-data="${escapeHtml(item.dataSolicitacao || "")}">Rejeitar</button>
+                  <button class="btn btn-sm btn-action-accept" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-fingerprint="${escapeHtml(item.fingerprint || "")}" data-status="Concedido" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}" data-municipio="${escapeHtml(item.municipio || "")}" data-uf="${escapeHtml(item.uf || "")}" data-entidade="${escapeHtml(item.entidade || "")}" data-email="${escapeHtml(item.email || "")}" data-dirigente="${escapeHtml(item.dirigente || "")}" data-data="${escapeHtml(item.dataSolicitacao || "")}">Aceitar</button>
+                  <button class="btn btn-sm btn-action-reject" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-fingerprint="${escapeHtml(item.fingerprint || "")}" data-status="Negado" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}" data-municipio="${escapeHtml(item.municipio || "")}" data-uf="${escapeHtml(item.uf || "")}" data-entidade="${escapeHtml(item.entidade || "")}" data-email="${escapeHtml(item.email || "")}" data-dirigente="${escapeHtml(item.dirigente || "")}" data-data="${escapeHtml(item.dataSolicitacao || "")}">Rejeitar</button>
                 </div>
               </td>`
             : `
@@ -1506,6 +1506,7 @@ function setupWorkspaceActions() {
               headers: { Authorization: `Bearer ${state.tokens.admin}` },
               body: JSON.stringify({
                 rowNumber,
+                fingerprint: actionEl.dataset.fingerprint || "",
                 status: actionEl.dataset.status,
                 cnpj: actionEl.dataset.cnpj || "",
                 numeroInscricao: actionEl.dataset.inscricao || "",
