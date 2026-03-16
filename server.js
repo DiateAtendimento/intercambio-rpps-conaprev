@@ -628,6 +628,33 @@ function candidateRegistrationEmailText(candidateData, userValue, passwordValue)
   ].join("\n");
 }
 
+function buildHostAccessPayload(valueMap, numeroInscricao, accessPassword) {
+  return {
+    tipo: "anfitriao",
+    titulo: "Cadastro concluido",
+    orientacao:
+      "Guarde estas informacoes. Elas serao usadas no primeiro acesso e no acompanhamento do cadastro.",
+    inscricao: numeroInscricao,
+    municipio: valueMap["Município"] || "-",
+    uf: valueMap.UF || "-",
+    usuario: onlyDigits(valueMap["Município CNPJ"]) || "-",
+    senha: accessPassword || "-",
+  };
+}
+
+function buildCandidateAccessPayload(row, accessPassword) {
+  return {
+    tipo: "intercambista",
+    titulo: "Cadastro concluido",
+    orientacao:
+      "Guarde estas informacoes. Elas serao usadas no primeiro acesso e no acompanhamento da inscricao.",
+    municipio: row["Município"] || "-",
+    uf: row.UF || "-",
+    usuario: onlyDigits(row.CPF) || "-",
+    senha: accessPassword || "-",
+  };
+}
+
 function buildHostValueMap(payload, passwordHash, numeroInscricao) {
   const yesNo = (v) => (v ? "Sim" : "Não");
 
@@ -839,22 +866,12 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
       valueMap["Primeiro Acesso Concluído"] = resolveHostFirstAccess(valueMap);
 
       await updateRow(HOST_SHEET, headers, existing.rowNumber, valueMap);
-      const mailResult = await sendEmail(
-        valueMap["E-mail de contato"] || "",
-        "Confirmação de inscrição – Intercâmbio Técnico entre Regimes Previdenciários",
-        hostRegistrationEmailText(
-          valueMap,
-          onlyDigits(valueMap["Município CNPJ"]),
-          accessPassword
-        )
-      );
-
       return res.json({
         updated: true,
         numeroInscricao,
         cnpj,
-        emailSent: Boolean(mailResult?.ok),
-        mailError: String(mailResult?.error || ""),
+        delivery: "modal",
+        accessInfo: buildHostAccessPayload(valueMap, numeroInscricao, accessPassword),
         message: "Cadastro atualizado com sucesso.",
       });
     }
@@ -864,22 +881,12 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
     const valueMap = buildHostValueMap(req.body, accessPasswordHash, numeroInscricao);
     valueMap["Primeiro Acesso Concluído"] = resolveHostFirstAccess(valueMap);
     await appendRow(HOST_SHEET, headers, valueMap);
-    const mailResult = await sendEmail(
-      valueMap["E-mail de contato"] || "",
-      "Confirmação de inscrição – Intercâmbio Técnico entre Regimes Previdenciários",
-      hostRegistrationEmailText(
-        valueMap,
-        onlyDigits(valueMap["Município CNPJ"]),
-        accessPassword
-      )
-    );
-
     return res.status(201).json({
       created: true,
       numeroInscricao,
       cnpj,
-      emailSent: Boolean(mailResult?.ok),
-      mailError: String(mailResult?.error || ""),
+      delivery: "modal",
+      accessInfo: buildHostAccessPayload(valueMap, numeroInscricao, accessPassword),
       message: "Cadastro de anfitrião realizado. Aguardando autorização do admin.",
     });
   } catch (error) {
@@ -1140,20 +1147,10 @@ app.post("/api/candidate/register", loginLimiter, async (req, res) => {
     row["Senha"] = await bcrypt.hash(accessPassword, 12);
     row["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(row);
     await appendRow(CANDIDATE_SHEET, dataset.headers, row);
-    const mailResult = await sendEmail(
-      row["E-mail institucional"] || "",
-      "Confirmação de inscrição – Intercâmbio Técnico entre Regimes Previdenciários",
-      candidateRegistrationEmailText(
-        row,
-        onlyDigits(row.CPF),
-        accessPassword
-      )
-    );
-
     res.status(201).json({
       ok: true,
-      emailSent: Boolean(mailResult?.ok),
-      mailError: String(mailResult?.error || ""),
+      delivery: "modal",
+      accessInfo: buildCandidateAccessPayload(row, accessPassword),
       message: "Cadastro do intercambista realizado.",
     });
   } catch (error) {

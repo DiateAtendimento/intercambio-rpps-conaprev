@@ -81,6 +81,55 @@ function showMessageModal(title, message, kind = "info") {
   );
 }
 
+function showAccessInfoModal(accessInfo) {
+  if (!accessInfo) return;
+  const registrationLine = accessInfo.inscricao
+    ? `
+        <div class="access-modal__item">
+          <span>Inscricao</span>
+          <strong>${escapeHtml(accessInfo.inscricao)}</strong>
+        </div>
+      `
+    : "";
+  openModal(
+    accessInfo.titulo || "Dados de acesso",
+    `
+      <div class="access-modal">
+        <div class="access-modal__alert">
+          <div class="access-modal__icon" aria-hidden="true">
+            <i class="fa-solid fa-key"></i>
+          </div>
+          <div>
+            <h4>Informacoes de acesso</h4>
+            <p>${escapeHtml(accessInfo.orientacao || "Guarde estas informacoes em local seguro.")}</p>
+          </div>
+        </div>
+        <div class="access-modal__grid">
+          ${registrationLine}
+          <div class="access-modal__item">
+            <span>Municipio</span>
+            <strong>${escapeHtml(accessInfo.municipio || "-")}</strong>
+          </div>
+          <div class="access-modal__item">
+            <span>UF</span>
+            <strong>${escapeHtml(accessInfo.uf || "-")}</strong>
+          </div>
+          <div class="access-modal__item">
+            <span>Usuario</span>
+            <strong>${escapeHtml(accessInfo.usuario || "-")}</strong>
+          </div>
+          <div class="access-modal__item">
+            <span>Senha provisoria</span>
+            <strong>${escapeHtml(accessInfo.senha || "-")}</strong>
+          </div>
+        </div>
+        <p class="access-modal__note">Este modal so fecha no botao <strong>X</strong>. Anote os dados antes de sair.</p>
+      </div>
+    `,
+    { closeByBackdrop: false, closeByEsc: false }
+  );
+}
+
 function saveTokens() {
   try {
     localStorage.setItem(STORAGE_KEYS.tokens, JSON.stringify(state.tokens));
@@ -1073,6 +1122,7 @@ function setupWorkspaceActions() {
         }
       );
       setFeedback("hostRegisterFeedback", data.updated ? "Cadastro atualizado com sucesso." : "Cadastro concluído.", true);
+      showAccessInfoModal(data.accessInfo);
       if (data.emailSent === false) {
         console.error("[EMAIL_HOST_REGISTER_FAIL]", data.mailError || "erro nao informado");
         showMessageModal(
@@ -1104,6 +1154,7 @@ function setupWorkspaceActions() {
         }
       );
       setFeedback("candidateRegisterFeedback", "Cadastro concluído. Realize o primeiro acesso para criar sua senha.", true);
+      showAccessInfoModal(data.accessInfo);
       if (data?.emailSent === false) {
         console.error("[EMAIL_CANDIDATE_REGISTER_FAIL]", data.mailError || "erro nao informado");
         showMessageModal(
@@ -1256,6 +1307,7 @@ function setupWorkspaceActions() {
       if (!modal) return;
       const isBackdrop = closeEl.classList.contains("data-modal__backdrop");
       if (isBackdrop && modal.dataset.closeByBackdrop === "false") return;
+      if (!isBackdrop && event.detail === 0) return;
       closeModal();
       return;
     }
