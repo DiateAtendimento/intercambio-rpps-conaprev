@@ -87,12 +87,8 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
-  if (
-    req.path === "/api/admin/host-status" ||
-    req.path === "/api/candidate/select-host" ||
-    req.path === "/api/host/decision"
-  ) {
-    console.error("[route-hit]", {
+  if (req.path.startsWith("/api/")) {
+    console.error("[api-hit]", {
       method: req.method,
       path: req.path,
       origin: req.headers.origin || "",

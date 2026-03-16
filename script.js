@@ -80,6 +80,10 @@ function isStrongPassword(password) {
 
 async function apiFetch(url, options = {}) {
   const requestUrl = String(url || "").startsWith("/api/") ? `${API_BASE}${url}` : url;
+  console.error("[apiFetch:start]", {
+    method: options.method || "GET",
+    url: requestUrl,
+  });
   const response = await fetch(requestUrl, {
     headers: {
       "Content-Type": "application/json",
@@ -90,9 +94,23 @@ async function apiFetch(url, options = {}) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    console.error("[apiFetch:error]", {
+      method: options.method || "GET",
+      url: requestUrl,
+      status: response.status,
+      data,
+    });
     throw new Error(data.error || "Falha na operação.");
   }
   return data;
+}
+
+async function probeBackendReachability(context) {
+  const probeUrl = `${API_BASE}/api/health?probe=${encodeURIComponent(context)}&ts=${Date.now()}`;
+  console.error("[apiProbe:start]", probeUrl);
+  const response = await fetch(probeUrl, { method: "GET", mode: "cors" });
+  console.error("[apiProbe:done]", { url: probeUrl, status: response.status });
+  return response.ok;
 }
 
 function setFeedback(id, message, ok = false) {
@@ -1505,6 +1523,7 @@ function setupWorkspaceActions() {
       }
 
       if (action === "admin-status") {
+        await probeBackendReachability("admin-host-status");
         await withActionLottie(
           () =>
             apiFetch("/api/admin/host-status", {
