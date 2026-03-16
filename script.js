@@ -273,9 +273,9 @@ async function runWithLottie(task, options = {}) {
   const hasPlayer = Boolean(window.lottie) && typeof window.lottie.loadAnimation === "function";
   if (!hasOverlay || !hasPlayer) return task();
 
-  const loadingPath = options.loadingPath || "lottie_save_progress.json";
+  const loadingPath = options.loadingPath || "Loading.json";
   const loadingMessage = options.loadingMessage || "Processando...";
-  const successPath = options.successPath || "lottie_success_check.json";
+  const successPath = options.successPath || "Success.json";
   const successMessage = options.successMessage || "Concluído com sucesso.";
   const errorPath = options.errorPath || "lottie_error_generic.json";
   const minLoadingMs = Number(options.minLoadingMs || 450);
@@ -821,9 +821,11 @@ function setupCnpjPrefill() {
       const data = await runWithLottie(
         () => apiFetch(`/api/prefill/municipio/${cnpj}`),
         {
-          loadingPath: "lottie_search_loading.json",
+          loadingPath: "Loading.json",
           loadingMessage: "Buscando dados do município...",
+          successPath: "Success.json",
           successMessage: "Dados encontrados.",
+          overlayDelayMs: 2500,
         }
       );
       applyPrefillToHostForm(hostForm, data.prefill);
@@ -847,9 +849,11 @@ function setupCnpjPrefill() {
       const data = await runWithLottie(
         () => apiFetch(`/api/prefill/municipio/${cnpj}`),
         {
-          loadingPath: "lottie_search_loading.json",
+          loadingPath: "Loading.json",
           loadingMessage: "Buscando dados do município...",
+          successPath: "Success.json",
           successMessage: "Dados encontrados.",
+          overlayDelayMs: 2500,
         }
       );
       applyPrefillToCandidateForm(candidateForm, data.prefill);
@@ -941,14 +945,22 @@ function showConfirmModal(title, message, confirmLabel = "Confirmar", cancelLabe
 }
 
 function renderFieldList(data, fields) {
+  const wideKeys = new Set([
+    "Equipe de apoio designada (nomes)",
+    "Breve descrição da proposta de intercâmbio",
+    "Temas/áreas de interesse (texto)",
+    "Atividades propostas (agenda por dia)",
+    "Objetivos e compromissos (o que pretende implementar/replicar)",
+  ]);
+
   return `
-    <div class="read-grid">
+    <div class="read-sheet">
       ${fields
         .map(
           (field) => `
-        <div class="read-item">
-          <span>${escapeHtml(field.label)}</span>
-          <strong>${escapeHtml(formatFieldValue(field, data[field.key]))}</strong>
+        <div class="read-field ${wideKeys.has(field.key) ? "read-field--wide" : ""}">
+          <label class="read-field__label">${escapeHtml(field.label)}</label>
+          <div class="read-field__value ${wideKeys.has(field.key) ? "read-field__value--multiline" : ""}">${escapeHtml(formatFieldValue(field, data[field.key]))}</div>
         </div>`
         )
         .join("")}
@@ -1023,10 +1035,11 @@ function renderEmptyRow(targetId, colspan, message) {
 
 function withActionLottie(task, loadingMessage) {
   return runWithLottie(task, {
-    loadingPath: "lottie_confirm_progress.json",
+    loadingPath: "Loading.json",
     loadingMessage,
     successMessage: "Concluído com sucesso.",
-    overlayDelayMs: 1000,
+    successPath: "Success.json",
+    overlayDelayMs: 2500,
   });
 }
 
@@ -1155,8 +1168,8 @@ function buildAdminRows(rows, targetId) {
               <td>${iconButton("admin-open-cred", item.rowNumber, "icone-credenciamento.svg", "Credenciamento")}</td>
               <td>
                 <div class="action-group">
-                  <button class="btn btn-sm btn-action-accept" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Concedido" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}" data-municipio="${escapeHtml(item.municipio || "")}" data-uf="${escapeHtml(item.uf || "")}" data-entidade="${escapeHtml(item.entidade || "")}">Aceitar</button>
-                  <button class="btn btn-sm btn-action-reject" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Negado" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}" data-municipio="${escapeHtml(item.municipio || "")}" data-uf="${escapeHtml(item.uf || "")}" data-entidade="${escapeHtml(item.entidade || "")}">Rejeitar</button>
+                  <button class="btn btn-sm btn-action-accept" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Concedido" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}" data-municipio="${escapeHtml(item.municipio || "")}" data-uf="${escapeHtml(item.uf || "")}" data-entidade="${escapeHtml(item.entidade || "")}" data-email="${escapeHtml(item.email || "")}" data-dirigente="${escapeHtml(item.dirigente || "")}" data-data="${escapeHtml(item.dataSolicitacao || "")}">Aceitar</button>
+                  <button class="btn btn-sm btn-action-reject" type="button" data-action="admin-status" data-row="${item.rowNumber}" data-status="Negado" data-cnpj="${escapeHtml(item.cnpj || "")}" data-inscricao="${escapeHtml(item.numeroInscricao || "")}" data-municipio="${escapeHtml(item.municipio || "")}" data-uf="${escapeHtml(item.uf || "")}" data-entidade="${escapeHtml(item.entidade || "")}" data-email="${escapeHtml(item.email || "")}" data-dirigente="${escapeHtml(item.dirigente || "")}" data-data="${escapeHtml(item.dataSolicitacao || "")}">Rejeitar</button>
                 </div>
               </td>`
             : `
@@ -1223,8 +1236,9 @@ function setupWorkspaceActions() {
       const data = await runWithLottie(
         () => apiFetch("/api/host/register", { method: "POST", body: JSON.stringify(payloadHostRegister(hostRegisterForm)) }),
         {
-          loadingPath: "lottie_save_progress.json",
+          loadingPath: "Loading.json",
           loadingMessage: "Enviando cadastro do anfitrião...",
+          successPath: "Success.json",
           successMessage: "Cadastro processado com sucesso.",
         }
       );
@@ -1260,8 +1274,9 @@ function setupWorkspaceActions() {
       const data = await runWithLottie(
         () => apiFetch("/api/candidate/register", { method: "POST", body: JSON.stringify(payloadCandidateRegister(candidateRegisterForm)) }),
         {
-          loadingPath: "lottie_save_progress.json",
+          loadingPath: "Loading.json",
           loadingMessage: "Enviando cadastro do intercambista...",
+          successPath: "Success.json",
           successMessage: "Cadastro enviado com sucesso.",
         }
       );
@@ -1292,8 +1307,9 @@ function setupWorkspaceActions() {
       await runWithLottie(
         () => apiFetch("/api/candidate/first-access", { method: "POST", body: JSON.stringify({ cpf: normalizeDigits(data.cpf), email: data.email, novaSenha: data.novaSenha }) }),
         {
-          loadingPath: "lottie_search_loading.json",
+          loadingPath: "Loading.json",
           loadingMessage: "Validando e criando senha...",
+          successPath: "Success.json",
           successMessage: "Primeiro acesso concluído.",
         }
       );
@@ -1316,8 +1332,9 @@ function setupWorkspaceActions() {
       await runWithLottie(
         () => apiFetch("/api/host/first-access", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(data.cnpj), numeroInscricao: data.numeroInscricao, senhaInicial: data.senhaInicial, novaSenha: data.novaSenha }) }),
         {
-          loadingPath: "lottie_search_loading.json",
+          loadingPath: "Loading.json",
           loadingMessage: "Validando e criando senha...",
+          successPath: "Success.json",
           successMessage: "Primeiro acesso concluído.",
         }
       );
@@ -1338,9 +1355,11 @@ function setupWorkspaceActions() {
       const data = await runWithLottie(
         () => apiFetch("/api/candidate/login", { method: "POST", body: JSON.stringify({ cpf: normalizeDigits(payload.cpf), senha: payload.senha }) }),
         {
-          loadingPath: "lottie_search_loading.json",
+          loadingPath: "Loading.json",
           loadingMessage: "Carregando informações para acesso do intercambista...",
+          successPath: "Success.json",
           successMessage: "Login realizado.",
+          overlayDelayMs: 2500,
         }
       );
       state.tokens.candidate = data.token;
@@ -1364,9 +1383,11 @@ function setupWorkspaceActions() {
       const data = await runWithLottie(
         () => apiFetch("/api/host/login", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(payload.cnpj), senha: payload.senha }) }),
         {
-          loadingPath: "lottie_search_loading.json",
+          loadingPath: "Loading.json",
           loadingMessage: "Carregando informações para acesso do anfitrião...",
+          successPath: "Success.json",
           successMessage: "Login realizado.",
+          overlayDelayMs: 2500,
         }
       );
       state.tokens.host = data.token;
@@ -1392,9 +1413,11 @@ function setupWorkspaceActions() {
       const data = await runWithLottie(
         () => apiFetch("/api/admin/login", { method: "POST", body: JSON.stringify({ user: adminUser, password: adminPassword }) }),
         {
-          loadingPath: "lottie_search_loading.json",
+          loadingPath: "Loading.json",
           loadingMessage: "Carregando informações para acesso do administrador...",
+          successPath: "Success.json",
           successMessage: "Login realizado.",
+          overlayDelayMs: 2500,
         }
       );
       state.tokens.admin = data.token;
@@ -1486,6 +1509,9 @@ function setupWorkspaceActions() {
                 municipio: actionEl.dataset.municipio || "",
                 uf: actionEl.dataset.uf || "",
                 entidade: actionEl.dataset.entidade || "",
+                email: actionEl.dataset.email || "",
+                dirigente: actionEl.dataset.dirigente || "",
+                dataSolicitacao: actionEl.dataset.data || "",
               }),
             }),
           "Atualizando status do anfitrião..."

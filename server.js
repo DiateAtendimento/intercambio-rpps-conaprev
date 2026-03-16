@@ -26,6 +26,7 @@ const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
 const SMTP_CONNECTION_TIMEOUT = Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 4000);
 const SMTP_GREETING_TIMEOUT = Number(process.env.SMTP_GREETING_TIMEOUT_MS || 4000);
 const SMTP_SOCKET_TIMEOUT = Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 6000);
+const LOOKUP_DEBUG = String(process.env.LOOKUP_DEBUG || "true").trim().toLowerCase() !== "false";
 
 if (!SHEET_ID) {
   throw new Error("Missing GOOGLE_SHEET_ID");
@@ -488,6 +489,18 @@ function nowBrDate() {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const year = now.getFullYear();
   return `${day}/${month}/${year}`;
+}
+
+function maskValue(value, visible = 4) {
+  const raw = String(value || "");
+  if (!raw) return "";
+  if (raw.length <= visible) return raw;
+  return `${"*".repeat(Math.max(0, raw.length - visible))}${raw.slice(-visible)}`;
+}
+
+function logLookup(scope, stage, payload = {}) {
+  if (!LOOKUP_DEBUG) return;
+  console.info(`[lookup:${scope}] ${stage}`, payload);
 }
 
 function findHostBySessionSubject(rows, subject) {
@@ -1184,11 +1197,22 @@ app.post("/api/candidate/login", loginLimiter, async (req, res) => {
     const cpf = onlyDigits(req.body.cpf);
     const senha = String(req.body.senha || "");
     const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    logLookup("candidate-login", "start", {
+      cpf: maskValue(cpf),
+      totalCandidates: candidates.rows.length,
+    });
     const found = candidates.rows.find((row) => onlyDigits(row.data.CPF) === cpf);
 
     if (!found) {
+      logLookup("candidate-login", "not_found", { cpf: maskValue(cpf) });
       return res.status(404).json({ error: "CPF não encontrado." });
     }
+    logLookup("candidate-login", "matched", {
+      by: "cpf",
+      rowNumber: found.rowNumber,
+      cpf: maskValue(cpf),
+      inscricao: found.data["Inscrição"] || "",
+    });
 
     const passOk = await bcrypt.compare(senha, found.data["Senha"] || "");
     if (!passOk) {
@@ -1269,13 +1293,30 @@ app.post("/api/candidate/first-access", loginLimiter, async (req, res) => {
     }
 
     const dataset = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    logLookup("candidate-first-access", "start", {
+      cpf: maskValue(cpf),
+      email: maskValue(email, 6),
+      totalCandidates: dataset.rows.length,
+    });
     const found = dataset.rows.find((row) => onlyDigits(row.data.CPF) === cpf);
     if (!found) {
+      logLookup("candidate-first-access", "not_found", { cpf: maskValue(cpf) });
       return res.status(404).json({ error: "CPF não encontrado." });
     }
+    logLookup("candidate-first-access", "matched", {
+      by: "cpf",
+      rowNumber: found.rowNumber,
+      cpf: maskValue(cpf),
+      emailSheet: maskValue(found.data["E-mail institucional"] || "", 6),
+    });
 
     const rowEmail = String(found.data["E-mail institucional"] || "").trim().toLowerCase();
     if (!rowEmail || rowEmail !== email) {
+      logLookup("candidate-first-access", "email_mismatch", {
+        cpf: maskValue(cpf),
+        emailRequest: maskValue(email, 6),
+        emailSheet: maskValue(rowEmail, 6),
+      });
       return res.status(401).json({ error: "Email institucional não confere." });
     }
 
@@ -1314,10 +1355,22 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
     }
 
     const hosts = await getRows(HOST_SHEET, hostHeaders);
+    logLookup("candidate-select-host", "host_lookup_start", {
+      hostNumero,
+      totalHosts: hosts.rows.length,
+      candidateSubject: req.session.subject,
+    });
     const host = hosts.rows.find((row) => row.data["Inscrição"] === hostNumero);
     if (!host) {
+      logLookup("candidate-select-host", "host_not_found", { hostNumero });
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }
+    logLookup("candidate-select-host", "host_matched", {
+      by: "numeroInscricao",
+      rowNumber: host.rowNumber,
+      hostNumero,
+      cnpj: maskValue(onlyDigits(host.data["Município CNPJ"] || "")),
+    });
 
     if (normalizeText(resolveHostStatus(host.data)) !== "ativo") {
       return res.status(400).json({ error: "Anfitrião inativo para novas solicitações." });
@@ -1328,11 +1381,22 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
 
     const candidateRow = Number(req.session.subject);
     const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    logLookup("candidate-select-host", "candidate_lookup_start", {
+      candidateRow,
+      totalCandidates: candidates.rows.length,
+    });
     const candidate = candidates.rows.find((row) => row.rowNumber === candidateRow);
 
     if (!candidate) {
+      logLookup("candidate-select-host", "candidate_not_found", { candidateRow });
       return res.status(404).json({ error: "Intercambista nao encontrado." });
     }
+    logLookup("candidate-select-host", "candidate_matched", {
+      by: "session.rowNumber",
+      rowNumber: candidate.rowNumber,
+      cpf: maskValue(onlyDigits(candidate.data.CPF || "")),
+      inscricao: candidate.data["Inscrição"] || "",
+    });
 
     candidate.data["Anfitrião escolhido - Inscrição"] = hostNumero;
     candidate.data["Anfitrião escolhido - Nome"] = host.data["Unidade Gestora"] || "";
@@ -1437,6 +1501,7 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
       municipio: row.data["Município"] || "",
       dirigente: row.data["Nome do Dirigente ou Responsável Legal"] || "",
       cargoDirigente: row.data["Cargo/Função (Dirigente)"] || "",
+      email: row.data["E-mail de contato"] || "",
       dataSolicitacao: normalizeDateBr(row.data.Data || ""),
     }));
 
@@ -1482,15 +1547,35 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
     const municipio = sanitizeInput(req.body.municipio, 200);
     const uf = sanitizeInput(req.body.uf, 2).toUpperCase();
     const entidade = sanitizeInput(req.body.entidade, 250);
+    const email = sanitizeInput(req.body.email, 150);
+    const dirigente = sanitizeInput(req.body.dirigente, 200);
+    const dataSolicitacao = normalizeDateBr(req.body.dataSolicitacao);
     const permissao = normalizeText(req.body.status) === "negado" ? "Negado" : "Concedido";
 
     const data = await getRows(HOST_SHEET, hostHeaders);
+    logLookup("admin-host-status", "start", {
+      rowNumber,
+      numeroInscricao,
+      cnpj: maskValue(cnpj),
+      municipio,
+      uf,
+      entidade,
+      email: maskValue(email, 6),
+      dirigente,
+      dataSolicitacao,
+      permissao,
+      totalHosts: data.rows.length,
+    });
+
     let host = data.rows.find((row) => row.rowNumber === rowNumber);
+    if (host) logLookup("admin-host-status", "matched", { by: "rowNumber", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });
     if (!host && numeroInscricao) {
       host = data.rows.find((row) => String(row.data["Inscrição"] || "") === numeroInscricao);
+      if (host) logLookup("admin-host-status", "matched", { by: "numeroInscricao", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });
     }
     if (!host && cnpj) {
       host = data.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
+      if (host) logLookup("admin-host-status", "matched", { by: "cnpj", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "", cnpj: maskValue(cnpj) });
     }
     if (!host && (municipio || entidade)) {
       host = data.rows.find((row) => {
@@ -1499,8 +1584,33 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
         const sameEntidade = !entidade || normalizeText(row.data["Unidade Gestora"] || "") === normalizeText(entidade);
         return sameMunicipio && sameUf && sameEntidade;
       });
+      if (host) logLookup("admin-host-status", "matched", { by: "municipio+uf+entidade", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });
+    }
+    if (!host && email) {
+      host = data.rows.find((row) => normalizeText(row.data["E-mail de contato"] || "") === normalizeText(email));
+      if (host) logLookup("admin-host-status", "matched", { by: "email", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "", email: maskValue(email, 6) });
+    }
+    if (!host && (dirigente || dataSolicitacao)) {
+      host = data.rows.find((row) => {
+        const sameDirigente =
+          !dirigente || normalizeText(row.data["Nome do Dirigente ou Responsável Legal"] || "") === normalizeText(dirigente);
+        const sameData = !dataSolicitacao || normalizeDateBr(row.data.Data || "") === dataSolicitacao;
+        return sameDirigente && sameData;
+      });
+      if (host) logLookup("admin-host-status", "matched", { by: "dirigente+data", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });
     }
     if (!host) {
+      logLookup("admin-host-status", "not_found", {
+        rowNumber,
+        numeroInscricao,
+        cnpj: maskValue(cnpj),
+        municipio,
+        uf,
+        entidade,
+        email: maskValue(email, 6),
+        dirigente,
+        dataSolicitacao,
+      });
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }
 
