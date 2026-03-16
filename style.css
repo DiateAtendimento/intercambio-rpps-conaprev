@@ -934,12 +934,12 @@ body.system-menu-open {
 .data-modal__dialog {
   position: relative;
   z-index: 2;
-  width: min(1280px, calc(100vw - 2rem));
+  width: min(1440px, calc(100vw - 1rem));
   margin: 0;
   border-radius: 20px;
   border: 1px solid #cee0f2;
   background: #fff;
-  max-height: calc(100vh - 2rem);
+  max-height: calc(100vh - 1rem);
   display: flex;
   flex-direction: column;
   box-shadow: 0 28px 56px rgba(15, 23, 42, 0.32);

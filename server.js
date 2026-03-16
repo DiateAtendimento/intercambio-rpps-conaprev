@@ -472,8 +472,32 @@ function requireAuth(role) {
   };
 }
 
-function nowIsoDate() {
-  return new Date().toISOString().slice(0, 10);
+function normalizeDateBr(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+  const brMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (brMatch) return raw;
+  return raw;
+}
+
+function nowBrDate() {
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = now.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function findHostBySessionSubject(rows, subject) {
+  const cnpj = onlyDigits(subject);
+  if (cnpj.length === 14) {
+    return rows.find((item) => onlyDigits(item.data["Município CNPJ"]) === cnpj) || null;
+  }
+  const rowNumber = Number(subject);
+  if (!rowNumber) return null;
+  return rows.find((item) => item.rowNumber === rowNumber) || null;
 }
 
 function getHostAreas(hostData) {
@@ -529,7 +553,7 @@ function hostSummaryView(row) {
     unidadeGestora: row.data["Unidade Gestora"] || "",
     dirigente: row.data["Nome do Dirigente ou Responsável Legal"] || "",
     cargoDirigente: row.data["Cargo/Função (Dirigente)"] || "",
-    dataSolicitacao: row.data.Data || "",
+    dataSolicitacao: normalizeDateBr(row.data.Data || ""),
     status: resolveHostStatus(row.data),
     permissaoAdmin: row.data["Permissão admin"] || "",
   };
@@ -544,8 +568,8 @@ function candidateSummaryView(row) {
     unidadeGestora: row.data["Unidade Gestora"] || "",
     dirigente: row.data["Nome do Dirigente ou Responsável Legal"] || "",
     cargoDirigente: row.data["Cargo/Função (Dirigente)"] || "",
-    dataSolicitacao: row.data.Data || "",
-    dataDecisao: row.data["Data da decisão"] || "",
+    dataSolicitacao: normalizeDateBr(row.data.Data || ""),
+    dataDecisao: normalizeDateBr(row.data["Data da decisão"] || ""),
     statusSolicitacao: row.data["Status da solicitação"] || "",
     statusIntercambista: row.data["Status do Intercambista"] || "Pendente",
     permissaoAnfitriao: row.data["Permissão anfitrião"] || "Pendente",
@@ -690,7 +714,7 @@ function buildHostValueMap(payload, passwordHash, numeroInscricao) {
     "Breve descrição da proposta de intercâmbio": sanitizeInput(payload["Breve descrição da proposta de intercâmbio"], 1200),
     "Responsável pelo preenchimento": sanitizeInput(payload["Responsável pelo preenchimento"], 200),
     "Cargo/Função (Responsável)": sanitizeInput(payload["Cargo/Função (Responsável)"], 120),
-    Data: sanitizeInput(payload.Data || nowIsoDate(), 20),
+    Data: sanitizeInput(normalizeDateBr(payload.Data || nowBrDate()), 20),
     "Senha": passwordHash || "",
     "Primeiro Acesso Concluído": "Não",
     "Status do Anfitrião": "Pendente",
@@ -740,7 +764,7 @@ function buildCandidateValueMap(payload) {
     "Declaração: ciência dos termos (Sim/Não)": yesNo(payload["Declaração: ciência dos termos (Sim/Não)"]),
     "Responsável pelo preenchimento": sanitizeInput(payload["Responsável pelo preenchimento"], 200),
     "Cargo/Função (Responsável)": sanitizeInput(payload["Cargo/Função (Responsável)"], 120),
-    Data: sanitizeInput(payload.Data || nowIsoDate(), 20),
+    Data: sanitizeInput(normalizeDateBr(payload.Data || nowBrDate()), 20),
     "Senha": "",
     CPF: onlyDigits(payload.cpf),
     "Gênero": sanitizeInput(payload.genero, 20),
@@ -925,7 +949,7 @@ app.post("/api/host/login", loginLimiter, async (req, res) => {
       return res.status(401).json({ error: "Credenciais inválidas." });
     }
 
-    const token = createToken("host", String(found.rowNumber));
+    const token = createToken("host", cnpj);
     return res.json({
       token,
       profile: {
@@ -985,10 +1009,8 @@ app.post("/api/host/first-access", loginLimiter, async (req, res) => {
 
 app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
   try {
-    const hostRow = Number(req.session.subject);
-
     const hostData = await getRows(HOST_SHEET, hostHeaders);
-    const hostRowData = hostData.rows.find((item) => item.rowNumber === hostRow);
+    const hostRowData = findHostBySessionSubject(hostData.rows, req.session.subject);
     if (!hostRowData) {
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }
@@ -1040,9 +1062,8 @@ app.get("/api/host/candidate-form/:rowNumber", requireAuth("host"), async (req, 
       return res.status(400).json({ error: "Linha do intercambista inválida." });
     }
 
-    const hostRow = Number(req.session.subject);
     const hostData = await getRows(HOST_SHEET, hostHeaders);
-    const hostRowData = hostData.rows.find((item) => item.rowNumber === hostRow);
+    const hostRowData = findHostBySessionSubject(hostData.rows, req.session.subject);
     if (!hostRowData) {
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }
@@ -1079,9 +1100,8 @@ app.post("/api/host/decision", requireAuth("host"), async (req, res) => {
       return res.status(400).json({ error: "Dados inválidos para decisão." });
     }
 
-    const hostRow = Number(req.session.subject);
     const hostData = await getRows(HOST_SHEET, hostHeaders);
-    const hostRowData = hostData.rows.find((item) => item.rowNumber === hostRow);
+    const hostRowData = findHostBySessionSubject(hostData.rows, req.session.subject);
     if (!hostRowData) {
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }
@@ -1102,7 +1122,7 @@ app.post("/api/host/decision", requireAuth("host"), async (req, res) => {
     target.data["Permissão anfitrião"] = decision === "aceito" ? "Concedido" : "Negado";
     target.data["Status do Intercambista"] = decision === "aceito" ? "Ativo" : "Inativo";
     target.data["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(target.data);
-    target.data["Data da decisão"] = nowIsoDate();
+    target.data["Data da decisão"] = nowBrDate();
     target.data["Observação da decisão"] = note;
 
     await updateRow(CANDIDATE_SHEET, candidates.headers, target.rowNumber, target.data);
@@ -1199,9 +1219,8 @@ app.post("/api/host/remove-candidate", requireAuth("host"), async (req, res) => 
       return res.status(400).json({ error: "Linha do intercambista inválida." });
     }
 
-    const hostRow = Number(req.session.subject);
     const hosts = await getRows(HOST_SHEET, hostHeaders);
-    const host = hosts.rows.find((row) => row.rowNumber === hostRow);
+    const host = findHostBySessionSubject(hosts.rows, req.session.subject);
     if (!host) {
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }
@@ -1348,12 +1367,12 @@ app.get("/api/candidate/status", requireAuth("candidate"), async (req, res) => {
       uf: candidate.data.UF || "",
       unidadeGestora: candidate.data["Unidade Gestora"] || "",
       dirigente: candidate.data["Nome do Dirigente ou Responsável Legal"] || "",
-      dataSolicitacao: candidate.data.Data || "",
+      dataSolicitacao: normalizeDateBr(candidate.data.Data || ""),
       status: candidate.data["Status da solicitação"] || "Sem solicitação",
       host: candidate.data["Anfitrião escolhido - Nome"] || "",
       hostNumero: candidate.data["Anfitrião escolhido - Inscrição"] || "",
       observacao: candidate.data["Observação da decisão"] || "",
-      dataDecisao: candidate.data["Data da decisão"] || "",
+      dataDecisao: normalizeDateBr(candidate.data["Data da decisão"] || ""),
       genero: candidate.data["Gênero"] || "",
       permissaoAnfitriao: candidate.data["Permissão anfitrião"] || "Pendente",
       statusIntercambista: resolveCandidateStatus(candidate.data),
@@ -1418,7 +1437,7 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
       municipio: row.data["Município"] || "",
       dirigente: row.data["Nome do Dirigente ou Responsável Legal"] || "",
       cargoDirigente: row.data["Cargo/Função (Dirigente)"] || "",
-      dataSolicitacao: row.data.Data || "",
+      dataSolicitacao: normalizeDateBr(row.data.Data || ""),
     }));
 
     const decisions = candidatesData.rows
@@ -1432,7 +1451,7 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
         cpf: row.data.CPF || "",
         host: row.data["Anfitrião escolhido - Nome"] || "",
         status: row.data["Status da solicitação"] || "",
-        dataDecisao: row.data["Data da decisão"] || "",
+        dataDecisao: normalizeDateBr(row.data["Data da decisão"] || ""),
         permissaoAnfitriao: row.data["Permissão anfitrião"] || "",
         statusIntercambista: resolveCandidateStatus(row.data),
       }));
