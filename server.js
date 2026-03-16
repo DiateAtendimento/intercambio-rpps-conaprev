@@ -86,6 +86,36 @@ app.use(
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: false }));
 
+app.use((req, res, next) => {
+  if (
+    req.path === "/api/admin/host-status" ||
+    req.path === "/api/candidate/select-host" ||
+    req.path === "/api/host/decision"
+  ) {
+    console.error("[route-hit]", {
+      method: req.method,
+      path: req.path,
+      origin: req.headers.origin || "",
+      hasAuthorization: Boolean(req.headers.authorization),
+      body: {
+        rowNumber: req.body?.rowNumber,
+        fingerprint: req.body?.fingerprint || "",
+        numeroInscricao: req.body?.numeroInscricao || "",
+        cnpj: maskValue(req.body?.cnpj || ""),
+        municipio: req.body?.municipio || "",
+        uf: req.body?.uf || "",
+        entidade: req.body?.entidade || "",
+        email: maskValue(req.body?.email || "", 6),
+        dirigente: req.body?.dirigente || "",
+        dataSolicitacao: req.body?.dataSolicitacao || "",
+        candidateRow: req.body?.candidateRow,
+        decision: req.body?.decision || "",
+      },
+    });
+  }
+  next();
+});
+
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -523,7 +553,7 @@ function maskValue(value, visible = 4) {
 
 function logLookup(scope, stage, payload = {}) {
   if (!LOOKUP_DEBUG) return;
-  console.info(`[lookup:${scope}] ${stage}`, payload);
+  console.error(`[lookup:${scope}] ${stage}`, payload);
 }
 
 function buildHostFingerprint(rowData = {}) {

@@ -978,11 +978,12 @@ body.system-menu-open {
   background: transparent;
   border: 0;
   box-shadow: none;
+  position: relative;
 }
 
 .data-modal[data-modal-variant="message"] .data-modal__header {
   justify-content: flex-end;
-  padding: 0.65rem 0.75rem 0;
+  padding: 0;
   border-bottom: 0;
   background: transparent;
 }
@@ -991,8 +992,24 @@ body.system-menu-open {
   display: none;
 }
 
+.data-modal[data-modal-variant="message"] .data-modal__close {
+  position: absolute;
+  top: -0.15rem;
+  right: -0.15rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #254766;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
 .data-modal[data-modal-variant="message"] .data-modal__body {
-  padding: 0.15rem 0.35rem 0.35rem;
+  padding: 0.4rem 0.35rem 0.35rem;
 }
 
 .data-modal__header h3 {
