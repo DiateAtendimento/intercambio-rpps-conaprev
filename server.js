@@ -593,6 +593,93 @@ function buildHostFingerprint(rowData = {}) {
     .digest("hex");
 }
 
+function normalizeKey(value) {
+  return normalizeText(String(value || "").trim());
+}
+
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function findHostForAdminStatus(rows, criteria = {}) {
+  const requestedRowNumber = Number(criteria.rowNumber);
+  const requestedFingerprint = String(criteria.fingerprint || "").trim();
+  const requestedInscricao = String(criteria.numeroInscricao || "").trim();
+  const requestedCnpj = onlyDigits(criteria.cnpj);
+  const requestedMunicipio = normalizeKey(criteria.municipio);
+  const requestedUf = String(criteria.uf || "").trim().toUpperCase();
+  const requestedEntidade = normalizeKey(criteria.entidade);
+  const requestedEmail = normalizeEmail(criteria.email);
+  const requestedDirigente = normalizeKey(criteria.dirigente);
+  const requestedData = normalizeDateBr(criteria.dataSolicitacao);
+
+  let host = null;
+  let matchedBy = "";
+
+  if (requestedRowNumber) {
+    host = rows.find((row) => row.rowNumber === requestedRowNumber) || null;
+    if (host) return { host, matchedBy: "rowNumber" };
+  }
+
+  if (requestedFingerprint) {
+    host = rows.find((row) => buildHostFingerprint(row.data) === requestedFingerprint) || null;
+    if (host) return { host, matchedBy: "fingerprint" };
+  }
+
+  if (requestedInscricao) {
+    host = rows.find((row) => String(row.data["Inscrição"] || "").trim() === requestedInscricao) || null;
+    if (host) return { host, matchedBy: "numeroInscricao" };
+  }
+
+  if (requestedCnpj) {
+    host = rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === requestedCnpj) || null;
+    if (host) return { host, matchedBy: "cnpj" };
+  }
+
+  if (requestedEmail) {
+    host = rows.find((row) => normalizeEmail(row.data["E-mail de contato"]) === requestedEmail) || null;
+    if (host) return { host, matchedBy: "email" };
+  }
+
+  if (requestedMunicipio || requestedUf || requestedEntidade || requestedDirigente || requestedData) {
+    const scored = rows
+      .map((row) => {
+        const rowInscricao = String(row.data["Inscrição"] || "").trim();
+        const rowCnpj = onlyDigits(row.data["Município CNPJ"]);
+        const rowMunicipio = normalizeKey(row.data["Município"]);
+        const rowUf = String(row.data.UF || "").trim().toUpperCase();
+        const rowEntidade = normalizeKey(row.data["Unidade Gestora"]);
+        const rowEmail = normalizeEmail(row.data["E-mail de contato"]);
+        const rowDirigente = normalizeKey(row.data["Nome do Dirigente ou Responsável Legal"]);
+        const rowData = normalizeDateBr(row.data.Data || "");
+
+        let score = 0;
+        if (requestedInscricao && rowInscricao === requestedInscricao) score += 10;
+        if (requestedCnpj && rowCnpj === requestedCnpj) score += 10;
+        if (requestedEmail && rowEmail === requestedEmail) score += 8;
+        if (requestedMunicipio && rowMunicipio === requestedMunicipio) score += 4;
+        if (requestedUf && rowUf === requestedUf) score += 2;
+        if (requestedEntidade && rowEntidade === requestedEntidade) score += 4;
+        if (requestedDirigente && rowDirigente === requestedDirigente) score += 3;
+        if (requestedData && rowData === requestedData) score += 2;
+
+        return { row, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    if (scored.length === 1 && scored[0].score >= 6) {
+      host = scored[0].row;
+      matchedBy = `score:${scored[0].score}`;
+    } else if (scored.length > 1 && scored[0].score >= 8 && scored[0].score >= scored[1].score + 3) {
+      host = scored[0].row;
+      matchedBy = `score:${scored[0].score}`;
+    }
+  }
+
+  return { host, matchedBy };
+}
+
 function findHostBySessionSubject(rows, subject) {
   const cnpj = onlyDigits(subject);
   if (cnpj.length === 14) {
@@ -1725,42 +1812,27 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
       }
     }
     if (!host) {
-      host = data.rows.find((row) => row.rowNumber === rowNumber);
-    }
-    if (host) logLookup("admin-host-status", "matched", { by: "rowNumber", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });
-    if (!host && fingerprint) {
-      host = data.rows.find((row) => buildHostFingerprint(row.data) === fingerprint);
-      if (host) logLookup("admin-host-status", "matched", { by: "fingerprint", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });
-    }
-    if (!host && numeroInscricao) {
-      host = data.rows.find((row) => String(row.data["Inscrição"] || "") === numeroInscricao);
-      if (host) logLookup("admin-host-status", "matched", { by: "numeroInscricao", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });
-    }
-    if (!host && cnpj) {
-      host = data.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
-      if (host) logLookup("admin-host-status", "matched", { by: "cnpj", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "", cnpj: maskValue(cnpj) });
-    }
-    if (!host && (municipio || entidade)) {
-      host = data.rows.find((row) => {
-        const sameMunicipio = !municipio || normalizeText(row.data["Município"] || "") === normalizeText(municipio);
-        const sameUf = !uf || String(row.data.UF || "").toUpperCase() === uf;
-        const sameEntidade = !entidade || normalizeText(row.data["Unidade Gestora"] || "") === normalizeText(entidade);
-        return sameMunicipio && sameUf && sameEntidade;
+      const resolved = findHostForAdminStatus(data.rows, {
+        rowNumber,
+        fingerprint,
+        numeroInscricao,
+        cnpj,
+        municipio,
+        uf,
+        entidade,
+        email,
+        dirigente,
+        dataSolicitacao,
       });
-      if (host) logLookup("admin-host-status", "matched", { by: "municipio+uf+entidade", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });
-    }
-    if (!host && email) {
-      host = data.rows.find((row) => normalizeText(row.data["E-mail de contato"] || "") === normalizeText(email));
-      if (host) logLookup("admin-host-status", "matched", { by: "email", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "", email: maskValue(email, 6) });
-    }
-    if (!host && (dirigente || dataSolicitacao)) {
-      host = data.rows.find((row) => {
-        const sameDirigente =
-          !dirigente || normalizeText(row.data["Nome do Dirigente ou Responsável Legal"] || "") === normalizeText(dirigente);
-        const sameData = !dataSolicitacao || normalizeDateBr(row.data.Data || "") === dataSolicitacao;
-        return sameDirigente && sameData;
-      });
-      if (host) logLookup("admin-host-status", "matched", { by: "dirigente+data", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });
+      host = resolved.host;
+      if (host) {
+        logLookup("admin-host-status", "matched", {
+          by: resolved.matchedBy || "fallback",
+          rowNumber: host.rowNumber,
+          inscricao: host.data["Inscrição"] || "",
+          cnpj: maskValue(onlyDigits(host.data["Município CNPJ"] || "")),
+        });
+      }
     }
     if (!host) {
       logLookup("admin-host-status", "not_found", {
