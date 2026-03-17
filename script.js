@@ -1116,7 +1116,7 @@ async function refreshCandidateArea() {
   cards.innerHTML = hosts
     .map(
       (host) => `
-      <article class="host-card">
+      <article class="host-card" data-action="select-host" data-host="${escapeHtml(host.numeroInscricao || "")}" role="button" tabindex="0">
         <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
         <h4>${escapeHtml(host.entidade)}</h4>
         <p>UF: ${escapeHtml(host.uf || "-")}</p>
@@ -1127,7 +1127,7 @@ async function refreshCandidateArea() {
         </p>
         <p>Número de vagas: ${escapeHtml(host.vagas || "-")}</p>
         <p>Nº de áreas/setores disponíveis: ${escapeHtml((host.areas || []).length || "-")}</p>
-        <button class="btn btn-primary" type="button" data-action="select-host" data-host="${escapeHtml(host.numeroInscricao)}">Candidatar-se</button>
+        <button class="btn btn-primary" type="button" data-action="select-host" data-host="${escapeHtml(host.numeroInscricao || "")}">Candidatar-se</button>
       </article>`
     )
     .join("");
@@ -1683,10 +1683,6 @@ function setupWorkspaceActions() {
 document.addEventListener("DOMContentLoaded", () => {
   forceHideLottieOverlay();
   forceModalClosed();
-  try {
-    localStorage.removeItem(STORAGE_KEYS.screen);
-  } catch (_) {}
-  updateScreenHash("home");
   loadTokens();
   resetHostRegisterForm(qs("#hostRegisterForm"));
   resetCandidateRegisterForm(qs("#candidateRegisterForm"));
@@ -1711,7 +1707,12 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const restore = async () => {
-    const savedScreen = loadScreen();
+    let savedScreen = loadScreen();
+    if (!savedScreen || savedScreen === "home") {
+      if (state.tokens.admin) savedScreen = "admin-area";
+      else if (state.tokens.host) savedScreen = "host-area";
+      else if (state.tokens.candidate) savedScreen = "candidate-area";
+    }
     if (!savedScreen || savedScreen === "home") return;
 
     if (savedScreen === "admin-area") {
@@ -1719,7 +1720,8 @@ document.addEventListener("DOMContentLoaded", () => {
       openWorkspace("admin-area");
       try {
         await refreshAdminArea();
-      } catch (_) {
+      } catch (error) {
+        if (!String(error?.message || "").toLowerCase().includes("sess")) return;
         state.tokens.admin = "";
         saveTokens();
         openWorkspace("admin-login");
@@ -1732,7 +1734,8 @@ document.addEventListener("DOMContentLoaded", () => {
       openWorkspace("host-area");
       try {
         await refreshHostArea();
-      } catch (_) {
+      } catch (error) {
+        if (!String(error?.message || "").toLowerCase().includes("sess")) return;
         state.tokens.host = "";
         saveTokens();
         openWorkspace("host-login");
@@ -1745,7 +1748,8 @@ document.addEventListener("DOMContentLoaded", () => {
       openWorkspace("candidate-area");
       try {
         await refreshCandidateArea();
-      } catch (_) {
+      } catch (error) {
+        if (!String(error?.message || "").toLowerCase().includes("sess")) return;
         state.tokens.candidate = "";
         saveTokens();
         openWorkspace("candidate-login");
