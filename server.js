@@ -165,6 +165,7 @@ const hostHeaders = [
   "Responsável pelo preenchimento",
   "Cargo/Função (Responsável)",
   "Data",
+  "Data aceite MPS",
   "Senha",
   "Primeiro Acesso Concluído",
   "Status do Anfitrião",
@@ -1008,14 +1009,44 @@ app.get("/api/health", (req, res) => {
 app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
   try {
     const cnpj = onlyDigits(req.params.cnpj);
+    const target = normalizeText(req.query.target || "");
     if (cnpj.length !== 14) {
       return res.status(400).json({ error: "CNPJ do município inválido." });
     }
 
     const proLookup = await getProGestaoLookup();
+    const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    const candidate = candidates.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
     const hosts = await getRows(HOST_SHEET, hostHeaders);
     const host = hosts.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
-    if (host) {
+
+    if (target === "candidate" && candidate) {
+      const uf = candidate.data.UF || "";
+      const municipio = candidate.data["Município"] || "";
+      const nivelProGestao = resolveProGestaoLevel(
+        proLookup,
+        municipio,
+        uf,
+        candidate.data["Nível do Pró-Gestão"] || ""
+      );
+      return res.json({
+        source: "candidate",
+        prefill: {
+          municipio,
+          uf,
+          municipioCnpj: candidate.data["Município CNPJ"] || "",
+          unidadeGestora: candidate.data["Unidade Gestora"] || "",
+          unidadeGestoraCnpj: candidate.data["Unidade Gestora CNPJ"] || "",
+          dirigente: candidate.data["Nome do Dirigente ou Responsável Legal"] || "",
+          cargoDirigente: candidate.data["Cargo/Função (Dirigente)"] || "",
+          email: candidate.data["E-mail institucional"] || "",
+          telefone: candidate.data["Telefone para contato"] || "",
+          nivelProGestao,
+        },
+      });
+    }
+
+    if (target === "host" && host) {
       const uf = host.data.UF || "";
       const municipio = host.data["Município"] || "";
       const nivelProGestao = resolveProGestaoLevel(
@@ -1043,8 +1074,6 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
       });
     }
 
-    const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
-    const candidate = candidates.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
     if (candidate) {
       const uf = candidate.data.UF || "";
       const municipio = candidate.data["Município"] || "";
@@ -1061,14 +1090,37 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
           uf,
           municipioCnpj: candidate.data["Município CNPJ"] || "",
           unidadeGestora: candidate.data["Unidade Gestora"] || "",
+          unidadeGestoraCnpj: candidate.data["Unidade Gestora CNPJ"] || "",
           dirigente: candidate.data["Nome do Dirigente ou Responsável Legal"] || "",
           cargoDirigente: candidate.data["Cargo/Função (Dirigente)"] || "",
           email: candidate.data["E-mail institucional"] || "",
           telefone: candidate.data["Telefone para contato"] || "",
           nivelProGestao,
-          responsavel: candidate.data["Responsável pelo preenchimento"] || "",
-          cargoResponsavel: candidate.data["Cargo/Função (Responsável)"] || "",
-          dataPreenchimento: candidate.data.Data || "",
+        },
+      });
+    }
+
+    if (host) {
+      const uf = host.data.UF || "";
+      const municipio = host.data["Município"] || "";
+      const nivelProGestao = resolveProGestaoLevel(
+        proLookup,
+        municipio,
+        uf,
+        host.data["Nível do Pró-Gestão"] || ""
+      );
+      return res.json({
+        source: "host",
+        prefill: {
+          municipio,
+          uf,
+          municipioCnpj: host.data["Município CNPJ"] || "",
+          unidadeGestora: host.data["Unidade Gestora"] || "",
+          dirigente: host.data["Nome do Dirigente ou Responsável Legal"] || "",
+          cargoDirigente: host.data["Cargo/Função (Dirigente)"] || "",
+          email: host.data["E-mail de contato"] || "",
+          telefone: host.data["Telefone de contato"] || "",
+          nivelProGestao,
         },
       });
     }
@@ -1756,6 +1808,7 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
       cargoDirigente: row.data["Cargo/Função (Dirigente)"] || "",
       email: row.data["E-mail de contato"] || "",
       dataSolicitacao: normalizeDateBr(row.data.Data || ""),
+      dataAceiteMps: normalizeDateBr(row.data["Data aceite MPS"] || ""),
     }));
 
     const decisions = candidatesData.rows
@@ -1872,6 +1925,7 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
 
     host.data["Permissão admin"] = permissao;
     host.data["Status do Anfitrião"] = permissao === "Concedido" ? "Ativo" : "Inativo";
+    host.data["Data aceite MPS"] = permissao === "Concedido" ? nowBrDate() : "";
     if (permissao === "Concedido") {
       if (!host.data["Senha"]) {
         const senhaInicial = generateHostPassword();

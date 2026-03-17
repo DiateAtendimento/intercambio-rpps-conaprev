@@ -21,6 +21,9 @@ const API_BASE =
   typeof window !== "undefined" && window.location.hostname.endsWith("netlify.app")
     ? "https://intercambio-rpps-conaprev.onrender.com"
     : "";
+const API_DEBUG =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
 function qs(selector) {
   return document.querySelector(selector);
@@ -80,10 +83,12 @@ function isStrongPassword(password) {
 
 async function apiFetch(url, options = {}) {
   const requestUrl = String(url || "").startsWith("/api/") ? `${API_BASE}${url}` : url;
-  console.error("[apiFetch:start]", {
-    method: options.method || "GET",
-    url: requestUrl,
-  });
+  if (API_DEBUG) {
+    console.debug("[apiFetch:start]", {
+      method: options.method || "GET",
+      url: requestUrl,
+    });
+  }
   const response = await fetch(requestUrl, {
     headers: {
       "Content-Type": "application/json",
@@ -107,9 +112,13 @@ async function apiFetch(url, options = {}) {
 
 async function probeBackendReachability(context) {
   const probeUrl = `${API_BASE}/api/health?probe=${encodeURIComponent(context)}&ts=${Date.now()}`;
-  console.error("[apiProbe:start]", probeUrl);
+  if (API_DEBUG) {
+    console.debug("[apiProbe:start]", probeUrl);
+  }
   const response = await fetch(probeUrl, { method: "GET", mode: "cors" });
-  console.error("[apiProbe:done]", { url: probeUrl, status: response.status });
+  if (API_DEBUG) {
+    console.debug("[apiProbe:done]", { url: probeUrl, status: response.status });
+  }
   return response.ok;
 }
 
@@ -794,14 +803,12 @@ function applyPrefillToCandidateForm(form, data) {
   set("uf", data.uf);
   set("municipioCnpj", normalizeDigits(data.municipioCnpj || ""));
   set("unidadeGestora", data.unidadeGestora);
+  set("unidadeGestoraCnpj", normalizeDigits(data.unidadeGestoraCnpj || ""));
   set("dirigente", data.dirigente);
   set("cargoDirigente", data.cargoDirigente);
   set("email", data.email);
   set("telefone", data.telefone);
   applyProGestaoFieldState(form, data.nivelProGestao);
-  set("responsavel", data.responsavel);
-  set("cargoResponsavel", data.cargoResponsavel);
-  set("dataPreenchimento", normalizeDateToBr(data.dataPreenchimento));
 }
 
 function setupCnpjPrefill() {
@@ -843,7 +850,7 @@ function setupCnpjPrefill() {
     setFeedback("hostRegisterFeedback", "Buscando dados no Nosso Banco de dados...", true);
     try {
       const data = await runWithLottie(
-        () => apiFetch(`/api/prefill/municipio/${cnpj}`),
+        () => apiFetch(`/api/prefill/municipio/${cnpj}?target=host`),
         {
           loadingPath: "Loading.json",
           loadingMessage: "Buscando dados do município...",
@@ -871,7 +878,7 @@ function setupCnpjPrefill() {
     setFeedback("candidateRegisterFeedback", "Buscando dados no Nosso Banco de dados...", true);
     try {
       const data = await runWithLottie(
-        () => apiFetch(`/api/prefill/municipio/${cnpj}`),
+        () => apiFetch(`/api/prefill/municipio/${cnpj}?target=candidate`),
         {
           loadingPath: "Loading.json",
           loadingMessage: "Buscando dados do município...",
@@ -908,9 +915,11 @@ function getStatusClass(status) {
 
 function iconButton(action, rowNumber, icon, label, context = "") {
   return `
-    <button type="button" class="icon-btn" data-action="${action}" data-row="${rowNumber}" data-context="${context}">
-      <img src="${icon}" alt="${label}" />
-    </button>
+    <div class="icon-btn-wrap">
+      <button type="button" class="icon-btn" data-action="${action}" data-row="${rowNumber}" data-context="${context}">
+        <img src="${icon}" alt="${label}" />
+      </button>
+    </div>
   `;
 }
 
@@ -1206,7 +1215,7 @@ function buildAdminRows(rows, targetId) {
               <td>${escapeHtml(item.entidade || "-")}</td>
               <td>${escapeHtml(item.dirigente || "-")}</td>
               <td>${escapeHtml(item.dataSolicitacao || "-")}</td>
-              <td>-</td>
+              <td>${escapeHtml(item.dataAceiteMps || "-")}</td>
               <td>${iconButton("admin-open-cred", item.rowNumber, "icone-credenciamento.svg", "Credenciamento")}</td>
               <td>${iconButton("admin-open-linked", item.rowNumber, "icone-intercambistas-vinculados.svg", "Intercambistas vinculados")}</td>
               <td>${iconButton("admin-remove-host", item.rowNumber, "icone-lixeira.svg", "Remover inscrição")}</td>`
