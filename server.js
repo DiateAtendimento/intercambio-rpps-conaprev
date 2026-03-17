@@ -733,7 +733,7 @@ function getHostAreas(hostData) {
 }
 
 function publicHostView(hostData, proLookup = null) {
-  const uf = String(hostData.UF || "").toUpperCase();
+  const uf = String(hostData.UF || "").trim().toUpperCase();
   const nivelProGestao = resolveProGestaoLevel(
     proLookup,
     hostData["Município"] || "",
