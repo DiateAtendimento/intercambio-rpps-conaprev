@@ -482,6 +482,8 @@ async function updateRow(sheetName, headers, rowNumber, valueByHeader) {
 
 const sessions = new Map();
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+const actionTokens = new Map();
+const ACTION_TOKEN_TTL_MS = 30 * 60 * 1000;
 
 function createToken(role, subject) {
   const nonce = crypto.randomBytes(24).toString("hex");
@@ -496,6 +498,27 @@ function createToken(role, subject) {
     createdAt: Date.now(),
   });
   return token;
+}
+
+function createActionToken(kind, rowNumber) {
+  const token = crypto.randomBytes(18).toString("hex");
+  actionTokens.set(token, {
+    kind,
+    rowNumber: Number(rowNumber),
+    createdAt: Date.now(),
+  });
+  return token;
+}
+
+function consumeActionToken(token, kind) {
+  const entry = actionTokens.get(token);
+  if (!entry) return null;
+  if (Date.now() - entry.createdAt > ACTION_TOKEN_TTL_MS) {
+    actionTokens.delete(token);
+    return null;
+  }
+  if (kind && entry.kind !== kind) return null;
+  return entry;
 }
 
 function requireAuth(role) {
@@ -1610,6 +1633,7 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
 
     const hosts = hostsData.rows.map((row) => ({
       rowNumber: row.rowNumber,
+      actionToken: createActionToken("host-admin-status", row.rowNumber),
       fingerprint: buildHostFingerprint(row.data),
       numeroInscricao: row.data["Inscrição"] || "",
       entidade: row.data["Unidade Gestora"] || "",
@@ -1663,6 +1687,7 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
 app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
   try {
     const rowNumber = Number(req.body.rowNumber);
+    const actionToken = sanitizeInput(req.body.actionToken, 80);
     const fingerprint = sanitizeInput(req.body.fingerprint, 80);
     const numeroInscricao = sanitizeInput(req.body.numeroInscricao, 60);
     const cnpj = onlyDigits(req.body.cnpj);
@@ -1677,6 +1702,7 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
     const data = await getRows(HOST_SHEET, hostHeaders);
     logLookup("admin-host-status", "start", {
       rowNumber,
+      actionToken,
       fingerprint,
       numeroInscricao,
       cnpj: maskValue(cnpj),
@@ -1690,7 +1716,17 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
       totalHosts: data.rows.length,
     });
 
-    let host = data.rows.find((row) => row.rowNumber === rowNumber);
+    let host = null;
+    if (actionToken) {
+      const actionEntry = consumeActionToken(actionToken, "host-admin-status");
+      if (actionEntry?.rowNumber) {
+        host = data.rows.find((row) => row.rowNumber === actionEntry.rowNumber) || null;
+        if (host) logLookup("admin-host-status", "matched", { by: "actionToken", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });
+      }
+    }
+    if (!host) {
+      host = data.rows.find((row) => row.rowNumber === rowNumber);
+    }
     if (host) logLookup("admin-host-status", "matched", { by: "rowNumber", rowNumber: host.rowNumber, inscricao: host.data["Inscrição"] || "" });
     if (!host && fingerprint) {
       host = data.rows.find((row) => buildHostFingerprint(row.data) === fingerprint);
