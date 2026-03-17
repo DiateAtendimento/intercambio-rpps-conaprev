@@ -612,6 +612,7 @@ function findHostForAdminStatus(rows, criteria = {}) {
   const requestedEmail = normalizeEmail(criteria.email);
   const requestedDirigente = normalizeKey(criteria.dirigente);
   const requestedData = normalizeDateBr(criteria.dataSolicitacao);
+  const pendingHosts = rows.filter((row) => normalizeKey(row.data["Permissão admin"]) === "pendente");
 
   let host = null;
   let matchedBy = "";
@@ -674,6 +675,26 @@ function findHostForAdminStatus(rows, criteria = {}) {
     } else if (scored.length > 1 && scored[0].score >= 8 && scored[0].score >= scored[1].score + 3) {
       host = scored[0].row;
       matchedBy = `score:${scored[0].score}`;
+    }
+  }
+
+  if (!host && pendingHosts.length === 1) {
+    const onlyPending = pendingHosts[0];
+    const rowMunicipio = normalizeKey(onlyPending.data["Município"]);
+    const rowUf = String(onlyPending.data.UF || "").trim().toUpperCase();
+    const rowEntidade = normalizeKey(onlyPending.data["Unidade Gestora"]);
+    const rowEmail = normalizeEmail(onlyPending.data["E-mail de contato"]);
+    const rowDirigente = normalizeKey(onlyPending.data["Nome do Dirigente ou Responsável Legal"]);
+    const sameVisibleIdentity =
+      (!requestedMunicipio || rowMunicipio === requestedMunicipio) &&
+      (!requestedUf || rowUf === requestedUf) &&
+      (!requestedEntidade || rowEntidade === requestedEntidade) &&
+      (!requestedEmail || rowEmail === requestedEmail) &&
+      (!requestedDirigente || rowDirigente === requestedDirigente);
+
+    if (sameVisibleIdentity) {
+      host = onlyPending;
+      matchedBy = "singlePendingFallback";
     }
   }
 
