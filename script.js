@@ -232,6 +232,14 @@ function loadScreen() {
   }
 }
 
+function getNavigationType() {
+  try {
+    const entry = performance.getEntriesByType("navigation")?.[0];
+    if (entry?.type) return entry.type;
+  } catch (_) {}
+  return "navigate";
+}
+
 function updateScreenHash(screenId) {
   try {
     history.replaceState(null, "", window.location.pathname + window.location.search);
@@ -1707,12 +1715,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const restore = async () => {
-    let savedScreen = loadScreen();
-    if (!savedScreen || savedScreen === "home") {
-      if (state.tokens.admin) savedScreen = "admin-area";
-      else if (state.tokens.host) savedScreen = "host-area";
-      else if (state.tokens.candidate) savedScreen = "candidate-area";
-    }
+    const savedScreen = loadScreen();
+    const navigationType = getNavigationType();
+    if (navigationType !== "reload") return;
     if (!savedScreen || savedScreen === "home") return;
 
     if (savedScreen === "admin-area") {
