@@ -1298,7 +1298,7 @@ function setupWorkspaceActions() {
   candidateRegisterForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!validateRequiredFields(candidateRegisterForm)) {
-      const dateValue = candidateRegisterForm.querySelector('[name="dataPreenchimento"]')?.value || "";
+      const dateValue = normalizeDateToBr(candidateRegisterForm.querySelector('[name="dataPreenchimento"]')?.value || "");
       return setFeedback(
         "candidateRegisterFeedback",
         dateValue && !isValidBrDate(dateValue) ? "Informe a data no formato dd/mm/aaaa." : "Preencha todos os campos obrigatórios.",

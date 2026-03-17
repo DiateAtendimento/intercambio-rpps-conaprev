@@ -1032,6 +1032,8 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
       return res.json({
         source: "candidate",
         prefill: {
+          rowNumber: candidate.rowNumber,
+          source: "candidate",
           municipio,
           uf,
           municipioCnpj: candidate.data["Município CNPJ"] || "",
@@ -1058,6 +1060,8 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
       return res.json({
         source: "host",
         prefill: {
+          rowNumber: host.rowNumber,
+          source: "host",
           municipio,
           uf,
           municipioCnpj: host.data["Município CNPJ"] || "",
@@ -1086,6 +1090,8 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
       return res.json({
         source: "candidate",
         prefill: {
+          rowNumber: candidate.rowNumber,
+          source: "candidate",
           municipio,
           uf,
           municipioCnpj: candidate.data["Município CNPJ"] || "",
@@ -1112,6 +1118,8 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
       return res.json({
         source: "host",
         prefill: {
+          rowNumber: host.rowNumber,
+          source: "host",
           municipio,
           uf,
           municipioCnpj: host.data["Município CNPJ"] || "",
@@ -1482,6 +1490,7 @@ app.post("/api/candidate/register", loginLimiter, async (req, res) => {
     const accessPassword = generateHostPassword();
     row["Senha"] = await bcrypt.hash(accessPassword, 12);
     row["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(row);
+
     await appendRow(CANDIDATE_SHEET, dataset.headers, row);
     res.status(201).json({
       ok: true,
