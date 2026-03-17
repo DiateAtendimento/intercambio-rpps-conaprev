@@ -481,24 +481,50 @@ async function updateRow(sheetName, headers, rowNumber, valueByHeader) {
   });
 }
 
-const sessions = new Map();
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 const actionTokens = new Map();
 const ACTION_TOKEN_TTL_MS = 30 * 60 * 1000;
 
 function createToken(role, subject) {
-  const nonce = crypto.randomBytes(24).toString("hex");
+  const payload = {
+    role,
+    subject: String(subject),
+    createdAt: Date.now(),
+    nonce: crypto.randomBytes(12).toString("hex"),
+  };
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const signature = crypto
     .createHmac("sha256", SESSION_SECRET)
-    .update(`${role}:${subject}:${nonce}`)
-    .digest("hex");
-  const token = `${nonce}.${signature}`;
-  sessions.set(token, {
-    role,
-    subject,
-    createdAt: Date.now(),
-  });
-  return token;
+    .update(encodedPayload)
+    .digest("base64url");
+  return `${encodedPayload}.${signature}`;
+}
+
+function readTokenSession(token) {
+  if (!token || !token.includes(".")) return null;
+  const [encodedPayload, providedSignature] = token.split(".");
+  if (!encodedPayload || !providedSignature) return null;
+
+  const expectedSignature = crypto
+    .createHmac("sha256", SESSION_SECRET)
+    .update(encodedPayload)
+    .digest("base64url");
+
+  if (providedSignature !== expectedSignature) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
+    if (!payload?.role || !payload?.subject || !payload?.createdAt) return null;
+    return {
+      role: String(payload.role),
+      subject: String(payload.subject),
+      createdAt: Number(payload.createdAt),
+    };
+  } catch (_) {
+    return null;
+  }
 }
 
 function createActionToken(kind, rowNumber) {
@@ -527,13 +553,12 @@ function requireAuth(role) {
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
-    const session = sessions.get(token);
+    const session = readTokenSession(token);
     if (!session) {
       return res.status(401).json({ error: "Sessão inválida." });
     }
 
     if (Date.now() - session.createdAt > SESSION_TTL_MS) {
-      sessions.delete(token);
       return res.status(401).json({ error: "Sessão expirada." });
     }
 
@@ -741,7 +766,7 @@ function publicHostView(hostData, proLookup = null) {
     hostData["Nível do Pró-Gestão"] || ""
   );
   return {
-    numeroInscricao: hostData["Inscrição"] || "",
+    numeroInscricao: String(hostData["Inscrição"] || "").trim(),
     entidade: hostData["Unidade Gestora"] || "",
     uf,
     bandeira: uf ? `img-ufs/${uf}.png` : "",
@@ -2087,9 +2112,6 @@ app.get("/api/admin/candidate-form/:rowNumber", requireAuth("admin"), async (req
 });
 
 app.post("/api/logout", (req, res) => {
-  const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  sessions.delete(token);
   res.json({ ok: true });
 });
 
