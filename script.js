@@ -1124,7 +1124,7 @@ async function refreshCandidateArea() {
   cards.innerHTML = hosts
     .map(
       (host) => `
-      <article class="host-card" data-action="select-host" data-host="${escapeHtml(host.numeroInscricao || "")}" role="button" tabindex="0">
+      <article class="host-card" data-action="select-host" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" role="button" tabindex="0">
         <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
         <h4>${escapeHtml(host.entidade)}</h4>
         <p>UF: ${escapeHtml(host.uf || "-")}</p>
@@ -1518,7 +1518,13 @@ function setupWorkspaceActions() {
             apiFetch("/api/candidate/select-host", {
               method: "POST",
               headers: { Authorization: `Bearer ${state.tokens.candidate}` },
-              body: JSON.stringify({ numeroInscricao: actionEl.dataset.host || "" }),
+              body: JSON.stringify({
+                numeroInscricao: actionEl.dataset.host || "",
+                cnpj: actionEl.dataset.cnpj || "",
+                entidade: actionEl.dataset.entidade || "",
+                uf: actionEl.dataset.uf || "",
+                municipio: actionEl.dataset.municipio || "",
+              }),
             }),
           "Enviando solicitação ao anfitrião..."
         );

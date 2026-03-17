@@ -737,6 +737,39 @@ function findHostBySessionSubject(rows, subject) {
   return rows.find((item) => item.rowNumber === rowNumber) || null;
 }
 
+function findHostForCandidateSelection(rows, criteria = {}) {
+  const hostNumero = String(criteria.numeroInscricao || "").trim();
+  const cnpj = onlyDigits(criteria.cnpj);
+  const entidade = normalizeKey(criteria.entidade);
+  const uf = String(criteria.uf || "").trim().toUpperCase();
+  const municipio = normalizeKey(criteria.municipio);
+
+  let host = null;
+  let matchedBy = "";
+
+  if (hostNumero) {
+    host = rows.find((row) => String(row.data["Inscrição"] || "").trim() === hostNumero) || null;
+    if (host) return { host, matchedBy: "numeroInscricao" };
+  }
+
+  if (cnpj) {
+    host = rows.find((row) => onlyDigits(row.data["Município CNPJ"] || "") === cnpj) || null;
+    if (host) return { host, matchedBy: "cnpj" };
+  }
+
+  if (entidade || uf || municipio) {
+    host = rows.find((row) => {
+      const sameEntidade = !entidade || normalizeKey(row.data["Unidade Gestora"] || "") === entidade;
+      const sameUf = !uf || String(row.data.UF || "").trim().toUpperCase() === uf;
+      const sameMunicipio = !municipio || normalizeKey(row.data["Município"] || "") === municipio;
+      return sameEntidade && sameUf && sameMunicipio;
+    }) || null;
+    if (host) return { host, matchedBy: "entidade+uf+municipio" };
+  }
+
+  return { host, matchedBy };
+}
+
 function getHostAreas(hostData) {
   const areaFields = [
     "Área: Cadastro e Atendimento (Sim/Não)",
@@ -768,8 +801,10 @@ function publicHostView(hostData, proLookup = null) {
   return {
     numeroInscricao: String(hostData["Inscrição"] || "").trim(),
     entidade: hostData["Unidade Gestora"] || "",
+    municipio: hostData["Município"] || "",
     uf,
     bandeira: uf ? `img-ufs/${uf}.png` : "",
+    cnpj: onlyDigits(hostData["Município CNPJ"] || ""),
     email: hostData["E-mail de contato"] || "",
     telefone: hostData["Telefone de contato"] || "",
     nivelProGestao,
@@ -1700,25 +1735,34 @@ app.get("/api/candidate/hosts", requireAuth("candidate"), async (req, res) => {
 app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res) => {
   try {
     const hostNumero = sanitizeInput(req.body.numeroInscricao, 40);
-    if (!hostNumero) {
+    const cnpj = onlyDigits(req.body.cnpj);
+    const entidade = sanitizeInput(req.body.entidade, 250);
+    const uf = sanitizeInput(req.body.uf, 2).toUpperCase();
+    const municipio = sanitizeInput(req.body.municipio, 200);
+    if (!hostNumero && !cnpj && !entidade) {
       return res.status(400).json({ error: "Informe um anfitrião." });
     }
 
     const hosts = await getRows(HOST_SHEET, hostHeaders);
     logLookup("candidate-select-host", "host_lookup_start", {
       hostNumero,
+      cnpj: maskValue(cnpj),
+      entidade,
+      uf,
+      municipio,
       totalHosts: hosts.rows.length,
       candidateSubject: req.session.subject,
     });
-    const host = hosts.rows.find((row) => row.data["Inscrição"] === hostNumero);
+    const resolved = findHostForCandidateSelection(hosts.rows, { numeroInscricao: hostNumero, cnpj, entidade, uf, municipio });
+    const host = resolved.host;
     if (!host) {
-      logLookup("candidate-select-host", "host_not_found", { hostNumero });
+      logLookup("candidate-select-host", "host_not_found", { hostNumero, cnpj: maskValue(cnpj), entidade, uf, municipio });
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }
     logLookup("candidate-select-host", "host_matched", {
-      by: "numeroInscricao",
+      by: resolved.matchedBy || "fallback",
       rowNumber: host.rowNumber,
-      hostNumero,
+      hostNumero: String(host.data["Inscrição"] || "").trim(),
       cnpj: maskValue(onlyDigits(host.data["Município CNPJ"] || "")),
     });
 
