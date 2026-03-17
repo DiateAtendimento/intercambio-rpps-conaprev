@@ -205,6 +205,7 @@ const candidateHeaders = [
   "Cargo/Função (Responsável)",
   "Data",
   "Senha",
+  "Permissão anfitrião",
   "CPF",
   "Gênero",
   "Primeiro Acesso Concluído",
@@ -214,7 +215,6 @@ const candidateHeaders = [
   "Data da decisão",
   "Observação da decisão",
   "Status do Intercambista",
-  "Permissão anfitrião",
 ];
 
 const proGestaoHeaders = [
@@ -884,6 +884,7 @@ function buildCandidateAccessPayload(row, accessPassword) {
     titulo: "Cadastro concluido",
     orientacao:
       "Guarde estas informacoes. Elas serao usadas no primeiro acesso e no acompanhamento da inscricao.",
+    inscricao: row["Inscrição"] || "-",
     municipio: row["Município"] || "-",
     uf: row.UF || "-",
     usuario: onlyDigits(row.CPF) || "-",
@@ -1000,6 +1001,17 @@ async function getNextHostRegistration(rows) {
 
   const next = String(max + 1).padStart(4, "0");
   return `ANF-${new Date().getFullYear()}-${next}`;
+}
+
+async function getNextCandidateRegistration(rows) {
+  const max = rows.reduce((acc, row) => {
+    const value = String(row.data["Inscrição"] || "");
+    const num = Number((value.match(/(\d+)$/) || [])[1]);
+    return Number.isFinite(num) && num > acc ? num : acc;
+  }, 0);
+
+  const next = String(max + 1).padStart(4, "0");
+  return `INT-${new Date().getFullYear()}-${next}`;
 }
 
 app.get("/api/health", (req, res) => {
@@ -1487,6 +1499,7 @@ app.post("/api/candidate/register", loginLimiter, async (req, res) => {
     }
 
     const row = buildCandidateValueMap(req.body);
+    row["Inscrição"] = await getNextCandidateRegistration(dataset.rows);
     const accessPassword = generateHostPassword();
     row["Senha"] = await bcrypt.hash(accessPassword, 12);
     row["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(row);
