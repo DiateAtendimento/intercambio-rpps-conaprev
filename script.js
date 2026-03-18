@@ -1296,7 +1296,7 @@ async function refreshCandidateArea() {
   cards.innerHTML = hosts
     .map(
       (host) => `
-      <article class="host-card" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" role="button" tabindex="0">
+      <article class="host-card" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" role="button" tabindex="0">
         <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
         <h4>${escapeHtml(host.entidade)}</h4>
         <p>UF: ${escapeHtml(host.uf || "-")}</p>
@@ -1308,7 +1308,7 @@ async function refreshCandidateArea() {
         <p>Número de vagas: ${escapeHtml(host.vagas || "-")}</p>
         <p>Vagas restantes: ${escapeHtml(host.vagasRestantes || "-")}</p>
         <p>Áreas disponíveis: ${escapeHtml((host.areas || []).map((item) => `${item.area} (${item.restantes || item.vagas} vaga(s))`).filter(Boolean).join(", ") || "-")}</p>
-        <button class="btn btn-primary" type="button" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}">Inscrever-se</button>
+        <button class="btn btn-primary" type="button" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}">Inscrever-se</button>
       </article>`
     )
     .join("");
@@ -1741,6 +1741,7 @@ function setupWorkspaceActions() {
           entidade: actionEl.dataset.entidade || "",
           uf: actionEl.dataset.uf || "",
           municipio: actionEl.dataset.municipio || "",
+          vagasRestantes: actionEl.dataset.vagasRestantes || "0",
         };
         openModal(`Inscrição em ${hostMeta.entidade || "Anfitrião"}`, renderExchangeApplicationForm(hostMeta));
         const profile = (state.ui.candidateProfile || {});
