@@ -830,6 +830,11 @@ function payloadCandidateRegister(form) {
 function renderExchangeApplicationForm(host = {}) {
   return `
     <form id="candidateApplyForm" class="module-form modal-inline-form" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-max-participants="${escapeHtml(host.vagasRestantes || "0")}">
+      <input type="hidden" name="hostNumeroInscricao" value="${escapeHtml(host.numeroInscricao || "")}" />
+      <input type="hidden" name="hostCnpj" value="${escapeHtml(host.cnpj || "")}" />
+      <input type="hidden" name="hostEntidade" value="${escapeHtml(host.entidade || "")}" />
+      <input type="hidden" name="hostUf" value="${escapeHtml(host.uf || "")}" />
+      <input type="hidden" name="hostMunicipio" value="${escapeHtml(host.municipio || "")}" />
       <h4>Participantes indicados para o intercâmbio técnico</h4>
       <p class="form-block-note">
         Vagas disponíveis para esta inscrição:
@@ -934,6 +939,13 @@ function setupExchangeApplicationForm(prefill = {}) {
 
 function buildCandidateApplicationPayload(form) {
   const selectedHost = state.ui.selectedHostApplication || {};
+  const fallbackValue = (selector, datasetKey, stateKey) =>
+    String(
+      form.querySelector(selector)?.value ||
+        form.dataset[datasetKey] ||
+        selectedHost[stateKey] ||
+        ""
+    ).trim();
   const participants = qsa("#applyParticipantList .apply-participant-row")
     .map((row) => ({
       nome: String(row.querySelector('[name="applyNome"]')?.value || "").trim(),
@@ -945,11 +957,11 @@ function buildCandidateApplicationPayload(form) {
     .filter((item) => item.nome && item.cargo && item.vinculo && item.area);
 
   return {
-    numeroInscricao: form.dataset.host || selectedHost.numeroInscricao || "",
-    cnpj: form.dataset.cnpj || selectedHost.cnpj || "",
-    entidade: form.dataset.entidade || selectedHost.entidade || "",
-    uf: form.dataset.uf || selectedHost.uf || "",
-    municipio: form.dataset.municipio || selectedHost.municipio || "",
+    numeroInscricao: fallbackValue('[name="hostNumeroInscricao"]', "host", "numeroInscricao"),
+    cnpj: fallbackValue('[name="hostCnpj"]', "cnpj", "cnpj"),
+    entidade: fallbackValue('[name="hostEntidade"]', "entidade", "entidade"),
+    uf: fallbackValue('[name="hostUf"]', "uf", "uf"),
+    municipio: fallbackValue('[name="hostMunicipio"]', "municipio", "municipio"),
     participantes: participants,
     "Temas/áreas de interesse (texto)": String(form.querySelector('[name="temas"]')?.value || "").trim(),
     "Atividades propostas (agenda por dia)": String(form.querySelector('[name="atividades"]')?.value || "").trim(),
