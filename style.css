@@ -561,6 +561,23 @@ body.system-menu-open {
   background: #ffffff;
 }
 
+.host-area-row {
+  grid-template-columns: minmax(0, 1.5fr) minmax(120px, 0.7fr) minmax(120px, 0.5fr) auto;
+}
+
+.apply-participant-row {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+}
+
+.modal-inline-form {
+  gap: 0.9rem;
+}
+
+.modal-inline-form h4 {
+  margin: 0.25rem 0 0;
+  text-align: left;
+}
+
 .dynamic-remove-btn {
   width: 2.1rem;
   height: 2.1rem;
@@ -1383,6 +1400,11 @@ body.system-menu-open {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .apply-participant-row,
+  .host-area-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .search-field input {
     min-width: 220px;
   }
@@ -1406,6 +1428,11 @@ body.system-menu-open {
   }
 
   .host-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .apply-participant-row,
+  .host-area-row {
     grid-template-columns: minmax(0, 1fr);
   }
 

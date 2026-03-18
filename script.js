@@ -580,6 +580,13 @@ function payloadHostRegister(form) {
     .map((input) => String(input.value || "").trim())
     .filter(Boolean)
     .join(", ");
+  const areas = qsa("#hostAreaList .host-area-row")
+    .map((row) => ({
+      nome: String(row.querySelector('[name="hostAreaName"]')?.value || "").trim(),
+      tipo: String(row.querySelector('[name="hostAreaType"]')?.value || "padrao").trim(),
+      vagas: normalizeDigits(row.querySelector('[name="hostAreaSlots"]')?.value || ""),
+    }))
+    .filter((item) => item.nome && Number(item.vagas) > 0);
 
   const payload = {
     "UF": String(formData.uf || "").trim().toUpperCase(),
@@ -594,28 +601,89 @@ function payloadHostRegister(form) {
     "Telefone de contato": String(formData.telefone || "").trim(),
     "Nível do Pró-Gestão": normalizeProGestaoValue(formData.nivelProGestao),
     "Número de vagas oferecidas": String(formData.vagas || "").trim(),
-    "Nº de áreas/setores disponíveis": String(formData.totalAreas || "").trim(),
-    "Outros (especificar)": String(formData.areaOutrosTexto || "").trim(),
+    "Vagas restantes": String(formData.vagasRestantes || "").trim(),
     "Equipe de apoio designada (nomes)": equipeApoio,
     "Breve descrição da proposta de intercâmbio": String(formData.proposta || "").trim(),
     "Responsável pelo preenchimento": String(formData.responsavel || "").trim(),
     "Cargo/Função (Responsável)": String(formData.cargoResponsavel || "").trim(),
     "Data": normalizeDateToBr(formData.dataPreenchimento),
     cnpj: normalizeDigits(formData.municipioCnpj),
+    areas,
   };
-  payload["Área: Cadastro e Atendimento (Sim/Não)"] = form.querySelector('[name="areaCadastro"]')?.checked || false;
-  payload["Área: Concessão e Revisão de Benefícios (Sim/Não)"] = form.querySelector('[name="areaConcessao"]')?.checked || false;
-  payload["Área: Compensação Previdenciária (Sim/Não)"] = form.querySelector('[name="areaCompensacao"]')?.checked || false;
-  payload["Área: Atuária (Sim/Não)"] = form.querySelector('[name="areaAtuaria"]')?.checked || false;
-  payload["Área: Investimentos (Sim/Não)"] = form.querySelector('[name="areaInvestimentos"]')?.checked || false;
-  payload["Área: Controle Interno (Sim/Não)"] = form.querySelector('[name="areaControleInterno"]')?.checked || false;
-  payload["Área: Certificação/Pró-Gestão (Sim/Não)"] = form.querySelector('[name="areaCertificacao"]')?.checked || false;
-  payload["Área: Governança e Transparência (Sim/Não)"] = form.querySelector('[name="areaGovernanca"]')?.checked || false;
-  payload["Área: Gestão de Pessoal (Sim/Não)"] = form.querySelector('[name="areaPessoal"]')?.checked || false;
-  payload["Área: Tecnologia/Sistemas (Sim/Não)"] = form.querySelector('[name="areaTecnologia"]')?.checked || false;
-  payload["Área: Contabilidade (Sim/Não)"] = form.querySelector('[name="areaContabilidade"]')?.checked || false;
-  payload["Outros (Sim/Não)"] = form.querySelector('[name="areaOutros"]')?.checked || false;
   return payload;
+}
+
+function createHostAreaRow(name = "", type = "padrao", vagas = "") {
+  const row = document.createElement("div");
+  row.className = "dynamic-list__row host-area-row";
+  row.innerHTML = `
+    <input name="hostAreaName" placeholder="Área/Setor" value="${escapeHtml(name)}" />
+    <select name="hostAreaType">
+      <option value="padrao" ${type === "padrao" ? "selected" : ""}>Padrão</option>
+      <option value="outros" ${type === "outros" ? "selected" : ""}>Outros</option>
+    </select>
+    <input name="hostAreaSlots" placeholder="Vagas" data-input="numeric" value="${escapeHtml(vagas)}" />
+    <button type="button" class="dynamic-remove-btn" aria-label="Remover área">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  `;
+  return row;
+}
+
+function setupHostAreaFields() {
+  const list = qs("#hostAreaList");
+  const addButton = qs("#addHostArea");
+  const form = qs("#hostRegisterForm");
+  if (!list || !addButton || !form) return;
+
+  const defaultAreas = [
+    "Cadastro e Atendimento",
+    "Concessão e Revisão de Benefícios",
+    "Compensação Previdenciária",
+    "Atuária",
+    "Investimentos",
+    "Controle Interno",
+    "Certificação/Pró-Gestão",
+    "Governança e Transparência",
+    "Gestão de Pessoal",
+    "Tecnologia/Sistemas",
+    "Contabilidade",
+  ];
+
+  const recalcRemaining = () => {
+    const total = Number(normalizeDigits(form.querySelector('[name="vagas"]')?.value || ""));
+    const used = qsa("#hostAreaList [name='hostAreaSlots']").reduce((acc, input) => acc + Number(normalizeDigits(input.value || "")), 0);
+    const remaining = Math.max(0, total - used);
+    const target = form.querySelector('[name="vagasRestantes"]');
+    if (target) target.value = String(remaining);
+    form.dataset.areaOverflow = used > total ? "true" : "false";
+  };
+
+  const ensureRows = () => {
+    if (!list.children.length) {
+      defaultAreas.forEach((area) => list.appendChild(createHostAreaRow(area, "padrao", "")));
+    }
+    recalcRemaining();
+  };
+
+  if (!list.dataset.bound) {
+    addButton.addEventListener("click", () => {
+      list.appendChild(createHostAreaRow("", "outros", ""));
+      recalcRemaining();
+    });
+
+    list.addEventListener("input", recalcRemaining);
+    list.addEventListener("click", (event) => {
+      const btn = event.target.closest(".dynamic-remove-btn");
+      if (!btn) return;
+      btn.closest(".host-area-row")?.remove();
+      recalcRemaining();
+    });
+
+    form.querySelector('[name="vagas"]')?.addEventListener("input", recalcRemaining);
+    list.dataset.bound = "true";
+  }
+  ensureRows();
 }
 
 function setupSupportTeamField() {
@@ -675,6 +743,10 @@ function resetHostRegisterForm(form) {
     levelInput.classList.remove("progestao-input--none");
   }
 
+  const hostAreaList = qs("#hostAreaList");
+  if (hostAreaList) hostAreaList.innerHTML = "";
+  setupHostAreaFields();
+
   const list = qs("#supportTeamList");
   if (!list) return;
   const rows = qsa("#supportTeamList .dynamic-list__row");
@@ -726,42 +798,115 @@ function payloadCandidateRegister(form) {
     "Cargo/Função (Dirigente)": String(formData.cargoDirigente || "").trim(),
     "E-mail institucional": String(formData.email || "").trim(),
     "Telefone para contato": String(formData.telefone || "").trim(),
-    "Participante - Nome completo": String(formData.p_nome || "").trim(),
-    "Participante - Cargo/Função": String(formData.p_cargo || "").trim(),
-    "Participante - Tipo de vínculo": String(formData.p_vinculo || "").trim(),
-    "Participante - Área de atuação (RPPS/EFPC)": String(formData.p_area || "").trim(),
-    "Participante - Certificação": String(formData.p_certificacao || "").trim(),
-    "Anfitrião de interesse - Prioridade 1": String(formData.prioridade1Host || "").trim(),
-    "Objetivo principal (Prioridade 1)": String(formData.prioridade1Objetivo || "").trim(),
-    "Anfitrião de interesse - Prioridade 2": String(formData.prioridade2Host || "").trim(),
-    "Objetivo principal (Prioridade 2)": String(formData.prioridade2Objetivo || "").trim(),
-    "Anfitrião de interesse - Prioridade 3": String(formData.prioridade3Host || "").trim(),
-    "Objetivo principal (Prioridade 3)": String(formData.prioridade3Objetivo || "").trim(),
-    "Temas/áreas de interesse (texto)": String(formData.temas || "").trim(),
-    "Atividades propostas (agenda por dia)": String(formData.atividades || "").trim(),
-    "Objetivos e compromissos (o que pretende implementar/replicar)": String(formData.objetivosCompromissos || "").trim(),
-    "Declaração: vínculo formal (Sim/Não)": form.querySelector('[name="declaracaoVinculo"]').checked,
-    "Declaração: custeio pelo intercambista (Sim/Não)": form.querySelector('[name="declaracaoCusteio"]').checked,
-    "Declaração: ciência dos termos (Sim/Não)": form.querySelector('[name="declaracaoCiencia"]').checked,
     "Responsável pelo preenchimento": String(formData.responsavel || "").trim(),
     "Cargo/Função (Responsável)": String(formData.cargoResponsavel || "").trim(),
     "Data": normalizeDateToBr(formData.dataPreenchimento),
     cpf: normalizeDigits(formData.cpf),
-    genero: String(formData.genero || "").trim(),
-    participantes: [{
-      nome: formData.p_nome || "",
-      cargo: formData.p_cargo || "",
-      vinculo: formData.p_vinculo || "",
-      area: formData.p_area || "",
-      certificacao: formData.p_certificacao || "",
-    }],
-    declaracaoVinculo: form.querySelector('[name="declaracaoVinculo"]').checked,
-    declaracaoCusteio: form.querySelector('[name="declaracaoCusteio"]').checked,
-    declaracaoCiencia: form.querySelector('[name="declaracaoCiencia"]').checked,
   };
 
   payload.cpf = normalizeDigits(payload.cpf);
   return payload;
+}
+
+function renderExchangeApplicationForm(host = {}) {
+  return `
+    <form id="candidateApplyForm" class="module-form modal-inline-form" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}">
+      <h4>Participantes indicados para o intercâmbio técnico</h4>
+      <div id="applyParticipantList" class="dynamic-list"></div>
+      <button type="button" class="btn btn-outline dynamic-add-btn" id="addApplyParticipant"><i class="fa-solid fa-plus"></i> Adicionar participante</button>
+      <h4>Temas e áreas de interesse</h4>
+      <label>Temas/áreas de interesse (texto)<textarea name="temas" rows="3" required></textarea></label>
+      <h4>Atividades propostas</h4>
+      <label>Atividades propostas (agenda por dia)<textarea name="atividades" rows="3" required></textarea></label>
+      <h4>Objetivos e compromissos do regime intercambista</h4>
+      <label>Objetivos e compromissos (o que pretende implementar/replicar)<textarea name="objetivosCompromissos" rows="3" required></textarea></label>
+      <h4>Declaração de compromisso</h4>
+      <div class="check-grid-simple">
+        <label><input type="checkbox" name="declaracaoVinculo" required /> Os indicados têm vínculo formal com o RPPS/EFPC</label>
+        <label><input type="checkbox" name="declaracaoCusteio" required /> Os custos de participação serão custeados pelo intercambista</label>
+        <label><input type="checkbox" name="declaracaoCiencia" required /> Ciência dos termos da Resolução</label>
+      </div>
+      <h4>Responsável pelo preenchimento</h4>
+      <div class="form-grid two">
+        <label>Responsável pelo preenchimento<input name="responsavel" required /></label>
+        <label>Cargo/Função<input name="cargoResponsavel" required /></label>
+        <label>Data<input type="date" name="dataInscricao" required /></label>
+      </div>
+      <button type="submit" class="btn btn-primary">Enviar inscrição</button>
+    </form>
+  `;
+}
+
+function setupExchangeApplicationForm(prefill = {}) {
+  const form = qs("#candidateApplyForm");
+  const list = qs("#applyParticipantList");
+  const addButton = qs("#addApplyParticipant");
+  if (!form || !list || !addButton) return;
+
+  const createParticipantRow = () => {
+    const row = document.createElement("div");
+    row.className = "dynamic-list__row apply-participant-row";
+    row.innerHTML = `
+      <input name="applyNome" placeholder="Nome completo" required />
+      <input name="applyCargo" placeholder="Cargo/Função" required />
+      <input name="applyVinculo" placeholder="Tipo de vínculo" required />
+      <input name="applyArea" placeholder="Área de atuação no RPPS ou EFPC" required />
+      <input name="applyCertificacao" placeholder="Certificação" />
+      <button type="button" class="dynamic-remove-btn" aria-label="Remover participante"><i class="fa-solid fa-xmark"></i></button>
+    `;
+    return row;
+  };
+
+  const seed = createParticipantRow();
+  list.appendChild(seed);
+  form.querySelector('[name="responsavel"]').value = prefill.responsavel || "";
+  form.querySelector('[name="cargoResponsavel"]').value = prefill.cargoResponsavel || "";
+  const dateInput = form.querySelector('[name="dataInscricao"]');
+  if (dateInput) {
+    if (prefill.dataPreenchimento) {
+      dateInput.value = normalizeDateToBr(prefill.dataPreenchimento).split("/").reverse().join("-");
+    } else {
+      dateInput.value = new Date().toISOString().slice(0, 10);
+    }
+  }
+
+  addButton.addEventListener("click", () => list.appendChild(createParticipantRow()));
+  list.addEventListener("click", (event) => {
+    const btn = event.target.closest(".dynamic-remove-btn");
+    if (!btn) return;
+    if (qsa("#applyParticipantList .apply-participant-row").length === 1) return;
+    btn.closest(".apply-participant-row")?.remove();
+  });
+}
+
+function buildCandidateApplicationPayload(form) {
+  const participants = qsa("#applyParticipantList .apply-participant-row")
+    .map((row) => ({
+      nome: String(row.querySelector('[name="applyNome"]')?.value || "").trim(),
+      cargo: String(row.querySelector('[name="applyCargo"]')?.value || "").trim(),
+      vinculo: String(row.querySelector('[name="applyVinculo"]')?.value || "").trim(),
+      area: String(row.querySelector('[name="applyArea"]')?.value || "").trim(),
+      certificacao: String(row.querySelector('[name="applyCertificacao"]')?.value || "").trim(),
+    }))
+    .filter((item) => item.nome && item.cargo && item.vinculo && item.area);
+
+  return {
+    numeroInscricao: form.dataset.host || "",
+    cnpj: form.dataset.cnpj || "",
+    entidade: form.dataset.entidade || "",
+    uf: form.dataset.uf || "",
+    municipio: form.dataset.municipio || "",
+    participantes,
+    "Temas/áreas de interesse (texto)": String(form.querySelector('[name="temas"]')?.value || "").trim(),
+    "Atividades propostas (agenda por dia)": String(form.querySelector('[name="atividades"]')?.value || "").trim(),
+    "Objetivos e compromissos (o que pretende implementar/replicar)": String(form.querySelector('[name="objetivosCompromissos"]')?.value || "").trim(),
+    "Declaração: vínculo formal (Sim/Não)": form.querySelector('[name="declaracaoVinculo"]')?.checked || false,
+    "Declaração: custeio pelo intercambista (Sim/Não)": form.querySelector('[name="declaracaoCusteio"]')?.checked || false,
+    "Declaração: ciência dos termos (Sim/Não)": form.querySelector('[name="declaracaoCiencia"]')?.checked || false,
+    "Responsável pelo preenchimento": String(form.querySelector('[name="responsavel"]')?.value || "").trim(),
+    "Cargo/Função (Responsável)": String(form.querySelector('[name="cargoResponsavel"]')?.value || "").trim(),
+    "Data da inscrição": normalizeDateToBr(form.querySelector('[name="dataInscricao"]')?.value || ""),
+  };
 }
 
 function normalizeProGestaoValue(value) {
@@ -1025,44 +1170,42 @@ const HOST_FIELDS = [
   { key: "Telefone de contato", label: "Telefone de contato" },
   { key: "Nível do Pró-Gestão", label: "Nível do Pró-Gestão" },
   { key: "Número de vagas oferecidas", label: "Número de vagas oferecidas" },
-  { key: "Nº de áreas/setores disponíveis", label: "Nº de áreas/setores disponíveis" },
+  { key: "Vagas restantes", label: "Vagas restantes" },
   { key: "Equipe de apoio designada (nomes)", label: "Equipe de apoio designada (nomes)" },
   { key: "Breve descrição da proposta de intercâmbio", label: "Proposta" },
   { key: "Responsável pelo preenchimento", label: "Responsável pelo preenchimento" },
   { key: "Cargo/Função (Responsável)", label: "Cargo/Função (Responsável)" },
   { key: "Data", label: "Data" },
+  { key: "Data aceite MPS", label: "Data aceite MPS" },
 ];
 
 const CANDIDATE_FIELDS = [
+  { key: "Inscrição da solicitação", label: "Inscrição da solicitação" },
+  { key: "Inscrição do intercambista", label: "Inscrição do intercambista" },
+  { key: "CPF do intercambista", label: "CPF do intercambista" },
   { key: "Município", label: "Município" },
   { key: "UF", label: "UF" },
-  { key: "Município CNPJ", label: "Município CNPJ" },
   { key: "Unidade Gestora", label: "Unidade Gestora" },
-  { key: "Unidade Gestora CNPJ", label: "Unidade Gestora CNPJ" },
-  { key: "CPF", label: "CPF" },
-  { key: "Gênero", label: "Gênero" },
-  { key: "Nível do Pró-Gestão", label: "Nível do Pró-Gestão" },
-  { key: "Nome do Dirigente ou Responsável Legal", label: "Dirigente" },
-  { key: "Cargo/Função (Dirigente)", label: "Cargo/Função (Dirigente)" },
-  { key: "E-mail institucional", label: "E-mail institucional" },
-  { key: "Telefone para contato", label: "Telefone para contato" },
+  { key: "Anfitrião - Inscrição", label: "Anfitrião - Inscrição" },
+  { key: "Anfitrião - Nome", label: "Anfitrião - Nome" },
   { key: "Participante - Nome completo", label: "Participante(s)" },
   { key: "Participante - Cargo/Função", label: "Cargo/Função participante" },
   { key: "Participante - Tipo de vínculo", label: "Tipo de vínculo" },
   { key: "Participante - Área de atuação (RPPS/EFPC)", label: "Área de atuação" },
   { key: "Participante - Certificação", label: "Certificação" },
-  { key: "Anfitrião de interesse - Prioridade 1", label: "Anfitrião prioridade 1" },
-  { key: "Objetivo principal (Prioridade 1)", label: "Objetivo prioridade 1" },
-  { key: "Anfitrião de interesse - Prioridade 2", label: "Anfitrião prioridade 2" },
-  { key: "Objetivo principal (Prioridade 2)", label: "Objetivo prioridade 2" },
-  { key: "Anfitrião de interesse - Prioridade 3", label: "Anfitrião prioridade 3" },
-  { key: "Objetivo principal (Prioridade 3)", label: "Objetivo prioridade 3" },
   { key: "Temas/áreas de interesse (texto)", label: "Temas/áreas de interesse" },
   { key: "Atividades propostas (agenda por dia)", label: "Atividades propostas" },
   { key: "Objetivos e compromissos (o que pretende implementar/replicar)", label: "Objetivos e compromissos" },
+  { key: "Declaração: vínculo formal (Sim/Não)", label: "Declaração: vínculo formal" },
+  { key: "Declaração: custeio pelo intercambista (Sim/Não)", label: "Declaração: custeio" },
+  { key: "Declaração: ciência dos termos (Sim/Não)", label: "Declaração: ciência" },
   { key: "Responsável pelo preenchimento", label: "Responsável pelo preenchimento" },
   { key: "Cargo/Função (Responsável)", label: "Cargo/Função (Responsável)" },
-  { key: "Data", label: "Data" },
+  { key: "Data da inscrição", label: "Data da inscrição" },
+  { key: "Status da solicitação", label: "Status da solicitação" },
+  { key: "Data da decisão", label: "Data da decisão" },
+  { key: "Observação da decisão", label: "Observação da decisão" },
+  { key: "Status final", label: "Status final" },
 ];
 
 function filterRows(rows, query) {
@@ -1095,21 +1238,28 @@ function formatStatus(status) {
 async function refreshCandidateArea() {
   const status = await apiFetch("/api/candidate/status", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
   const hostsData = await apiFetch("/api/candidate/hosts", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
+  state.ui.candidateProfile = status.profile || {};
 
   const statusBody = qs("#candidateStatusTableBody");
   if (statusBody) {
-    statusBody.innerHTML = `
-      <tr>
-        <td>${escapeHtml(status.inscricao || "-")}</td>
-        <td>${escapeHtml(status.municipio || "-")}</td>
-        <td>${escapeHtml(status.uf || "-")}</td>
-        <td>${escapeHtml(status.unidadeGestora || "-")}</td>
-        <td>${escapeHtml(status.dirigente || "-")}</td>
-        <td>${escapeHtml(status.dataSolicitacao || "-")}</td>
-        <td>${escapeHtml(status.dataDecisao || "-")}</td>
-        <td>${formatStatus(status.status)}</td>
-      </tr>
-    `;
+    const inscricoes = Array.isArray(status.inscricoes) ? status.inscricoes : [];
+    statusBody.innerHTML = inscricoes.length
+      ? inscricoes
+          .map(
+            (item) => `
+            <tr>
+              <td>${escapeHtml(item.inscricao || "-")}</td>
+              <td>${escapeHtml(item.hostNome || "-")}</td>
+              <td>${escapeHtml(item.municipio || "-")}</td>
+              <td>${escapeHtml(item.uf || "-")}</td>
+              <td>${escapeHtml(item.unidadeGestora || "-")}</td>
+              <td>${escapeHtml(item.dataSolicitacao || "-")}</td>
+              <td>${escapeHtml(item.dataDecisao || "-")}</td>
+              <td>${formatStatus(item.statusSolicitacao || item.statusIntercambista || "Pendente")}</td>
+            </tr>`
+          )
+          .join("")
+      : `<tr><td colspan="8">Sem inscrições realizadas.</td></tr>`;
   }
 
   const cards = qs("#candidateHostsList");
@@ -1124,7 +1274,7 @@ async function refreshCandidateArea() {
   cards.innerHTML = hosts
     .map(
       (host) => `
-      <article class="host-card" data-action="select-host" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" role="button" tabindex="0">
+      <article class="host-card" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" role="button" tabindex="0">
         <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
         <h4>${escapeHtml(host.entidade)}</h4>
         <p>UF: ${escapeHtml(host.uf || "-")}</p>
@@ -1134,8 +1284,9 @@ async function refreshCandidateArea() {
           </span>
         </p>
         <p>Número de vagas: ${escapeHtml(host.vagas || "-")}</p>
-        <p>Nº de áreas/setores disponíveis: ${escapeHtml((host.areas || []).length || "-")}</p>
-        <button class="btn btn-primary" type="button" data-action="select-host" data-host="${escapeHtml(host.numeroInscricao || "")}">Candidatar-se</button>
+        <p>Vagas restantes: ${escapeHtml(host.vagasRestantes || "-")}</p>
+        <p>Áreas disponíveis: ${escapeHtml((host.areas || []).map((item) => item.area).filter(Boolean).join(", ") || "-")}</p>
+        <button class="btn btn-primary" type="button" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}">Inscrever-se</button>
       </article>`
     )
     .join("");
@@ -1275,10 +1426,20 @@ function setupWorkspaceActions() {
         false
       );
     }
+    const hostPayload = payloadHostRegister(hostRegisterForm);
+    if (!Array.isArray(hostPayload.areas) || !hostPayload.areas.length) {
+      return setFeedback("hostRegisterFeedback", "Informe ao menos uma área com vagas disponíveis.", false);
+    }
+    if (hostRegisterForm.dataset.areaOverflow === "true") {
+      return setFeedback("hostRegisterFeedback", "A soma das vagas por área não pode exceder o total de vagas oferecidas.", false);
+    }
+    if (Number(hostPayload["Vagas restantes"] || 0) !== 0) {
+      return setFeedback("hostRegisterFeedback", "Distribua todas as vagas entre as áreas antes de enviar o cadastro.", false);
+    }
     setFeedback("hostRegisterFeedback", "Enviando cadastro...", true);
     try {
       const data = await runWithLottie(
-        () => apiFetch("/api/host/register", { method: "POST", body: JSON.stringify(payloadHostRegister(hostRegisterForm)) }),
+        () => apiFetch("/api/host/register", { method: "POST", body: JSON.stringify(hostPayload) }),
         {
           loadingPath: "Loading.json",
           loadingMessage: "Enviando cadastro do anfitrião...",
@@ -1324,7 +1485,7 @@ function setupWorkspaceActions() {
           successMessage: "Cadastro enviado com sucesso.",
         }
       );
-      setFeedback("candidateRegisterFeedback", "Cadastro concluído. Realize o primeiro acesso para criar sua senha.", true);
+      setFeedback("candidateRegisterFeedback", "Cadastro concluído. Inscrição e credenciais geradas com sucesso.", true);
       showAccessInfoModal(data.accessInfo);
       if (data?.emailSent === false) {
         console.error("[EMAIL_CANDIDATE_REGISTER_FAIL]", data.mailError || "erro nao informado");
@@ -1479,6 +1640,41 @@ function setupWorkspaceActions() {
   qs("#adminSearchInput")?.addEventListener("input", applyAdminSearch);
   qs("#hostSearchInput")?.addEventListener("input", applyHostSearch);
 
+  document.addEventListener("submit", async (event) => {
+    const form = event.target.closest("#candidateApplyForm");
+    if (!form) return;
+    event.preventDefault();
+
+    const payload = buildCandidateApplicationPayload(form);
+    if (!payload.numeroInscricao && !payload.cnpj && !payload.entidade) {
+      return showMessageModal("Erro", "Informe um anfitrião.", "error");
+    }
+    if (!payload.participantes.length) {
+      return showMessageModal("Erro", "Informe ao menos um participante válido.", "error");
+    }
+
+    try {
+      await withActionLottie(
+        () =>
+          apiFetch("/api/candidate/select-host", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${state.tokens.candidate}` },
+            body: JSON.stringify(payload),
+          }),
+        "Enviando solicitação ao anfitrião..."
+      );
+      closeModal();
+      showMessageModal(
+        "Inscrição enviada",
+        "Sua inscrição foi registrada. Agora você deve aguardar o feedback do anfitrião sobre essa solicitação.",
+        "success"
+      );
+      await refreshCandidateArea();
+    } catch (error) {
+      showMessageModal("Erro", error.message, "error");
+    }
+  });
+
   document.addEventListener("click", async (event) => {
     const modalChoiceEl = event.target.closest("[data-modal-choice]");
     if (modalChoiceEl && typeof modalChoiceResolver === "function") {
@@ -1512,23 +1708,22 @@ function setupWorkspaceActions() {
     const rowNumber = Number(actionEl.dataset.row || 0);
 
     try {
-      if (action === "select-host") {
-        await withActionLottie(
-          () =>
-            apiFetch("/api/candidate/select-host", {
-              method: "POST",
-              headers: { Authorization: `Bearer ${state.tokens.candidate}` },
-              body: JSON.stringify({
-                numeroInscricao: actionEl.dataset.host || "",
-                cnpj: actionEl.dataset.cnpj || "",
-                entidade: actionEl.dataset.entidade || "",
-                uf: actionEl.dataset.uf || "",
-                municipio: actionEl.dataset.municipio || "",
-              }),
-            }),
-          "Enviando solicitação ao anfitrião..."
-        );
-        await refreshCandidateArea();
+      if (action === "open-host-application") {
+        const hostMeta = {
+          numeroInscricao: actionEl.dataset.host || "",
+          cnpj: actionEl.dataset.cnpj || "",
+          entidade: actionEl.dataset.entidade || "",
+          uf: actionEl.dataset.uf || "",
+          municipio: actionEl.dataset.municipio || "",
+        };
+        openModal(`Inscrição em ${hostMeta.entidade || "Anfitrião"}`, renderExchangeApplicationForm(hostMeta));
+        const profile = (state.ui.candidateProfile || {});
+        setupExchangeApplicationForm({
+          responsavel: profile.responsavel || "",
+          cargoResponsavel: profile.cargoResponsavel || "",
+          dataPreenchimento: profile.dataPreenchimento || "",
+        });
+        return;
       }
 
       if (action === "host-decision") {
@@ -1708,6 +1903,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupRevealOnScroll();
   setupNoDraftInputs();
   setupSupportTeamField();
+  setupHostAreaFields();
   setupSmartInputs();
   setupCnpjPrefill();
   setupWorkspaceActions();

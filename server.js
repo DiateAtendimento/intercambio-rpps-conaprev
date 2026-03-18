@@ -130,6 +130,8 @@ const loginLimiter = rateLimit({
 
 const HOST_SHEET = "Anfitrião";
 const CANDIDATE_SHEET = "Intercambista";
+const HOST_AREAS_SHEET = "Anfitriao Areas";
+const EXCHANGE_REQUESTS_SHEET = "Inscricoes Intercambio";
 const PRO_GESTAO_SHEET = "Pro-gestao";
 
 const hostHeaders = [
@@ -146,20 +148,7 @@ const hostHeaders = [
   "Telefone de contato",
   "Nível do Pró-Gestão",
   "Número de vagas oferecidas",
-  "Nº de áreas/setores disponíveis",
-  "Área: Cadastro e Atendimento (Sim/Não)",
-  "Área: Concessão e Revisão de Benefícios (Sim/Não)",
-  "Área: Compensação Previdenciária (Sim/Não)",
-  "Área: Atuária (Sim/Não)",
-  "Área: Investimentos (Sim/Não)",
-  "Área: Controle Interno (Sim/Não)",
-  "Área: Certificação/Pró-Gestão (Sim/Não)",
-  "Área: Governança e Transparência (Sim/Não)",
-  "Área: Gestão de Pessoal (Sim/Não)",
-  "Área: Tecnologia/Sistemas (Sim/Não)",
-  "Área: Contabilidade (Sim/Não)",
-  "Outros (Sim/Não)",
-  "Outros (especificar)",
+  "Vagas restantes",
   "Equipe de apoio designada (nomes)",
   "Breve descrição da proposta de intercâmbio",
   "Responsável pelo preenchimento",
@@ -184,17 +173,43 @@ const candidateHeaders = [
   "Cargo/Função (Dirigente)",
   "E-mail institucional",
   "Telefone para contato",
+  "Responsável pelo preenchimento",
+  "Cargo/Função (Responsável)",
+  "Data",
+  "Senha",
+  "CPF",
+  "Primeiro Acesso Concluído",
+  "Status do Intercambista",
+];
+
+const hostAreaHeaders = [
+  "Inscrição do anfitrião",
+  "UF",
+  "Município",
+  "Unidade Gestora",
+  "Área/Setor",
+  "Tipo",
+  "Vagas da área",
+  "Vagas ocupadas",
+  "Vagas restantes",
+  "Ativa",
+  "Ordem",
+];
+
+const exchangeRequestHeaders = [
+  "Inscrição da solicitação",
+  "Inscrição do intercambista",
+  "CPF do intercambista",
+  "UF",
+  "Município",
+  "Unidade Gestora",
+  "Anfitrião - Inscrição",
+  "Anfitrião - Nome",
   "Participante - Nome completo",
   "Participante - Cargo/Função",
   "Participante - Tipo de vínculo",
   "Participante - Área de atuação (RPPS/EFPC)",
   "Participante - Certificação",
-  "Anfitrião de interesse - Prioridade 1",
-  "Objetivo principal (Prioridade 1)",
-  "Anfitrião de interesse - Prioridade 2",
-  "Objetivo principal (Prioridade 2)",
-  "Anfitrião de interesse - Prioridade 3",
-  "Objetivo principal (Prioridade 3)",
   "Temas/áreas de interesse (texto)",
   "Atividades propostas (agenda por dia)",
   "Objetivos e compromissos (o que pretende implementar/replicar)",
@@ -203,18 +218,11 @@ const candidateHeaders = [
   "Declaração: ciência dos termos (Sim/Não)",
   "Responsável pelo preenchimento",
   "Cargo/Função (Responsável)",
-  "Data",
-  "Senha",
-  "Permissão anfitrião",
-  "CPF",
-  "Gênero",
-  "Primeiro Acesso Concluído",
-  "Anfitrião escolhido - Inscrição",
-  "Anfitrião escolhido - Nome",
+  "Data da inscrição",
   "Status da solicitação",
   "Data da decisão",
   "Observação da decisão",
-  "Status do Intercambista",
+  "Status final",
 ];
 
 const proGestaoHeaders = [
@@ -340,7 +348,7 @@ function resolveHostStatus(rowData = {}) {
 function resolveCandidateStatus(rowData = {}) {
   const explicit = String(rowData["Status do Intercambista"] || "").trim();
   if (explicit) return explicit;
-  return normalizeText(rowData["Permissão anfitrião"] || "") === "concedido" ? "Ativo" : "Pendente";
+  return "Ativo";
 }
 
 function resolveHostFirstAccess(rowData = {}) {
@@ -350,9 +358,9 @@ function resolveHostFirstAccess(rowData = {}) {
 }
 
 function resolveCandidateFirstAccess(rowData = {}) {
-  const approved = normalizeText(rowData["Permissão anfitrião"] || "") === "concedido";
-  const active = normalizeText(resolveCandidateStatus(rowData)) === "ativo";
-  return approved && active ? "Sim" : "Não";
+  const explicit = String(rowData["Primeiro Acesso Concluído"] || "").trim();
+  if (explicit) return explicit;
+  return "Não";
 }
 
 const auth = new google.auth.GoogleAuth({
@@ -479,6 +487,22 @@ async function updateRow(sheetName, headers, rowNumber, valueByHeader) {
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
+}
+
+async function syncHostAreas(hostData, areas) {
+  const dataset = await getRows(HOST_AREAS_SHEET, hostAreaHeaders);
+  const hostNumero = String(hostData["Inscrição"] || "").trim();
+  const currentRows = dataset.rows.filter((row) => String(row.data["Inscrição do anfitrião"] || "").trim() === hostNumero);
+
+  for (const row of currentRows) {
+    row.data.Ativa = "Não";
+    row.data["Vagas restantes"] = "0";
+    await updateRow(HOST_AREAS_SHEET, dataset.headers, row.rowNumber, row.data);
+  }
+
+  for (let index = 0; index < areas.length; index += 1) {
+    await appendRow(HOST_AREAS_SHEET, dataset.headers, buildHostAreaValueMap(hostData, areas[index], index));
+  }
 }
 
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
@@ -770,28 +794,22 @@ function findHostForCandidateSelection(rows, criteria = {}) {
   return { host, matchedBy };
 }
 
-function getHostAreas(hostData) {
-  const areaFields = [
-    "Área: Cadastro e Atendimento (Sim/Não)",
-    "Área: Concessão e Revisão de Benefícios (Sim/Não)",
-    "Área: Compensação Previdenciária (Sim/Não)",
-    "Área: Atuária (Sim/Não)",
-    "Área: Investimentos (Sim/Não)",
-    "Área: Controle Interno (Sim/Não)",
-    "Área: Certificação/Pró-Gestão (Sim/Não)",
-    "Área: Governança e Transparência (Sim/Não)",
-    "Área: Gestão de Pessoal (Sim/Não)",
-    "Área: Tecnologia/Sistemas (Sim/Não)",
-    "Área: Contabilidade (Sim/Não)",
-  ];
-
-  return areaFields
-    .filter((key) => normalizeText(hostData[key]) === "sim")
-    .map((key) => key.replace("Área: ", "").replace(" (Sim/Não)", ""));
+function getHostAreas(areaRows) {
+  return areaRows
+    .filter((row) => normalizeText(row.data.Ativa || "sim") !== "nao")
+    .sort((a, b) => Number(a.data.Ordem || 0) - Number(b.data.Ordem || 0))
+    .map((row) => ({
+      area: row.data["Área/Setor"] || "",
+      tipo: row.data.Tipo || "",
+      vagas: Number(row.data["Vagas da área"] || 0),
+      ocupadas: Number(row.data["Vagas ocupadas"] || 0),
+      restantes: Number(row.data["Vagas restantes"] || 0),
+    }));
 }
 
-function publicHostView(hostData, proLookup = null) {
+function publicHostView(hostData, areaRows = [], proLookup = null) {
   const uf = String(hostData.UF || "").trim().toUpperCase();
+  const areas = getHostAreas(areaRows);
   const nivelProGestao = resolveProGestaoLevel(
     proLookup,
     hostData["Município"] || "",
@@ -810,8 +828,9 @@ function publicHostView(hostData, proLookup = null) {
     nivelProGestao,
     semProGestao: isSemProGestaoValue(nivelProGestao),
     vagas: hostData["Número de vagas oferecidas"] || "",
+    vagasRestantes: hostData["Vagas restantes"] || "",
     descricao: hostData["Breve descrição da proposta de intercâmbio"] || "",
-    areas: getHostAreas(hostData),
+    areas,
     status: resolveHostStatus(hostData),
   };
 }
@@ -828,24 +847,32 @@ function hostSummaryView(row) {
     dataSolicitacao: normalizeDateBr(row.data.Data || ""),
     status: resolveHostStatus(row.data),
     permissaoAdmin: row.data["Permissão admin"] || "",
+    vagasRestantes: row.data["Vagas restantes"] || "",
   };
 }
 
-function candidateSummaryView(row) {
+function exchangeRequestSummaryView(row) {
   return {
     rowNumber: row.rowNumber,
-    inscricao: row.data["Inscrição"] || "",
+    inscricao: row.data["Inscrição da solicitação"] || "",
+    inscricaoIntercambista: row.data["Inscrição do intercambista"] || "",
     municipio: row.data["Município"] || "",
     uf: row.data.UF || "",
     unidadeGestora: row.data["Unidade Gestora"] || "",
-    dirigente: row.data["Nome do Dirigente ou Responsável Legal"] || "",
-    cargoDirigente: row.data["Cargo/Função (Dirigente)"] || "",
-    dataSolicitacao: normalizeDateBr(row.data.Data || ""),
+    hostNumero: row.data["Anfitrião - Inscrição"] || "",
+    hostNome: row.data["Anfitrião - Nome"] || "",
+    dataSolicitacao: normalizeDateBr(row.data["Data da inscrição"] || ""),
     dataDecisao: normalizeDateBr(row.data["Data da decisão"] || ""),
     statusSolicitacao: row.data["Status da solicitação"] || "",
-    statusIntercambista: row.data["Status do Intercambista"] || "Pendente",
-    permissaoAnfitriao: row.data["Permissão anfitrião"] || "Pendente",
+    statusIntercambista: row.data["Status final"] || "Pendente",
   };
+}
+
+function countRequestParticipants(rowData = {}) {
+  return String(rowData["Participante - Nome completo"] || "")
+    .split("|")
+    .map((item) => item.trim())
+    .filter(Boolean).length || 1;
 }
 
 function generateHostPassword() {
@@ -953,8 +980,6 @@ function buildCandidateAccessPayload(row, accessPassword) {
 }
 
 function buildHostValueMap(payload, passwordHash, numeroInscricao) {
-  const yesNo = (v) => (v ? "Sim" : "Não");
-
   return {
     "Inscrição": numeroInscricao,
     "UF": sanitizeInput(payload["UF"], 2).toUpperCase(),
@@ -969,20 +994,7 @@ function buildHostValueMap(payload, passwordHash, numeroInscricao) {
     "Telefone de contato": sanitizeInput(payload["Telefone de contato"], 40),
     "Nível do Pró-Gestão": sanitizeInput(normalizeProGestaoForSheet(payload["Nível do Pró-Gestão"]), 60),
     "Número de vagas oferecidas": sanitizeInput(payload["Número de vagas oferecidas"], 20),
-    "Nº de áreas/setores disponíveis": sanitizeInput(payload["Nº de áreas/setores disponíveis"], 20),
-    "Área: Cadastro e Atendimento (Sim/Não)": yesNo(payload["Área: Cadastro e Atendimento (Sim/Não)"]),
-    "Área: Concessão e Revisão de Benefícios (Sim/Não)": yesNo(payload["Área: Concessão e Revisão de Benefícios (Sim/Não)"]),
-    "Área: Compensação Previdenciária (Sim/Não)": yesNo(payload["Área: Compensação Previdenciária (Sim/Não)"]),
-    "Área: Atuária (Sim/Não)": yesNo(payload["Área: Atuária (Sim/Não)"]),
-    "Área: Investimentos (Sim/Não)": yesNo(payload["Área: Investimentos (Sim/Não)"]),
-    "Área: Controle Interno (Sim/Não)": yesNo(payload["Área: Controle Interno (Sim/Não)"]),
-    "Área: Certificação/Pró-Gestão (Sim/Não)": yesNo(payload["Área: Certificação/Pró-Gestão (Sim/Não)"]),
-    "Área: Governança e Transparência (Sim/Não)": yesNo(payload["Área: Governança e Transparência (Sim/Não)"]),
-    "Área: Gestão de Pessoal (Sim/Não)": yesNo(payload["Área: Gestão de Pessoal (Sim/Não)"]),
-    "Área: Tecnologia/Sistemas (Sim/Não)": yesNo(payload["Área: Tecnologia/Sistemas (Sim/Não)"]),
-    "Área: Contabilidade (Sim/Não)": yesNo(payload["Área: Contabilidade (Sim/Não)"]),
-    "Outros (Sim/Não)": yesNo(payload["Outros (Sim/Não)"]),
-    "Outros (especificar)": sanitizeInput(payload["Outros (especificar)"], 300),
+    "Vagas restantes": sanitizeInput(payload["Vagas restantes"] || payload["Número de vagas oferecidas"], 20),
     "Equipe de apoio designada (nomes)": sanitizeInput(payload["Equipe de apoio designada (nomes)"], 400),
     "Breve descrição da proposta de intercâmbio": sanitizeInput(payload["Breve descrição da proposta de intercâmbio"], 1200),
     "Responsável pelo preenchimento": sanitizeInput(payload["Responsável pelo preenchimento"], 200),
@@ -1003,9 +1015,6 @@ function flattenParticipant(participants, field) {
 }
 
 function buildCandidateValueMap(payload) {
-  const yesNo = (v) => (v ? "Sim" : "Não");
-  const participants = Array.isArray(payload.participantes) ? payload.participantes.slice(0, 8) : [];
-
   return {
     "Inscrição": "",
     "UF": sanitizeInput(payload["UF"], 2).toUpperCase(),
@@ -1018,17 +1027,33 @@ function buildCandidateValueMap(payload) {
     "Cargo/Função (Dirigente)": sanitizeInput(payload["Cargo/Função (Dirigente)"], 120),
     "E-mail institucional": sanitizeInput(payload["E-mail institucional"], 150),
     "Telefone para contato": sanitizeInput(payload["Telefone para contato"], 40),
+    "Responsável pelo preenchimento": sanitizeInput(payload["Responsável pelo preenchimento"], 200),
+    "Cargo/Função (Responsável)": sanitizeInput(payload["Cargo/Função (Responsável)"], 120),
+    Data: sanitizeInput(normalizeDateBr(payload.Data || nowBrDate()), 20),
+    "Senha": "",
+    CPF: onlyDigits(payload.cpf),
+    "Primeiro Acesso Concluído": "Não",
+    "Status do Intercambista": "Ativo",
+  };
+}
+
+function buildExchangeRequestValueMap(payload, candidateRow, hostRow) {
+  const yesNo = (v) => (v ? "Sim" : "Não");
+  const participants = Array.isArray(payload.participantes) ? payload.participantes.slice(0, 20) : [];
+  return {
+    "Inscrição da solicitação": payload.inscricaoSolicitacao || "",
+    "Inscrição do intercambista": candidateRow.data["Inscrição"] || "",
+    "CPF do intercambista": onlyDigits(candidateRow.data.CPF || ""),
+    "UF": candidateRow.data.UF || "",
+    "Município": candidateRow.data["Município"] || "",
+    "Unidade Gestora": candidateRow.data["Unidade Gestora"] || "",
+    "Anfitrião - Inscrição": hostRow.data["Inscrição"] || "",
+    "Anfitrião - Nome": hostRow.data["Unidade Gestora"] || "",
     "Participante - Nome completo": flattenParticipant(participants, "nome"),
     "Participante - Cargo/Função": flattenParticipant(participants, "cargo"),
     "Participante - Tipo de vínculo": flattenParticipant(participants, "vinculo"),
     "Participante - Área de atuação (RPPS/EFPC)": flattenParticipant(participants, "area"),
     "Participante - Certificação": flattenParticipant(participants, "certificacao"),
-    "Anfitrião de interesse - Prioridade 1": sanitizeInput(payload["Anfitrião de interesse - Prioridade 1"], 200),
-    "Objetivo principal (Prioridade 1)": sanitizeInput(payload["Objetivo principal (Prioridade 1)"], 600),
-    "Anfitrião de interesse - Prioridade 2": sanitizeInput(payload["Anfitrião de interesse - Prioridade 2"], 200),
-    "Objetivo principal (Prioridade 2)": sanitizeInput(payload["Objetivo principal (Prioridade 2)"], 600),
-    "Anfitrião de interesse - Prioridade 3": sanitizeInput(payload["Anfitrião de interesse - Prioridade 3"], 200),
-    "Objetivo principal (Prioridade 3)": sanitizeInput(payload["Objetivo principal (Prioridade 3)"], 600),
     "Temas/áreas de interesse (texto)": sanitizeInput(payload["Temas/áreas de interesse (texto)"], 1200),
     "Atividades propostas (agenda por dia)": sanitizeInput(payload["Atividades propostas (agenda por dia)"], 2000),
     "Objetivos e compromissos (o que pretende implementar/replicar)": sanitizeInput(payload["Objetivos e compromissos (o que pretende implementar/replicar)"], 1500),
@@ -1037,18 +1062,28 @@ function buildCandidateValueMap(payload) {
     "Declaração: ciência dos termos (Sim/Não)": yesNo(payload["Declaração: ciência dos termos (Sim/Não)"]),
     "Responsável pelo preenchimento": sanitizeInput(payload["Responsável pelo preenchimento"], 200),
     "Cargo/Função (Responsável)": sanitizeInput(payload["Cargo/Função (Responsável)"], 120),
-    Data: sanitizeInput(normalizeDateBr(payload.Data || nowBrDate()), 20),
-    "Senha": "",
-    CPF: onlyDigits(payload.cpf),
-    "Gênero": sanitizeInput(payload.genero, 20),
-    "Primeiro Acesso Concluído": "Não",
-    "Anfitrião escolhido - Inscrição": "",
-    "Anfitrião escolhido - Nome": "",
-    "Status da solicitação": "Sem solicitação",
+    "Data da inscrição": sanitizeInput(normalizeDateBr(payload["Data da inscrição"] || nowBrDate()), 20),
+    "Status da solicitação": "Pendente",
     "Data da decisão": "",
     "Observação da decisão": "",
-    "Status do Intercambista": "Pendente",
-    "Permissão anfitrião": "Pendente",
+    "Status final": "Pendente",
+  };
+}
+
+function buildHostAreaValueMap(hostData, area, index) {
+  const vagas = Number(area.vagas || 0);
+  return {
+    "Inscrição do anfitrião": hostData["Inscrição"] || "",
+    UF: hostData.UF || "",
+    "Município": hostData["Município"] || "",
+    "Unidade Gestora": hostData["Unidade Gestora"] || "",
+    "Área/Setor": sanitizeInput(area.nome, 180),
+    Tipo: sanitizeInput(area.tipo || "padrao", 40),
+    "Vagas da área": String(vagas),
+    "Vagas ocupadas": String(Number(area.ocupadas || 0)),
+    "Vagas restantes": String(Number(area.restantes ?? vagas)),
+    Ativa: normalizeText(area.ativa || "sim") === "nao" ? "Não" : "Sim",
+    Ordem: String(index + 1),
   };
 }
 
@@ -1072,6 +1107,17 @@ async function getNextCandidateRegistration(rows) {
 
   const next = String(max + 1).padStart(4, "0");
   return `INT-${new Date().getFullYear()}-${next}`;
+}
+
+async function getNextExchangeRequestRegistration(rows) {
+  const max = rows.reduce((acc, row) => {
+    const value = String(row.data["Inscrição da solicitação"] || "");
+    const num = Number((value.match(/(\d+)$/) || [])[1]);
+    return Number.isFinite(num) && num > acc ? num : acc;
+  }, 0);
+
+  const next = String(max + 1).padStart(4, "0");
+  return `SOL-${new Date().getFullYear()}-${next}`;
 }
 
 app.get("/api/health", (req, res) => {
@@ -1215,6 +1261,7 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
 app.post("/api/host/register", loginLimiter, async (req, res) => {
   try {
     const cnpj = onlyDigits(req.body.cnpj);
+    const areas = Array.isArray(req.body.areas) ? req.body.areas : [];
     if (cnpj.length !== 14) {
       return res.status(400).json({ error: "CNPJ inválido." });
     }
@@ -1230,9 +1277,11 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
 
       valueMap["Status do Anfitrião"] = existing.data["Status do Anfitrião"] || "Pendente";
       valueMap["Permissão admin"] = existing.data["Permissão admin"] || "Pendente";
+      valueMap["Data aceite MPS"] = existing.data["Data aceite MPS"] || "";
       valueMap["Primeiro Acesso Concluído"] = resolveHostFirstAccess(valueMap);
 
       await updateRow(HOST_SHEET, headers, existing.rowNumber, valueMap);
+      await syncHostAreas(valueMap, areas);
       return res.json({
         updated: true,
         numeroInscricao,
@@ -1248,6 +1297,7 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
     const valueMap = buildHostValueMap(req.body, accessPasswordHash, numeroInscricao);
     valueMap["Primeiro Acesso Concluído"] = resolveHostFirstAccess(valueMap);
     await appendRow(HOST_SHEET, headers, valueMap);
+    await syncHostAreas(valueMap, areas);
     return res.status(201).json({
       created: true,
       numeroInscricao,
@@ -1391,22 +1441,16 @@ app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
       return res.status(403).json({ error: "Anfitrião inativo. Contate o admin." });
     }
 
-    const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
-    const pendentes = candidates.rows
-      .filter((row) => {
-        const selectedHost = String(row.data["Anfitrião escolhido - Inscrição"] || "");
-        const status = normalizeText(row.data["Status da solicitação"] || "");
-        return selectedHost === hostNumero && status === "pendente";
-      })
-      .map(candidateSummaryView);
+    const requests = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
+    const pendentes = requests.rows
+      .filter((row) => String(row.data["Anfitrião - Inscrição"] || "") === hostNumero)
+      .filter((row) => normalizeText(row.data["Status da solicitação"] || "") === "pendente")
+      .map(exchangeRequestSummaryView);
 
-    const cadastrados = candidates.rows
-      .filter((row) => {
-        const selectedHost = String(row.data["Anfitrião escolhido - Inscrição"] || "");
-        const status = normalizeText(row.data["Status da solicitação"] || "");
-        return selectedHost === hostNumero && status === "aceito";
-      })
-      .map(candidateSummaryView);
+    const cadastrados = requests.rows
+      .filter((row) => String(row.data["Anfitrião - Inscrição"] || "") === hostNumero)
+      .filter((row) => normalizeText(row.data["Status da solicitação"] || "") === "aceito")
+      .map(exchangeRequestSummaryView);
 
     res.json({
       host: {
@@ -1427,9 +1471,9 @@ app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
 
 app.get("/api/host/candidate-form/:rowNumber", requireAuth("host"), async (req, res) => {
   try {
-    const candidateRow = Number(req.params.rowNumber);
-    if (!candidateRow) {
-      return res.status(400).json({ error: "Linha do intercambista inválida." });
+    const requestRow = Number(req.params.rowNumber);
+    if (!requestRow) {
+      return res.status(400).json({ error: "Linha da inscrição inválida." });
     }
 
     const hostData = await getRows(HOST_SHEET, hostHeaders);
@@ -1439,20 +1483,20 @@ app.get("/api/host/candidate-form/:rowNumber", requireAuth("host"), async (req, 
     }
 
     const hostNumero = String(hostRowData.data["Inscrição"] || "");
-    const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
-    const candidate = candidates.rows.find((row) => row.rowNumber === candidateRow);
-    if (!candidate) {
-      return res.status(404).json({ error: "Intercambista não encontrado." });
+    const requests = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
+    const request = requests.rows.find((row) => row.rowNumber === requestRow);
+    if (!request) {
+      return res.status(404).json({ error: "Inscrição não encontrada." });
     }
 
-    const selectedHost = String(candidate.data["Anfitrião escolhido - Inscrição"] || "");
+    const selectedHost = String(request.data["Anfitrião - Inscrição"] || "");
     if (selectedHost !== hostNumero) {
       return res.status(403).json({ error: "Plano não pertence ao anfitrião logado." });
     }
 
     res.json({
-      rowNumber: candidate.rowNumber,
-      data: candidate.data,
+      rowNumber: request.rowNumber,
+      data: request.data,
     });
   } catch (error) {
     console.error("host/candidate-form", error);
@@ -1493,8 +1537,8 @@ app.post("/api/host/decision", requireAuth("host"), async (req, res) => {
     });
 
     const hostNumero = hostRowData.data["Inscrição"];
-    const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
-    const target = candidates.rows.find((row) => row.rowNumber === candidateRow);
+    const requests = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
+    const target = requests.rows.find((row) => row.rowNumber === candidateRow);
 
     if (!target) {
       logLookup("host-decision", "candidate_not_found", {
@@ -1506,26 +1550,36 @@ app.post("/api/host/decision", requireAuth("host"), async (req, res) => {
     logLookup("host-decision", "candidate_matched", {
       candidateRow: target.rowNumber,
       hostNumero,
-      selectedHost: String(target.data["Anfitrião escolhido - Inscrição"] || ""),
-      candidateCpf: maskValue(onlyDigits(target.data.CPF || "")),
+      selectedHost: String(target.data["Anfitrião - Inscrição"] || ""),
+      candidateCpf: maskValue(onlyDigits(target.data["CPF do intercambista"] || "")),
     });
 
-    if (String(target.data["Anfitrião escolhido - Inscrição"] || "") !== hostNumero) {
+    if (String(target.data["Anfitrião - Inscrição"] || "") !== hostNumero) {
       return res.status(403).json({ error: "Solicitação não pertence ao anfitrião logado." });
     }
 
     target.data["Status da solicitação"] = decision === "aceito" ? "Aceito" : "Rejeitado";
-    target.data["Permissão anfitrião"] = decision === "aceito" ? "Concedido" : "Negado";
-    target.data["Status do Intercambista"] = decision === "aceito" ? "Ativo" : "Inativo";
-    target.data["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(target.data);
+    target.data["Status final"] = decision === "aceito" ? "Ativo" : "Inativo";
     target.data["Data da decisão"] = nowBrDate();
     target.data["Observação da decisão"] = note;
 
-    await updateRow(CANDIDATE_SHEET, candidates.headers, target.rowNumber, target.data);
+    const participantCount = countRequestParticipants(target.data);
+    if (decision === "aceito") {
+      const remaining = Number(hostRowData.data["Vagas restantes"] || 0);
+      if (remaining < participantCount) {
+        return res.status(400).json({ error: "Vagas insuficientes para aceitar esta inscrição." });
+      }
+      hostRowData.data["Vagas restantes"] = String(remaining - participantCount);
+      await updateRow(HOST_SHEET, hostData.headers, hostRowData.rowNumber, hostRowData.data);
+    }
+
+    await updateRow(EXCHANGE_REQUESTS_SHEET, requests.headers, target.rowNumber, target.data);
 
     if (decision === "aceito") {
+      const candidatesBase = await getRows(CANDIDATE_SHEET, candidateHeaders);
+      const candidateBase = candidatesBase.rows.find((row) => String(row.data["Inscrição"] || "") === String(target.data["Inscrição do intercambista"] || ""));
       await sendEmail(
-        target.data["E-mail institucional"] || "",
+        candidateBase?.data["E-mail institucional"] || "",
         "Intercâmbio RPPS - Solicitação aceita pelo Anfitrião",
         [
           "Olá,",
@@ -1610,9 +1664,7 @@ app.post("/api/candidate/login", loginLimiter, async (req, res) => {
       profile: {
         entidade: found.data["Unidade Gestora"] || "",
         cpf,
-        genero: found.data["Gênero"] || "",
-        status: found.data["Status da solicitação"] || "Sem solicitação",
-        hostSelecionado: found.data["Anfitrião escolhido - Nome"] || "",
+        status: found.data["Status do Intercambista"] || "Pendente",
       },
     });
   } catch (error) {
@@ -1625,7 +1677,7 @@ app.post("/api/host/remove-candidate", requireAuth("host"), async (req, res) => 
   try {
     const candidateRow = Number(req.body.candidateRow);
     if (!candidateRow) {
-      return res.status(400).json({ error: "Linha do intercambista inválida." });
+      return res.status(400).json({ error: "Linha da inscrição inválida." });
     }
 
     const hosts = await getRows(HOST_SHEET, hostHeaders);
@@ -1635,25 +1687,26 @@ app.post("/api/host/remove-candidate", requireAuth("host"), async (req, res) => 
     }
 
     const hostNumero = String(host.data["Inscrição"] || "");
-    const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
-    const candidate = candidates.rows.find((row) => row.rowNumber === candidateRow);
+    const requests = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
+    const candidate = requests.rows.find((row) => row.rowNumber === candidateRow);
     if (!candidate) {
-      return res.status(404).json({ error: "Intercambista não encontrado." });
+      return res.status(404).json({ error: "Inscrição não encontrada." });
     }
 
-    if (String(candidate.data["Anfitrião escolhido - Inscrição"] || "") !== hostNumero) {
+    if (String(candidate.data["Anfitrião - Inscrição"] || "") !== hostNumero) {
       return res.status(403).json({ error: "Intercambista não vinculado ao anfitrião logado." });
     }
 
-    candidate.data["Anfitrião escolhido - Inscrição"] = "";
-    candidate.data["Anfitrião escolhido - Nome"] = "";
-    candidate.data["Status da solicitação"] = "Sem solicitação";
-    candidate.data["Permissão anfitrião"] = "Pendente";
-    candidate.data["Status do Intercambista"] = "Pendente";
-    candidate.data["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(candidate.data);
-    candidate.data["Data da decisão"] = "";
+    if (normalizeText(candidate.data["Status da solicitação"] || "") === "aceito") {
+      const participantCount = countRequestParticipants(candidate.data);
+      host.data["Vagas restantes"] = String(Number(host.data["Vagas restantes"] || 0) + participantCount);
+      await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
+    }
+
+    candidate.data["Status da solicitação"] = "Removido";
+    candidate.data["Status final"] = "Removido";
     candidate.data["Observação da decisão"] = "Inscrição removida pelo anfitrião.";
-    await updateRow(CANDIDATE_SHEET, candidates.headers, candidate.rowNumber, candidate.data);
+    await updateRow(EXCHANGE_REQUESTS_SHEET, requests.headers, candidate.rowNumber, candidate.data);
 
     res.json({ ok: true });
   } catch (error) {
@@ -1706,7 +1759,7 @@ app.post("/api/candidate/first-access", loginLimiter, async (req, res) => {
     }
 
     found.data["Senha"] = await bcrypt.hash(novaSenha, 12);
-    found.data["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(found.data);
+    found.data["Primeiro Acesso Concluído"] = "Sim";
     await updateRow(CANDIDATE_SHEET, dataset.headers, found.rowNumber, found.data);
 
     return res.json({ ok: true, message: "Primeiro acesso concluído." });
@@ -1720,10 +1773,18 @@ app.get("/api/candidate/hosts", requireAuth("candidate"), async (req, res) => {
   try {
     const proLookup = await getProGestaoLookup();
     const hosts = await getRows(HOST_SHEET, hostHeaders);
+    const hostAreas = await getRows(HOST_AREAS_SHEET, hostAreaHeaders);
+    const areasByHost = new Map();
+    hostAreas.rows.forEach((row) => {
+      const key = String(row.data["Inscrição do anfitrião"] || "");
+      if (!areasByHost.has(key)) areasByHost.set(key, []);
+      areasByHost.get(key).push(row);
+    });
     const ativos = hosts.rows
       .filter((row) => normalizeText(resolveHostStatus(row.data)) === "ativo")
       .filter((row) => normalizeText(row.data["Permissão admin"] || "") === "concedido")
-      .map((row) => publicHostView(row.data, proLookup));
+      .filter((row) => Number(row.data["Vagas restantes"] || 0) > 0)
+      .map((row) => publicHostView(row.data, areasByHost.get(String(row.data["Inscrição"] || "")) || [], proLookup));
 
     res.json({ hosts: ativos });
   } catch (error) {
@@ -1792,17 +1853,32 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
       inscricao: candidate.data["Inscrição"] || "",
     });
 
-    candidate.data["Anfitrião escolhido - Inscrição"] = hostNumero;
-    candidate.data["Anfitrião escolhido - Nome"] = host.data["Unidade Gestora"] || "";
-    candidate.data["Status da solicitação"] = "Pendente";
-    candidate.data["Data da decisão"] = "";
-    candidate.data["Observação da decisão"] = "";
-    candidate.data["Permissão anfitrião"] = "Pendente";
-    candidate.data["Status do Intercambista"] = "Pendente";
-    candidate.data["Primeiro Acesso Concluído"] = resolveCandidateFirstAccess(candidate.data);
+    const requests = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
+    const participants = Array.isArray(req.body.participantes) ? req.body.participantes.filter((item) => item && item.nome) : [];
+    if (!participants.length) {
+      return res.status(400).json({ error: "Informe ao menos um participante." });
+    }
+    const duplicate = requests.rows.find((row) => {
+      const sameCandidate = String(row.data["Inscrição do intercambista"] || "") === String(candidate.data["Inscrição"] || "");
+      const sameHost = String(row.data["Anfitrião - Inscrição"] || "") === String(host.data["Inscrição"] || "");
+      const status = normalizeText(row.data["Status da solicitação"] || "");
+      return sameCandidate && sameHost && ["pendente", "aceito"].includes(status);
+    });
+    if (duplicate) {
+      return res.status(409).json({ error: "Já existe uma inscrição ativa desse intercambista para este anfitrião." });
+    }
 
-    await updateRow(CANDIDATE_SHEET, candidates.headers, candidate.rowNumber, candidate.data);
-    res.json({ ok: true, message: "Solicitacao enviada para o anfitriao." });
+    const requestPayload = buildExchangeRequestValueMap(
+      {
+        ...req.body,
+        participantes,
+        inscricaoSolicitacao: await getNextExchangeRequestRegistration(requests.rows),
+      },
+      candidate,
+      host
+    );
+    await appendRow(EXCHANGE_REQUESTS_SHEET, requests.headers, requestPayload);
+    res.json({ ok: true, message: "Inscrição enviada. Agora aguarde o feedback do anfitrião." });
   } catch (error) {
     console.error("candidate/select-host", error);
     res.status(500).json({ error: "Falha ao registrar solicitação." });
@@ -1819,21 +1895,26 @@ app.get("/api/candidate/status", requireAuth("candidate"), async (req, res) => {
       return res.status(404).json({ error: "Intercambista nao encontrado." });
     }
 
+    const requests = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
+    const inscricoes = requests.rows
+      .filter((row) => String(row.data["Inscrição do intercambista"] || "") === String(candidate.data["Inscrição"] || ""))
+      .sort((a, b) => b.rowNumber - a.rowNumber)
+      .map(exchangeRequestSummaryView);
+
     res.json({
-      inscricao: candidate.data["Inscrição"] || "",
-      municipio: candidate.data["Município"] || "",
-      uf: candidate.data.UF || "",
-      unidadeGestora: candidate.data["Unidade Gestora"] || "",
-      dirigente: candidate.data["Nome do Dirigente ou Responsável Legal"] || "",
-      dataSolicitacao: normalizeDateBr(candidate.data.Data || ""),
-      status: candidate.data["Status da solicitação"] || "Sem solicitação",
-      host: candidate.data["Anfitrião escolhido - Nome"] || "",
-      hostNumero: candidate.data["Anfitrião escolhido - Inscrição"] || "",
-      observacao: candidate.data["Observação da decisão"] || "",
-      dataDecisao: normalizeDateBr(candidate.data["Data da decisão"] || ""),
-      genero: candidate.data["Gênero"] || "",
-      permissaoAnfitriao: candidate.data["Permissão anfitrião"] || "Pendente",
-      statusIntercambista: resolveCandidateStatus(candidate.data),
+      profile: {
+        inscricao: candidate.data["Inscrição"] || "",
+        municipio: candidate.data["Município"] || "",
+        uf: candidate.data.UF || "",
+        unidadeGestora: candidate.data["Unidade Gestora"] || "",
+        dirigente: candidate.data["Nome do Dirigente ou Responsável Legal"] || "",
+        dataSolicitacao: normalizeDateBr(candidate.data.Data || ""),
+        statusIntercambista: resolveCandidateStatus(candidate.data),
+        responsavel: candidate.data["Responsável pelo preenchimento"] || "",
+        cargoResponsavel: candidate.data["Cargo/Função (Responsável)"] || "",
+        dataPreenchimento: normalizeDateBr(candidate.data.Data || ""),
+      },
+      inscricoes,
     });
   } catch (error) {
     console.error("candidate/status", error);
@@ -1872,12 +1953,13 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
   try {
     const hostsData = await getRows(HOST_SHEET, hostHeaders);
     const candidatesData = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    const requestData = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
     const acceptedByHost = new Map();
 
-    candidatesData.rows.forEach((row) => {
+    requestData.rows.forEach((row) => {
       const status = normalizeText(row.data["Status da solicitação"] || "");
       if (status !== "aceito") return;
-      const hostKey = String(row.data["Anfitrião escolhido - Inscrição"] || "");
+      const hostKey = String(row.data["Anfitrião - Inscrição"] || "");
       if (!hostKey) return;
       acceptedByHost.set(hostKey, (acceptedByHost.get(hostKey) || 0) + 1);
     });
@@ -1902,7 +1984,7 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
       dataAceiteMps: normalizeDateBr(row.data["Data aceite MPS"] || ""),
     }));
 
-    const decisions = candidatesData.rows
+    const decisions = requestData.rows
       .filter((row) => {
         const status = normalizeText(row.data["Status da solicitação"] || "");
         return status === "aceito" || status === "rejeitado";
@@ -1910,12 +1992,11 @@ app.get("/api/admin/overview", requireAuth("admin"), async (req, res) => {
       .map((row) => ({
         rowNumber: row.rowNumber,
         entidadeIntercambista: row.data["Unidade Gestora"] || "",
-        cpf: row.data.CPF || "",
-        host: row.data["Anfitrião escolhido - Nome"] || "",
+        cpf: row.data["CPF do intercambista"] || "",
+        host: row.data["Anfitrião - Nome"] || "",
         status: row.data["Status da solicitação"] || "",
         dataDecisao: normalizeDateBr(row.data["Data da decisão"] || ""),
-        permissaoAnfitriao: row.data["Permissão anfitrião"] || "",
-        statusIntercambista: resolveCandidateStatus(row.data),
+        statusIntercambista: row.data["Status final"] || "",
       }));
 
     res.json({
@@ -2112,14 +2193,14 @@ app.get("/api/admin/host-linked/:rowNumber", requireAuth("admin"), async (req, r
     }
 
     const hostNumero = String(host.data["Inscrição"] || "");
-    const candidatesData = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    const candidatesData = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
     const vinculados = candidatesData.rows
       .filter((row) => {
-        const selectedHost = String(row.data["Anfitrião escolhido - Inscrição"] || "");
+        const selectedHost = String(row.data["Anfitrião - Inscrição"] || "");
         const status = normalizeText(row.data["Status da solicitação"] || "");
         return selectedHost === hostNumero && status === "aceito";
       })
-      .map(candidateSummaryView);
+      .map(exchangeRequestSummaryView);
 
     res.json({
       host: hostSummaryView(host),
@@ -2135,18 +2216,18 @@ app.get("/api/admin/candidate-form/:rowNumber", requireAuth("admin"), async (req
   try {
     const rowNumber = Number(req.params.rowNumber);
     if (!rowNumber) {
-      return res.status(400).json({ error: "Linha do intercambista inválida." });
+      return res.status(400).json({ error: "Linha da inscrição inválida." });
     }
 
-    const candidatesData = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    const candidatesData = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
     const candidate = candidatesData.rows.find((row) => row.rowNumber === rowNumber);
     if (!candidate) {
-      return res.status(404).json({ error: "Intercambista não encontrado." });
+      return res.status(404).json({ error: "Inscrição não encontrada." });
     }
 
     res.json({
       rowNumber: candidate.rowNumber,
-      resumo: candidateSummaryView(candidate),
+      resumo: exchangeRequestSummaryView(candidate),
       data: candidate.data,
     });
   } catch (error) {
