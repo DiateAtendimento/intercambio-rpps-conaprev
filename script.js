@@ -140,6 +140,36 @@ function setFeedback(id, message, ok = false) {
   el.style.color = ok ? "#0a6b43" : "#8d1d1d";
 }
 
+function showToast(message, kind = "info", title = "") {
+  const container = qs("#toastContainer");
+  if (!container) return;
+  const safeKind = ["info", "success", "warning", "error"].includes(kind) ? kind : "info";
+  const toast = document.createElement("div");
+  toast.className = `toast toast--${safeKind}`;
+  toast.innerHTML = `
+    <div class="toast__icon" aria-hidden="true">
+      <i class="fa-solid ${safeKind === "success" ? "fa-circle-check" : safeKind === "warning" ? "fa-triangle-exclamation" : safeKind === "error" ? "fa-circle-xmark" : "fa-circle-info"}"></i>
+    </div>
+    <div class="toast__copy">
+      ${title ? `<strong>${escapeHtml(title)}</strong>` : ""}
+      <p>${escapeHtml(message || "Não foi possível concluir a ação.")}</p>
+    </div>
+    <button type="button" class="toast__close" aria-label="Fechar notificação">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  `;
+
+  const removeToast = () => {
+    toast.classList.add("toast--leaving");
+    window.setTimeout(() => toast.remove(), 180);
+  };
+
+  toast.querySelector(".toast__close")?.addEventListener("click", removeToast);
+  container.appendChild(toast);
+  window.setTimeout(() => toast.classList.add("toast--visible"), 10);
+  window.setTimeout(removeToast, 4200);
+}
+
 function showMessageModal(title, message, kind = "info") {
   const safeTitle = title || "Aviso";
   const safeMessage = message || "Não foi possível concluir a ação.";
@@ -873,6 +903,21 @@ function setupExchangeApplicationForm(prefill = {}) {
   const remainingEl = qs("#applyRemainingSlots");
   const counterEl = qs("#applyParticipantsCounter");
   if (!form || !list || !addButton) return;
+  const selectedHost = state.ui.selectedHostApplication || {};
+  form.dataset.host = form.dataset.host || selectedHost.numeroInscricao || "";
+  form.dataset.cnpj = form.dataset.cnpj || selectedHost.cnpj || "";
+  form.dataset.entidade = form.dataset.entidade || selectedHost.entidade || "";
+  form.dataset.uf = form.dataset.uf || selectedHost.uf || "";
+  form.dataset.municipio = form.dataset.municipio || selectedHost.municipio || "";
+  const assignHidden = (name, value) => {
+    const field = form.querySelector(`[name="${name}"]`);
+    if (field && !field.value) field.value = value || "";
+  };
+  assignHidden("hostNumeroInscricao", form.dataset.host);
+  assignHidden("hostCnpj", form.dataset.cnpj);
+  assignHidden("hostEntidade", form.dataset.entidade);
+  assignHidden("hostUf", form.dataset.uf);
+  assignHidden("hostMunicipio", form.dataset.municipio);
   const maxParticipants = Math.max(0, Number(form.dataset.maxParticipants || 0));
 
   const createParticipantRow = () => {
@@ -1850,14 +1895,14 @@ function setupWorkspaceActions() {
 
     const payload = buildCandidateApplicationPayload(form);
     if (!payload.numeroInscricao && !payload.cnpj && !payload.entidade) {
-      return showMessageModal("Erro", "Informe um anfitrião.", "error");
+      return showToast("Informe um anfitrião.", "error", "Erro");
     }
     if (!payload.participantes.length) {
-      return showMessageModal("Erro", "Informe ao menos um participante válido.", "error");
+      return showToast("Informe ao menos um participante válido.", "error", "Erro");
     }
     const maxParticipants = Math.max(0, Number(form.dataset.maxParticipants || 0));
     if (payload.participantes.length > maxParticipants) {
-      return showMessageModal("Erro", `Esta inscrição permite no máximo ${maxParticipants} participante(s).`, "error");
+      return showToast(`Esta inscrição permite no máximo ${maxParticipants} participante(s).`, "error", "Erro");
     }
 
     try {
@@ -1878,7 +1923,7 @@ function setupWorkspaceActions() {
       );
       await refreshCandidateArea();
     } catch (error) {
-      showMessageModal("Erro", error.message, "error");
+      showToast(error.message, "error", "Erro");
     }
   });
 

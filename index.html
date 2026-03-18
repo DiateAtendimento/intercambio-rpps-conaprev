@@ -700,7 +700,10 @@
     <section class="workspace-screen" data-screen-id="candidate-area">
       <div class="module-card workspace-env">
         <div class="workspace-profile">
-          <img src="img_for_woman.svg" alt="Perfil intercambista" />
+          <div class="workspace-profile__pair" aria-hidden="true">
+            <img src="img_for_woman.svg" alt="Avatar intercambista 1" />
+            <img src="img_for_man.svg" alt="Avatar intercambista 2" />
+          </div>
           <strong>Intercambista</strong>
           <button type="button" class="btn btn-outline" data-action="logout-candidate">Sair</button>
         </div>
@@ -937,6 +940,8 @@
         <div id="detailsModalBody" class="data-modal__body"></div>
       </div>
     </div>
+
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
   </section>
 
   <!-- Rodapé -->

@@ -1915,7 +1915,7 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
     const requestPayload = buildExchangeRequestValueMap(
       {
         ...req.body,
-        participantes,
+        participantes: participants,
         inscricaoSolicitacao: await getNextExchangeRequestRegistration(requests.rows),
       },
       candidate,
