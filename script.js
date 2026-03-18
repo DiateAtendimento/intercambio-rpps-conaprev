@@ -1278,6 +1278,94 @@ function formatStatus(status) {
   return `<span class="${getStatusClass(text)}">${escapeHtml(text)}</span>`;
 }
 
+const REGION_ORDER = ["Norte", "Nordeste", "Centro-Oeste", "Sudeste", "Sul"];
+
+const UF_REGION_MAP = {
+  AC: "Norte",
+  AP: "Norte",
+  AM: "Norte",
+  PA: "Norte",
+  RO: "Norte",
+  RR: "Norte",
+  TO: "Norte",
+  AL: "Nordeste",
+  BA: "Nordeste",
+  CE: "Nordeste",
+  MA: "Nordeste",
+  PB: "Nordeste",
+  PE: "Nordeste",
+  PI: "Nordeste",
+  RN: "Nordeste",
+  SE: "Nordeste",
+  DF: "Centro-Oeste",
+  GO: "Centro-Oeste",
+  MT: "Centro-Oeste",
+  MS: "Centro-Oeste",
+  ES: "Sudeste",
+  MG: "Sudeste",
+  RJ: "Sudeste",
+  SP: "Sudeste",
+  PR: "Sul",
+  RS: "Sul",
+  SC: "Sul",
+};
+
+const UF_NAME_MAP = {
+  AC: "Acre",
+  AP: "Amapá",
+  AM: "Amazonas",
+  PA: "Pará",
+  RO: "Rondônia",
+  RR: "Roraima",
+  TO: "Tocantins",
+  AL: "Alagoas",
+  BA: "Bahia",
+  CE: "Ceará",
+  MA: "Maranhão",
+  PB: "Paraíba",
+  PE: "Pernambuco",
+  PI: "Piauí",
+  RN: "Rio Grande do Norte",
+  SE: "Sergipe",
+  DF: "Distrito Federal",
+  GO: "Goiás",
+  MT: "Mato Grosso",
+  MS: "Mato Grosso do Sul",
+  ES: "Espírito Santo",
+  MG: "Minas Gerais",
+  RJ: "Rio de Janeiro",
+  SP: "São Paulo",
+  PR: "Paraná",
+  RS: "Rio Grande do Sul",
+  SC: "Santa Catarina",
+};
+
+function getRegionForUf(uf) {
+  return UF_REGION_MAP[String(uf || "").trim().toUpperCase()] || "Outras";
+}
+
+function getStateNameForUf(uf) {
+  return UF_NAME_MAP[String(uf || "").trim().toUpperCase()] || String(uf || "").trim().toUpperCase();
+}
+
+function buildCandidateHostCard(host) {
+  return `
+    <article class="host-card" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" role="button" tabindex="0">
+      <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
+      <h4>${escapeHtml(host.entidade)}</h4>
+      <p>${escapeHtml(getStateNameForUf(host.uf || "-"))} (${escapeHtml(host.uf || "-")})</p>
+      <p>Nível Pró-Gestão:
+        <span class="${host.semProGestao ? "progestao-level progestao-level--none" : "progestao-level"}">
+          ${escapeHtml(host.nivelProGestao || "Sem Pró-Gestão")}
+        </span>
+      </p>
+      <p>Número de vagas: ${escapeHtml(host.vagas || "-")}</p>
+      <p>Vagas restantes: ${escapeHtml(host.vagasRestantes || "-")}</p>
+      <p>Áreas disponíveis: ${escapeHtml((host.areas || []).map((item) => `${item.area} (${item.restantes || item.vagas} vaga(s))`).filter(Boolean).join(", ") || "-")}</p>
+      <button class="btn btn-primary" type="button" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}">Inscrever-se</button>
+    </article>`;
+}
+
 function upsertWorkspaceNotice(screenId, notice) {
   const screen = qs(`.workspace-screen[data-screen-id="${screenId}"] .workspace-env`);
   if (!screen) return;
@@ -1335,25 +1423,34 @@ async function refreshCandidateArea() {
     return;
   }
 
-  cards.innerHTML = hosts
-    .map(
-      (host) => `
-      <article class="host-card" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" role="button" tabindex="0">
-        <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
-        <h4>${escapeHtml(host.entidade)}</h4>
-        <p>UF: ${escapeHtml(host.uf || "-")}</p>
-        <p>Nível Pró-Gestão:
-          <span class="${host.semProGestao ? "progestao-level progestao-level--none" : "progestao-level"}">
-            ${escapeHtml(host.nivelProGestao || "Sem Pró-Gestão")}
-          </span>
-        </p>
-        <p>Número de vagas: ${escapeHtml(host.vagas || "-")}</p>
-        <p>Vagas restantes: ${escapeHtml(host.vagasRestantes || "-")}</p>
-        <p>Áreas disponíveis: ${escapeHtml((host.areas || []).map((item) => `${item.area} (${item.restantes || item.vagas} vaga(s))`).filter(Boolean).join(", ") || "-")}</p>
-        <button class="btn btn-primary" type="button" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}">Inscrever-se</button>
-      </article>`
-    )
+  const groupedHosts = new Map();
+  REGION_ORDER.forEach((region) => groupedHosts.set(region, []));
+
+  hosts.forEach((host) => {
+    const region = getRegionForUf(host.uf);
+    if (!groupedHosts.has(region)) groupedHosts.set(region, []);
+    groupedHosts.get(region).push(host);
+  });
+
+  const content = REGION_ORDER.map((region) => {
+    const regionHosts = (groupedHosts.get(region) || []).sort((left, right) => {
+      const stateCompare = getStateNameForUf(left.uf).localeCompare(getStateNameForUf(right.uf), "pt-BR");
+      if (stateCompare !== 0) return stateCompare;
+      return String(left.entidade || "").localeCompare(String(right.entidade || ""), "pt-BR");
+    });
+    if (!regionHosts.length) return "";
+    return `
+      <section class="host-region-group">
+        <h4 class="host-region-group__title">Região ${escapeHtml(region)}</h4>
+        <div class="host-cards">
+          ${regionHosts.map((host) => buildCandidateHostCard(host)).join("")}
+        </div>
+      </section>`;
+  })
+    .filter(Boolean)
     .join("");
+
+  cards.innerHTML = content || `<p class="module-note">Nenhum anfitrião ativo disponível.</p>`;
 }
 
 function buildHostRows(rows, targetId) {
