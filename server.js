@@ -373,6 +373,12 @@ function getHostRemainingVacancies(rowData = {}) {
   return Number.isFinite(offered) ? offered : 0;
 }
 
+function getAvailableHostAreas(areaRows = []) {
+  const areas = getHostAreas(areaRows);
+  const withRemaining = areas.filter((item) => Number(item.restantes || 0) > 0);
+  return withRemaining.length ? withRemaining : areas.filter((item) => Number(item.vagas || 0) > 0);
+}
+
 const auth = new google.auth.GoogleAuth({
   credentials: pickServiceAccount(),
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -819,7 +825,7 @@ function getHostAreas(areaRows) {
 
 function publicHostView(hostData, areaRows = [], proLookup = null) {
   const uf = String(hostData.UF || "").trim().toUpperCase();
-  const areas = getHostAreas(areaRows);
+  const areas = getAvailableHostAreas(areaRows);
   const nivelProGestao = resolveProGestaoLevel(
     proLookup,
     hostData["Município"] || "",
@@ -1713,9 +1719,10 @@ app.post("/api/host/remove-candidate", requireAuth("host"), async (req, res) => 
       await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
     }
 
-    candidate.data["Status da solicitação"] = "Removido";
-    candidate.data["Status final"] = "Removido";
-    candidate.data["Observação da decisão"] = "Inscrição removida pelo anfitrião.";
+    candidate.data["Status da solicitação"] = "Pendente";
+    candidate.data["Status final"] = "Pendente";
+    candidate.data["Data da decisão"] = "";
+    candidate.data["Observação da decisão"] = "";
     await updateRow(EXCHANGE_REQUESTS_SHEET, requests.headers, candidate.rowNumber, candidate.data);
 
     res.json({ ok: true });
@@ -1793,7 +1800,12 @@ app.get("/api/candidate/hosts", requireAuth("candidate"), async (req, res) => {
     const ativos = hosts.rows
       .filter((row) => normalizeText(resolveHostStatus(row.data)) === "ativo")
       .filter((row) => normalizeText(row.data["Permissão admin"] || "") === "concedido")
-      .filter((row) => getHostRemainingVacancies(row.data) > 0)
+      .filter((row) => {
+        const hostKey = String(row.data["Inscrição"] || "");
+        const hostAreasRows = areasByHost.get(hostKey) || [];
+        if (hostAreasRows.length) return getAvailableHostAreas(hostAreasRows).length > 0;
+        return getHostRemainingVacancies(row.data) > 0;
+      })
       .map((row) => publicHostView(row.data, areasByHost.get(String(row.data["Inscrição"] || "")) || [], proLookup));
 
     res.json({ hosts: ativos });
@@ -2153,8 +2165,9 @@ app.post("/api/admin/remove-host", requireAuth("admin"), async (req, res) => {
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }
 
-    host.data["Status do Anfitrião"] = "Inativo";
-    host.data["Permissão admin"] = "Negado";
+    host.data["Status do Anfitrião"] = "Pendente";
+    host.data["Permissão admin"] = "Pendente";
+    host.data["Data aceite MPS"] = "";
     host.data["Primeiro Acesso Concluído"] = resolveHostFirstAccess(host.data);
     await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
 

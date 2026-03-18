@@ -194,7 +194,6 @@ function showAccessInfoModal(accessInfo) {
             <strong>${escapeHtml(accessInfo.senha || "-")}</strong>
           </div>
         </div>
-        <p class="access-modal__note">Este modal so fecha no botao <strong>X</strong>. Anote os dados antes de sair.</p>
       </div>
     `,
     { closeByBackdrop: false, closeByEsc: false }
@@ -1294,7 +1293,7 @@ async function refreshCandidateArea() {
         </p>
         <p>Número de vagas: ${escapeHtml(host.vagas || "-")}</p>
         <p>Vagas restantes: ${escapeHtml(host.vagasRestantes || "-")}</p>
-        <p>Áreas disponíveis: ${escapeHtml((host.areas || []).map((item) => item.area).filter(Boolean).join(", ") || "-")}</p>
+        <p>Áreas disponíveis: ${escapeHtml((host.areas || []).map((item) => `${item.area} (${item.restantes || item.vagas} vaga(s))`).filter(Boolean).join(", ") || "-")}</p>
         <button class="btn btn-primary" type="button" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}">Inscrever-se</button>
       </article>`
     )
