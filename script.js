@@ -612,11 +612,11 @@ function payloadHostRegister(form) {
   return payload;
 }
 
-function createHostAreaRow(name = "", vagas = "") {
+function createHostAreaRow(name = "", vagas = "", locked = false) {
   const row = document.createElement("div");
   row.className = "dynamic-list__row host-area-row";
   row.innerHTML = `
-    <input name="hostAreaName" placeholder="Área/Setor" value="${escapeHtml(name)}" />
+    <input name="hostAreaName" placeholder="Área/Setor" value="${escapeHtml(name)}" ${locked ? "readonly" : ""} />
     <input name="hostAreaSlots" placeholder="Vagas" data-input="numeric" value="${escapeHtml(vagas)}" />
     <button type="button" class="dynamic-remove-btn" aria-label="Remover área">
       <i class="fa-solid fa-xmark"></i>
@@ -656,7 +656,7 @@ function setupHostAreaFields() {
 
   const ensureRows = () => {
     if (!list.children.length) {
-      defaultAreas.forEach((area) => list.appendChild(createHostAreaRow(area, "")));
+      defaultAreas.forEach((area) => list.appendChild(createHostAreaRow(area, "", true)));
     }
     recalcRemaining();
   };
