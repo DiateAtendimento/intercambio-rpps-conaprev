@@ -1029,6 +1029,7 @@ body.system-menu-open {
 .host-region-group {
   display: grid;
   gap: 0.8rem;
+  width: 100%;
 }
 
 .host-region-group + .host-region-group {
@@ -1041,6 +1042,7 @@ body.system-menu-open {
   border-bottom: 1px dashed #cfe0f1;
   color: #0f4f87;
   font-size: 1rem;
+  width: 100%;
 }
 
 .host-card {
