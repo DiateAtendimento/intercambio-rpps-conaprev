@@ -1020,10 +1020,16 @@ body.system-menu-open {
   color: #7263e9;
 }
 
+.host-region-list {
+  display: block;
+  width: 100%;
+}
+
 .host-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
+  width: 100%;
 }
 
 .host-region-group {
