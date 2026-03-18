@@ -7,6 +7,7 @@
   ui: {
     adminApproved: [],
     hostAccepted: [],
+    selectedHostApplication: null,
   },
 };
 
@@ -835,7 +836,6 @@ function renderExchangeApplicationForm(host = {}) {
         <strong id="applyRemainingSlots">${escapeHtml(host.vagasRestantes || "0")}</strong>
         <span id="applyParticipantsCounter"> | Participantes informados: 0</span>
       </p>
-      <p class="form-block-note">Cada participante informado consome 1 vaga desta inscrição.</p>
       <div id="applyParticipantList" class="dynamic-list"></div>
       <button type="button" class="btn btn-outline dynamic-add-btn" id="addApplyParticipant"><i class="fa-solid fa-plus"></i> Adicionar participante</button>
       <h4>Temas e áreas de interesse</h4>
@@ -933,6 +933,7 @@ function setupExchangeApplicationForm(prefill = {}) {
 }
 
 function buildCandidateApplicationPayload(form) {
+  const selectedHost = state.ui.selectedHostApplication || {};
   const participants = qsa("#applyParticipantList .apply-participant-row")
     .map((row) => ({
       nome: String(row.querySelector('[name="applyNome"]')?.value || "").trim(),
@@ -944,11 +945,11 @@ function buildCandidateApplicationPayload(form) {
     .filter((item) => item.nome && item.cargo && item.vinculo && item.area);
 
   return {
-    numeroInscricao: form.dataset.host || "",
-    cnpj: form.dataset.cnpj || "",
-    entidade: form.dataset.entidade || "",
-    uf: form.dataset.uf || "",
-    municipio: form.dataset.municipio || "",
+    numeroInscricao: form.dataset.host || selectedHost.numeroInscricao || "",
+    cnpj: form.dataset.cnpj || selectedHost.cnpj || "",
+    entidade: form.dataset.entidade || selectedHost.entidade || "",
+    uf: form.dataset.uf || selectedHost.uf || "",
+    municipio: form.dataset.municipio || selectedHost.municipio || "",
     participantes: participants,
     "Temas/áreas de interesse (texto)": String(form.querySelector('[name="temas"]')?.value || "").trim(),
     "Atividades propostas (agenda por dia)": String(form.querySelector('[name="atividades"]')?.value || "").trim(),
@@ -1903,14 +1904,16 @@ function setupWorkspaceActions() {
 
     try {
       if (action === "open-host-application") {
+        const sourceCard = actionEl.closest(".host-card");
         const hostMeta = {
-          numeroInscricao: actionEl.dataset.host || "",
-          cnpj: actionEl.dataset.cnpj || "",
-          entidade: actionEl.dataset.entidade || "",
-          uf: actionEl.dataset.uf || "",
-          municipio: actionEl.dataset.municipio || "",
-          vagasRestantes: actionEl.dataset.vagasRestantes || "0",
+          numeroInscricao: actionEl.dataset.host || sourceCard?.dataset.host || "",
+          cnpj: actionEl.dataset.cnpj || sourceCard?.dataset.cnpj || "",
+          entidade: actionEl.dataset.entidade || sourceCard?.dataset.entidade || "",
+          uf: actionEl.dataset.uf || sourceCard?.dataset.uf || "",
+          municipio: actionEl.dataset.municipio || sourceCard?.dataset.municipio || "",
+          vagasRestantes: actionEl.dataset.vagasRestantes || sourceCard?.dataset.vagasRestantes || "0",
         };
+        state.ui.selectedHostApplication = hostMeta;
         openModal(`Inscrição em ${hostMeta.entidade || "Anfitrião"}`, renderExchangeApplicationForm(hostMeta));
         const profile = (state.ui.candidateProfile || {});
         setupExchangeApplicationForm({
