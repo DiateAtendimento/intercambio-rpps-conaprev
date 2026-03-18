@@ -820,7 +820,12 @@ function renderExchangeApplicationForm(host = {}) {
   return `
     <form id="candidateApplyForm" class="module-form modal-inline-form" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-max-participants="${escapeHtml(host.vagasRestantes || "0")}">
       <h4>Participantes indicados para o intercâmbio técnico</h4>
-      <p class="form-block-note">Vagas disponíveis para esta inscrição: <strong>${escapeHtml(host.vagasRestantes || "0")}</strong></p>
+      <p class="form-block-note">
+        Vagas disponíveis para esta inscrição:
+        <strong id="applyRemainingSlots">${escapeHtml(host.vagasRestantes || "0")}</strong>
+        <span id="applyParticipantsCounter"> | Participantes informados: 0</span>
+      </p>
+      <p class="form-block-note">Cada participante informado consome 1 vaga desta inscrição.</p>
       <div id="applyParticipantList" class="dynamic-list"></div>
       <button type="button" class="btn btn-outline dynamic-add-btn" id="addApplyParticipant"><i class="fa-solid fa-plus"></i> Adicionar participante</button>
       <h4>Temas e áreas de interesse</h4>
@@ -850,6 +855,8 @@ function setupExchangeApplicationForm(prefill = {}) {
   const form = qs("#candidateApplyForm");
   const list = qs("#applyParticipantList");
   const addButton = qs("#addApplyParticipant");
+  const remainingEl = qs("#applyRemainingSlots");
+  const counterEl = qs("#applyParticipantsCounter");
   if (!form || !list || !addButton) return;
   const maxParticipants = Math.max(0, Number(form.dataset.maxParticipants || 0));
 
@@ -880,25 +887,39 @@ function setupExchangeApplicationForm(prefill = {}) {
     }
   }
 
-  const syncAddButton = () => {
+  const getFilledParticipantsCount = () =>
+    qsa("#applyParticipantList .apply-participant-row").filter((row) =>
+      String(row.querySelector('[name="applyNome"]')?.value || "").trim()
+    ).length;
+
+  const syncParticipantsFeedback = () => {
     const totalRows = qsa("#applyParticipantList .apply-participant-row").length;
+    const filledParticipants = getFilledParticipantsCount();
+    const remainingSlots = Math.max(0, maxParticipants - filledParticipants);
     addButton.disabled = maxParticipants <= 0 || totalRows >= maxParticipants;
+    if (remainingEl) remainingEl.textContent = String(remainingSlots);
+    if (counterEl) counterEl.textContent = ` | Participantes informados: ${filledParticipants}`;
+    addButton.innerHTML =
+      totalRows >= maxParticipants
+        ? '<i class="fa-solid fa-ban"></i> Limite de participantes atingido'
+        : '<i class="fa-solid fa-plus"></i> Adicionar participante';
   };
 
   addButton.addEventListener("click", () => {
     const totalRows = qsa("#applyParticipantList .apply-participant-row").length;
     if (totalRows >= maxParticipants) return;
     list.appendChild(createParticipantRow());
-    syncAddButton();
+    syncParticipantsFeedback();
   });
   list.addEventListener("click", (event) => {
     const btn = event.target.closest(".dynamic-remove-btn");
     if (!btn) return;
     if (qsa("#applyParticipantList .apply-participant-row").length === 1) return;
     btn.closest(".apply-participant-row")?.remove();
-    syncAddButton();
+    syncParticipantsFeedback();
   });
-  syncAddButton();
+  list.addEventListener("input", syncParticipantsFeedback);
+  syncParticipantsFeedback();
 }
 
 function buildCandidateApplicationPayload(form) {
@@ -918,7 +939,7 @@ function buildCandidateApplicationPayload(form) {
     entidade: form.dataset.entidade || "",
     uf: form.dataset.uf || "",
     municipio: form.dataset.municipio || "",
-    participantes,
+    participantes: participants,
     "Temas/áreas de interesse (texto)": String(form.querySelector('[name="temas"]')?.value || "").trim(),
     "Atividades propostas (agenda por dia)": String(form.querySelector('[name="atividades"]')?.value || "").trim(),
     "Objetivos e compromissos (o que pretende implementar/replicar)": String(form.querySelector('[name="objetivosCompromissos"]')?.value || "").trim(),
@@ -1257,10 +1278,31 @@ function formatStatus(status) {
   return `<span class="${getStatusClass(text)}">${escapeHtml(text)}</span>`;
 }
 
+function upsertWorkspaceNotice(screenId, notice) {
+  const screen = qs(`.workspace-screen[data-screen-id="${screenId}"] .workspace-env`);
+  if (!screen) return;
+  let el = screen.querySelector(".workspace-guidance");
+  if (!el) {
+    el = document.createElement("p");
+    el.className = "module-note workspace-guidance";
+    const firstSectionTitle = screen.querySelector("h3");
+    if (firstSectionTitle) {
+      firstSectionTitle.insertAdjacentElement("beforebegin", el);
+    } else {
+      screen.appendChild(el);
+    }
+  }
+  el.textContent = notice;
+}
+
 async function refreshCandidateArea() {
   const status = await apiFetch("/api/candidate/status", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
   const hostsData = await apiFetch("/api/candidate/hosts", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
   state.ui.candidateProfile = status.profile || {};
+  upsertWorkspaceNotice(
+    "candidate-area",
+    "Selecione um anfitrião ativo, informe os participantes dentro do limite disponível e acompanhe o retorno em Meu intercâmbio."
+  );
 
   const statusBody = qs("#candidateStatusTableBody");
   if (statusBody) {
@@ -1350,6 +1392,10 @@ function buildHostRows(rows, targetId) {
 
 async function refreshHostArea() {
   const data = await apiFetch("/api/host/requests", { headers: { Authorization: `Bearer ${state.tokens.host}` } });
+  upsertWorkspaceNotice(
+    "host-area",
+    "As solicitações recebidas aguardam sua análise. Ao aceitar ou rejeitar, o status é refletido para o intercambista."
+  );
   const profile = qs("#hostProfileMeta");
   if (profile) {
     profile.textContent = `${data.host?.municipio || ""} - ${data.host?.uf || ""}`.trim();
@@ -1408,6 +1454,10 @@ function buildAdminRows(rows, targetId) {
 
 async function refreshAdminArea() {
   const data = await apiFetch("/api/admin/overview", { headers: { Authorization: `Bearer ${state.tokens.admin}` } });
+  upsertWorkspaceNotice(
+    "admin-area",
+    "Cadastros aprovados ficam disponíveis para o fluxo do programa. Use Solicitações para analisar novos pedidos e Cadastrados para acompanhar o que já está ativo."
+  );
   buildAdminRows(data.solicitacoes || [], "adminPendingTableBody");
   state.ui.adminApproved = data.cadastrados || [];
   buildAdminRows(state.ui.adminApproved, "adminApprovedTableBody");
