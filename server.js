@@ -363,6 +363,16 @@ function resolveCandidateFirstAccess(rowData = {}) {
   return "Não";
 }
 
+function getHostRemainingVacancies(rowData = {}) {
+  const remainingRaw = String(rowData["Vagas restantes"] || "").trim();
+  if (remainingRaw !== "") {
+    const remaining = Number(remainingRaw);
+    if (Number.isFinite(remaining)) return remaining;
+  }
+  const offered = Number(String(rowData["Número de vagas oferecidas"] || "").trim());
+  return Number.isFinite(offered) ? offered : 0;
+}
+
 const auth = new google.auth.GoogleAuth({
   credentials: pickServiceAccount(),
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -828,7 +838,7 @@ function publicHostView(hostData, areaRows = [], proLookup = null) {
     nivelProGestao,
     semProGestao: isSemProGestaoValue(nivelProGestao),
     vagas: hostData["Número de vagas oferecidas"] || "",
-    vagasRestantes: hostData["Vagas restantes"] || "",
+    vagasRestantes: String(getHostRemainingVacancies(hostData)),
     descricao: hostData["Breve descrição da proposta de intercâmbio"] || "",
     areas,
     status: resolveHostStatus(hostData),
@@ -847,7 +857,7 @@ function hostSummaryView(row) {
     dataSolicitacao: normalizeDateBr(row.data.Data || ""),
     status: resolveHostStatus(row.data),
     permissaoAdmin: row.data["Permissão admin"] || "",
-    vagasRestantes: row.data["Vagas restantes"] || "",
+    vagasRestantes: String(getHostRemainingVacancies(row.data)),
   };
 }
 
@@ -1078,7 +1088,7 @@ function buildHostAreaValueMap(hostData, area, index) {
     "Município": hostData["Município"] || "",
     "Unidade Gestora": hostData["Unidade Gestora"] || "",
     "Área/Setor": sanitizeInput(area.nome, 180),
-    Tipo: sanitizeInput(area.tipo || "padrao", 40),
+    Tipo: "",
     "Vagas da área": String(vagas),
     "Vagas ocupadas": String(Number(area.ocupadas || 0)),
     "Vagas restantes": String(Number(area.restantes ?? vagas)),
@@ -1565,7 +1575,7 @@ app.post("/api/host/decision", requireAuth("host"), async (req, res) => {
 
     const participantCount = countRequestParticipants(target.data);
     if (decision === "aceito") {
-      const remaining = Number(hostRowData.data["Vagas restantes"] || 0);
+      const remaining = getHostRemainingVacancies(hostRowData.data);
       if (remaining < participantCount) {
         return res.status(400).json({ error: "Vagas insuficientes para aceitar esta inscrição." });
       }
@@ -1699,7 +1709,7 @@ app.post("/api/host/remove-candidate", requireAuth("host"), async (req, res) => 
 
     if (normalizeText(candidate.data["Status da solicitação"] || "") === "aceito") {
       const participantCount = countRequestParticipants(candidate.data);
-      host.data["Vagas restantes"] = String(Number(host.data["Vagas restantes"] || 0) + participantCount);
+      host.data["Vagas restantes"] = String(getHostRemainingVacancies(host.data) + participantCount);
       await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
     }
 
@@ -1783,7 +1793,7 @@ app.get("/api/candidate/hosts", requireAuth("candidate"), async (req, res) => {
     const ativos = hosts.rows
       .filter((row) => normalizeText(resolveHostStatus(row.data)) === "ativo")
       .filter((row) => normalizeText(row.data["Permissão admin"] || "") === "concedido")
-      .filter((row) => Number(row.data["Vagas restantes"] || 0) > 0)
+      .filter((row) => getHostRemainingVacancies(row.data) > 0)
       .map((row) => publicHostView(row.data, areasByHost.get(String(row.data["Inscrição"] || "")) || [], proLookup));
 
     res.json({ hosts: ativos });
