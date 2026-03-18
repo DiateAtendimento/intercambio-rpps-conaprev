@@ -614,7 +614,7 @@
           <div class="form-grid two">
             <label>Responsável pelo preenchimento<input name="responsavel" required /></label>
             <label>Cargo/Função<input name="cargoResponsavel" required /></label>
-            <label>Data<input type="text" name="dataPreenchimento" placeholder="dd/mm/aaaa" inputmode="numeric" data-input="date" maxlength="10" required /></label>
+            <label>Data<input type="date" name="dataPreenchimento" required /></label>
           </div>
           <button type="submit" class="btn btn-primary">Enviar cadastro</button>
           <p class="module-feedback" id="hostRegisterFeedback"></p>
@@ -676,15 +676,22 @@
     </section>
 
     <section class="workspace-screen" data-screen-id="candidate-first-access">
-      <div class="module-card module-card--login">
+      <div class="module-card module-card--login module-card--first-access">
+        <div class="login-avatar login-avatar--single">
+          <img src="img_for_woman.svg" alt="Avatar primeiro acesso intercambista" />
+        </div>
         <h3>Primeiro Acesso Intercambista</h3>
+        <p class="first-access-copy">Informe seus dados de cadastro e defina uma nova senha para liberar seu acesso ao ambiente do intercambista.</p>
         <form id="candidateFirstAccessForm" class="module-form">
           <label>CPF<input name="cpf" placeholder="Ex.: 12345678901" data-input="numeric" maxlength="11" required /></label>
           <label>Email institucional<input type="email" name="email" required /></label>
           <label>Nova senha<input type="password" name="novaSenha" required /></label>
           <label>Confirmar senha<input type="password" name="confirmSenha" required /></label>
           <small>Senha com letras, números e caractere especial.</small>
-          <button type="submit" class="btn btn-primary">Definir senha</button>
+          <div class="first-access-actions">
+            <button type="button" class="btn btn-outline btn-back-login" data-screen="candidate-login">Voltar para login</button>
+            <button type="submit" class="btn btn-primary">Definir senha</button>
+          </div>
           <p class="module-feedback" id="candidateFirstAccessFeedback"></p>
         </form>
       </div>
@@ -715,7 +722,7 @@
                 </tr>
               </thead>
               <tbody id="candidateStatusTableBody">
-                <tr><td colspan="8">Carregando...</td></tr>
+                <tr><td colspan="8">&nbsp;</td></tr>
               </tbody>
             </table>
           </div>
@@ -745,8 +752,12 @@
     </section>
 
     <section class="workspace-screen" data-screen-id="host-first-access">
-      <div class="module-card module-card--login">
+      <div class="module-card module-card--login module-card--first-access">
+        <div class="login-avatar login-avatar--single">
+          <img src="img_anfitriao.svg" alt="Avatar primeiro acesso anfitrião" />
+        </div>
         <h3>Primeiro Acesso Anfitrião</h3>
+        <p class="first-access-copy">Use os dados recebidos no credenciamento para validar sua identidade e criar a senha definitiva de acesso ao ambiente do anfitrião.</p>
         <form id="hostFirstAccessForm" class="module-form">
           <label>CNPJ<input name="cnpj" placeholder="Ex.: 12345678000199" data-input="numeric" maxlength="14" required /></label>
           <label>Número de inscrição<input name="numeroInscricao" required /></label>
@@ -754,7 +765,10 @@
           <label>Nova senha<input type="password" name="novaSenha" required /></label>
           <label>Confirmar senha<input type="password" name="confirmSenha" required /></label>
           <small>Senha com letras, números e caractere especial.</small>
-          <button type="submit" class="btn btn-primary">Definir senha</button>
+          <div class="first-access-actions">
+            <button type="button" class="btn btn-outline btn-back-login" data-screen="host-login">Voltar para login</button>
+            <button type="submit" class="btn btn-primary">Definir senha</button>
+          </div>
           <p class="module-feedback" id="hostFirstAccessFeedback"></p>
         </form>
       </div>
@@ -786,7 +800,7 @@
                 </tr>
               </thead>
               <tbody id="hostPendingTableBody">
-                <tr><td colspan="8">Carregando...</td></tr>
+                <tr><td colspan="8">&nbsp;</td></tr>
               </tbody>
             </table>
           </div>
@@ -818,7 +832,7 @@
                 </tr>
               </thead>
               <tbody id="hostAcceptedTableBody">
-                <tr><td colspan="10">Carregando...</td></tr>
+                <tr><td colspan="10">&nbsp;</td></tr>
               </tbody>
             </table>
           </div>
@@ -867,7 +881,7 @@
                 </tr>
               </thead>
               <tbody id="adminPendingTableBody">
-                <tr><td colspan="9">Carregando...</td></tr>
+                <tr><td colspan="9">&nbsp;</td></tr>
               </tbody>
             </table>
           </div>
@@ -903,7 +917,7 @@
                 </tr>
               </thead>
               <tbody id="adminApprovedTableBody">
-                <tr><td colspan="11">Carregando...</td></tr>
+                <tr><td colspan="11">&nbsp;</td></tr>
               </tbody>
             </table>
           </div>

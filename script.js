@@ -89,13 +89,23 @@ async function apiFetch(url, options = {}) {
       url: requestUrl,
     });
   }
-  const response = await fetch(requestUrl, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
+  let response;
+  try {
+    response = await fetch(requestUrl, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+      ...options,
+    });
+  } catch (error) {
+    console.error("[apiFetch:network-error]", {
+      method: options.method || "GET",
+      url: requestUrl,
+      message: error?.message || "network error",
+    });
+    throw new Error("Falha de conexão com o servidor. Aguarde alguns instantes e tente novamente.");
+  }
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -1273,6 +1283,17 @@ function withActionLottie(task, loadingMessage) {
   });
 }
 
+function loadWorkspaceWithLottie(task, loadingMessage) {
+  return runWithLottie(task, {
+    loadingPath: "Loading.json",
+    loadingMessage,
+    successPath: "Success.json",
+    successMessage: "Informações carregadas.",
+    overlayDelayMs: 150,
+    minLoadingMs: 500,
+  });
+}
+
 function formatStatus(status) {
   const text = String(status || "Sem solicitação");
   return `<span class="${getStatusClass(text)}">${escapeHtml(text)}</span>`;
@@ -1740,7 +1761,7 @@ function setupWorkspaceActions() {
       saveTokens();
       setFeedback("candidateLoginFeedback", "Login realizado com sucesso.", true);
       openWorkspace("candidate-area");
-      await refreshCandidateArea();
+      await loadWorkspaceWithLottie(() => refreshCandidateArea(), "Carregando área do intercambista...");
     } catch (error) {
       setFeedback("candidateLoginFeedback", error.message, false);
       state.tokens.candidate = "";
@@ -1768,7 +1789,7 @@ function setupWorkspaceActions() {
       saveTokens();
       setFeedback("hostLoginFeedback", "Login realizado com sucesso.", true);
       openWorkspace("host-area");
-      await refreshHostArea();
+      await loadWorkspaceWithLottie(() => refreshHostArea(), "Carregando área do anfitrião...");
     } catch (error) {
       setFeedback("hostLoginFeedback", error.message, false);
       state.tokens.host = "";
@@ -1798,7 +1819,7 @@ function setupWorkspaceActions() {
       saveTokens();
       setFeedback("adminLoginFeedback", "Login realizado com sucesso.", true);
       openWorkspace("admin-area");
-      await refreshAdminArea();
+      await loadWorkspaceWithLottie(() => refreshAdminArea(), "Carregando área do administrador...");
     } catch (error) {
       setFeedback("adminLoginFeedback", error.message, false);
       state.tokens.admin = "";
@@ -2100,7 +2121,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!state.tokens.admin) return openWorkspace("admin-login");
       openWorkspace("admin-area");
       try {
-        await refreshAdminArea();
+        await loadWorkspaceWithLottie(() => refreshAdminArea(), "Carregando área do administrador...");
       } catch (error) {
         if (!String(error?.message || "").toLowerCase().includes("sess")) return;
         state.tokens.admin = "";
@@ -2114,7 +2135,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!state.tokens.host) return openWorkspace("host-login");
       openWorkspace("host-area");
       try {
-        await refreshHostArea();
+        await loadWorkspaceWithLottie(() => refreshHostArea(), "Carregando área do anfitrião...");
       } catch (error) {
         if (!String(error?.message || "").toLowerCase().includes("sess")) return;
         state.tokens.host = "";
@@ -2128,7 +2149,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!state.tokens.candidate) return openWorkspace("candidate-login");
       openWorkspace("candidate-area");
       try {
-        await refreshCandidateArea();
+        await loadWorkspaceWithLottie(() => refreshCandidateArea(), "Carregando área do intercambista...");
       } catch (error) {
         if (!String(error?.message || "").toLowerCase().includes("sess")) return;
         state.tokens.candidate = "";
