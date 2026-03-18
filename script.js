@@ -583,7 +583,6 @@ function payloadHostRegister(form) {
   const areas = qsa("#hostAreaList .host-area-row")
     .map((row) => ({
       nome: String(row.querySelector('[name="hostAreaName"]')?.value || "").trim(),
-      tipo: String(row.querySelector('[name="hostAreaType"]')?.value || "padrao").trim(),
       vagas: normalizeDigits(row.querySelector('[name="hostAreaSlots"]')?.value || ""),
     }))
     .filter((item) => item.nome && Number(item.vagas) > 0);
@@ -613,15 +612,11 @@ function payloadHostRegister(form) {
   return payload;
 }
 
-function createHostAreaRow(name = "", type = "padrao", vagas = "") {
+function createHostAreaRow(name = "", vagas = "") {
   const row = document.createElement("div");
   row.className = "dynamic-list__row host-area-row";
   row.innerHTML = `
     <input name="hostAreaName" placeholder="Área/Setor" value="${escapeHtml(name)}" />
-    <select name="hostAreaType">
-      <option value="padrao" ${type === "padrao" ? "selected" : ""}>Padrão</option>
-      <option value="outros" ${type === "outros" ? "selected" : ""}>Outros</option>
-    </select>
     <input name="hostAreaSlots" placeholder="Vagas" data-input="numeric" value="${escapeHtml(vagas)}" />
     <button type="button" class="dynamic-remove-btn" aria-label="Remover área">
       <i class="fa-solid fa-xmark"></i>
@@ -661,18 +656,32 @@ function setupHostAreaFields() {
 
   const ensureRows = () => {
     if (!list.children.length) {
-      defaultAreas.forEach((area) => list.appendChild(createHostAreaRow(area, "padrao", "")));
+      defaultAreas.forEach((area) => list.appendChild(createHostAreaRow(area, "")));
     }
     recalcRemaining();
   };
 
   if (!list.dataset.bound) {
     addButton.addEventListener("click", () => {
-      list.appendChild(createHostAreaRow("", "outros", ""));
+      list.appendChild(createHostAreaRow("", ""));
       recalcRemaining();
     });
 
-    list.addEventListener("input", recalcRemaining);
+    list.addEventListener("input", (event) => {
+      const input = event.target.closest('[name="hostAreaSlots"]');
+      if (input) {
+        const total = Number(normalizeDigits(form.querySelector('[name="vagas"]')?.value || ""));
+        const current = Number(normalizeDigits(input.value || ""));
+        const usedOthers = qsa("#hostAreaList [name='hostAreaSlots']")
+          .filter((field) => field !== input)
+          .reduce((acc, field) => acc + Number(normalizeDigits(field.value || "")), 0);
+        const allowed = Math.max(0, total - usedOthers);
+        if (current > allowed) {
+          input.value = String(allowed);
+        }
+      }
+      recalcRemaining();
+    });
     list.addEventListener("click", (event) => {
       const btn = event.target.closest(".dynamic-remove-btn");
       if (!btn) return;
