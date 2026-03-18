@@ -818,8 +818,9 @@ function payloadCandidateRegister(form) {
 
 function renderExchangeApplicationForm(host = {}) {
   return `
-    <form id="candidateApplyForm" class="module-form modal-inline-form" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}">
+    <form id="candidateApplyForm" class="module-form modal-inline-form" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-max-participants="${escapeHtml(host.vagasRestantes || "0")}">
       <h4>Participantes indicados para o intercâmbio técnico</h4>
+      <p class="form-block-note">Vagas disponíveis para esta inscrição: <strong>${escapeHtml(host.vagasRestantes || "0")}</strong></p>
       <div id="applyParticipantList" class="dynamic-list"></div>
       <button type="button" class="btn btn-outline dynamic-add-btn" id="addApplyParticipant"><i class="fa-solid fa-plus"></i> Adicionar participante</button>
       <h4>Temas e áreas de interesse</h4>
@@ -850,6 +851,7 @@ function setupExchangeApplicationForm(prefill = {}) {
   const list = qs("#applyParticipantList");
   const addButton = qs("#addApplyParticipant");
   if (!form || !list || !addButton) return;
+  const maxParticipants = Math.max(0, Number(form.dataset.maxParticipants || 0));
 
   const createParticipantRow = () => {
     const row = document.createElement("div");
@@ -866,7 +868,7 @@ function setupExchangeApplicationForm(prefill = {}) {
   };
 
   const seed = createParticipantRow();
-  list.appendChild(seed);
+  if (maxParticipants > 0) list.appendChild(seed);
   form.querySelector('[name="responsavel"]').value = prefill.responsavel || "";
   form.querySelector('[name="cargoResponsavel"]').value = prefill.cargoResponsavel || "";
   const dateInput = form.querySelector('[name="dataInscricao"]');
@@ -878,13 +880,25 @@ function setupExchangeApplicationForm(prefill = {}) {
     }
   }
 
-  addButton.addEventListener("click", () => list.appendChild(createParticipantRow()));
+  const syncAddButton = () => {
+    const totalRows = qsa("#applyParticipantList .apply-participant-row").length;
+    addButton.disabled = maxParticipants <= 0 || totalRows >= maxParticipants;
+  };
+
+  addButton.addEventListener("click", () => {
+    const totalRows = qsa("#applyParticipantList .apply-participant-row").length;
+    if (totalRows >= maxParticipants) return;
+    list.appendChild(createParticipantRow());
+    syncAddButton();
+  });
   list.addEventListener("click", (event) => {
     const btn = event.target.closest(".dynamic-remove-btn");
     if (!btn) return;
     if (qsa("#applyParticipantList .apply-participant-row").length === 1) return;
     btn.closest(".apply-participant-row")?.remove();
+    syncAddButton();
   });
+  syncAddButton();
 }
 
 function buildCandidateApplicationPayload(form) {
@@ -1659,6 +1673,10 @@ function setupWorkspaceActions() {
     }
     if (!payload.participantes.length) {
       return showMessageModal("Erro", "Informe ao menos um participante válido.", "error");
+    }
+    const maxParticipants = Math.max(0, Number(form.dataset.maxParticipants || 0));
+    if (payload.participantes.length > maxParticipants) {
+      return showMessageModal("Erro", `Esta inscrição permite no máximo ${maxParticipants} participante(s).`, "error");
     }
 
     try {

@@ -379,6 +379,13 @@ function getAvailableHostAreas(areaRows = []) {
   return withRemaining.length ? withRemaining : areas.filter((item) => Number(item.vagas || 0) > 0);
 }
 
+function getReservedParticipantsForHost(requestRows = [], hostNumero = "") {
+  return requestRows
+    .filter((row) => String(row.data["Anfitrião - Inscrição"] || "") === String(hostNumero || ""))
+    .filter((row) => ["pendente", "aceito"].includes(normalizeText(row.data["Status da solicitação"] || "")))
+    .reduce((acc, row) => acc + countRequestParticipants(row.data), 0);
+}
+
 const auth = new google.auth.GoogleAuth({
   credentials: pickServiceAccount(),
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -823,7 +830,7 @@ function getHostAreas(areaRows) {
     }));
 }
 
-function publicHostView(hostData, areaRows = [], proLookup = null) {
+function publicHostView(hostData, areaRows = [], proLookup = null, remainingOverride = null) {
   const uf = String(hostData.UF || "").trim().toUpperCase();
   const areas = getAvailableHostAreas(areaRows);
   const nivelProGestao = resolveProGestaoLevel(
@@ -832,6 +839,7 @@ function publicHostView(hostData, areaRows = [], proLookup = null) {
     uf,
     hostData["Nível do Pró-Gestão"] || ""
   );
+  const vagasRestantes = remainingOverride == null ? getHostRemainingVacancies(hostData) : Math.max(0, Number(remainingOverride) || 0);
   return {
     numeroInscricao: String(hostData["Inscrição"] || "").trim(),
     entidade: hostData["Unidade Gestora"] || "",
@@ -844,7 +852,7 @@ function publicHostView(hostData, areaRows = [], proLookup = null) {
     nivelProGestao,
     semProGestao: isSemProGestaoValue(nivelProGestao),
     vagas: hostData["Número de vagas oferecidas"] || "",
-    vagasRestantes: String(getHostRemainingVacancies(hostData)),
+    vagasRestantes: String(vagasRestantes),
     descricao: hostData["Breve descrição da proposta de intercâmbio"] || "",
     areas,
     status: resolveHostStatus(hostData),
@@ -1791,6 +1799,7 @@ app.get("/api/candidate/hosts", requireAuth("candidate"), async (req, res) => {
     const proLookup = await getProGestaoLookup();
     const hosts = await getRows(HOST_SHEET, hostHeaders);
     const hostAreas = await getRows(HOST_AREAS_SHEET, hostAreaHeaders);
+    const requests = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
     const areasByHost = new Map();
     hostAreas.rows.forEach((row) => {
       const key = String(row.data["Inscrição do anfitrião"] || "");
@@ -1800,13 +1809,19 @@ app.get("/api/candidate/hosts", requireAuth("candidate"), async (req, res) => {
     const ativos = hosts.rows
       .filter((row) => normalizeText(resolveHostStatus(row.data)) === "ativo")
       .filter((row) => normalizeText(row.data["Permissão admin"] || "") === "concedido")
-      .filter((row) => {
+      .map((row) => {
         const hostKey = String(row.data["Inscrição"] || "");
-        const hostAreasRows = areasByHost.get(hostKey) || [];
-        if (hostAreasRows.length) return getAvailableHostAreas(hostAreasRows).length > 0;
-        return getHostRemainingVacancies(row.data) > 0;
+        const reserved = getReservedParticipantsForHost(requests.rows, hostKey);
+        const offered = Number(String(row.data["Número de vagas oferecidas"] || "").trim()) || 0;
+        const remaining = Math.max(0, offered - reserved);
+        return {
+          row,
+          hostAreasRows: areasByHost.get(hostKey) || [],
+          remaining,
+        };
       })
-      .map((row) => publicHostView(row.data, areasByHost.get(String(row.data["Inscrição"] || "")) || [], proLookup));
+      .filter((item) => item.remaining > 0)
+      .map((item) => publicHostView(item.row.data, item.hostAreasRows, proLookup, item.remaining));
 
     res.json({ hosts: ativos });
   } catch (error) {
@@ -1888,6 +1903,13 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
     });
     if (duplicate) {
       return res.status(409).json({ error: "Já existe uma inscrição ativa desse intercambista para este anfitrião." });
+    }
+    const requestedParticipants = participants.length;
+    const offered = Number(String(host.data["Número de vagas oferecidas"] || "").trim()) || 0;
+    const reserved = getReservedParticipantsForHost(requests.rows, String(host.data["Inscrição"] || ""));
+    const remaining = Math.max(0, offered - reserved);
+    if (requestedParticipants > remaining) {
+      return res.status(400).json({ error: `Este anfitrião possui apenas ${remaining} vaga(s) restante(s) para novas inscrições.` });
     }
 
     const requestPayload = buildExchangeRequestValueMap(
