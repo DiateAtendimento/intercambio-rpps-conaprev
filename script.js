@@ -2016,12 +2016,7 @@ function setupWorkspaceActions() {
         console.log("[candidateApplyForm:open]", hostMeta);
         state.ui.selectedHostApplication = hostMeta;
         openModal(`Inscrição em ${hostMeta.entidade || "Anfitrião"}`, renderExchangeApplicationForm(hostMeta));
-        const profile = (state.ui.candidateProfile || {});
-        setupExchangeApplicationForm({
-          responsavel: profile.responsavel || "",
-          cargoResponsavel: profile.cargoResponsavel || "",
-          dataPreenchimento: profile.dataPreenchimento || "",
-        });
+        setupExchangeApplicationForm();
         return;
       }
 
