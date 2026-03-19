@@ -222,9 +222,14 @@ function createHostMonitorSnapshot(data = {}) {
 }
 
 function createCandidateMonitorSnapshot(data = {}) {
+  const statusData = data.status || data;
+  const hostsData = data.hosts || [];
   return {
-    updates: (Array.isArray(data.inscricoes) ? data.inscricoes : [])
+    updates: (Array.isArray(statusData.inscricoes) ? statusData.inscricoes : [])
       .map((item) => [item.inscricao || "", item.statusSolicitacao || "", item.statusIntercambista || "", item.dataDecisao || ""].join("|"))
+      .sort(),
+    hosts: (Array.isArray(hostsData) ? hostsData : [])
+      .map((item) => [item.numeroInscricao || "", item.vagasRestantes || "", item.status || ""].join("|"))
       .sort(),
   };
 }
@@ -257,11 +262,16 @@ function handleCandidateMonitor(data, notify = false) {
   const nextSnapshot = createCandidateMonitorSnapshot(data);
   const prevSnapshot = getMonitorSnapshot("candidate");
   if (notify && prevSnapshot) {
-    const changed =
+    const statusChanged =
       nextSnapshot.updates.length !== prevSnapshot.updates.length ||
       nextSnapshot.updates.some((item, index) => item !== prevSnapshot.updates[index]);
-    if (changed) {
+    const hostsChanged =
+      nextSnapshot.hosts.length !== prevSnapshot.hosts.length ||
+      nextSnapshot.hosts.some((item, index) => item !== prevSnapshot.hosts[index]);
+    if (statusChanged) {
       showToast("Sua área recebeu atualização em uma ou mais inscrições.", "info", "Nova atualização");
+    } else if (hostsChanged) {
+      showToast("A lista de anfitriões disponíveis foi atualizada.", "info", "Novo anfitrião");
     }
   }
   setMonitorSnapshot("candidate", nextSnapshot);
@@ -1556,14 +1566,14 @@ function buildCandidateHostCard(host) {
       <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
       <h4>${escapeHtml(host.entidade)}</h4>
       <p>${escapeHtml(getStateNameForUf(host.uf || "-"))} (${escapeHtml(host.uf || "-")})</p>
-      <p>Nível Pró-Gestão:
+      <p><span class="host-card__meta-label">Nível Pró-Gestão:</span>
         <span class="${host.semProGestao ? "progestao-level progestao-level--none" : "progestao-level"}">
           ${escapeHtml(host.nivelProGestao || "Sem Pró-Gestão")}
         </span>
       </p>
-      <p>Número de vagas: ${escapeHtml(host.vagas || "-")}</p>
-      <p>Vagas restantes: ${escapeHtml(host.vagasRestantes || "-")}</p>
-      <p>Áreas disponíveis: ${escapeHtml((host.areas || []).map((item) => `${item.area} (${item.restantes || item.vagas} vaga(s))`).filter(Boolean).join(", ") || "-")}</p>
+      <p><span class="host-card__meta-label">Número de vagas:</span> ${escapeHtml(host.vagas || "-")}</p>
+      <p><span class="host-card__meta-label">Vagas restantes:</span> ${escapeHtml(host.vagasRestantes || "-")}</p>
+      <p><span class="host-card__meta-label">Áreas disponíveis:</span> ${escapeHtml((host.areas || []).map((item) => `${item.area} (${item.restantes || item.vagas} vaga(s))`).filter(Boolean).join(", ") || "-")}</p>
       <button class="btn btn-primary" type="button" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}">Inscrever-se</button>
     </article>`;
 }
@@ -1588,7 +1598,7 @@ function upsertWorkspaceNotice(screenId, notice) {
 async function refreshCandidateArea(notify = false) {
   const status = await apiFetch("/api/candidate/status", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
   const hostsData = await apiFetch("/api/candidate/hosts", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
-  handleCandidateMonitor(status, notify);
+  handleCandidateMonitor({ status, hosts: hostsData.hosts || [] }, notify);
   state.ui.candidateProfile = status.profile || {};
   upsertWorkspaceNotice(
     "candidate-area",

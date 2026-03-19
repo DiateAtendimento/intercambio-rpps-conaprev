@@ -386,6 +386,13 @@ function getReservedParticipantsForHost(requestRows = [], hostNumero = "") {
     .reduce((acc, row) => acc + countRequestParticipants(row.data), 0);
 }
 
+function recalculateHostRemainingVacancies(hostRowData, requestRows = []) {
+  const hostNumero = String(hostRowData?.data?.["Inscrição"] || "");
+  const offered = Number(String(hostRowData?.data?.["Número de vagas oferecidas"] || "").trim()) || 0;
+  const reserved = getReservedParticipantsForHost(requestRows, hostNumero);
+  return Math.max(0, offered - reserved);
+}
+
 const auth = new google.auth.GoogleAuth({
   credentials: pickServiceAccount(),
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -1620,11 +1627,7 @@ app.post("/api/host/decision", requireAuth("host"), async (req, res) => {
         });
         return res.status(400).json({ error: "Vagas insuficientes para aceitar esta inscrição." });
       }
-      const reservedAfterDecision = requests.rows
-        .filter((row) => String(row.data["Anfitrião - Inscrição"] || "") === hostNumeroKey)
-        .filter((row) => ["pendente", "aceito"].includes(normalizeText(row.data["Status da solicitação"] || "")))
-        .reduce((acc, row) => acc + countRequestParticipants(row.data), 0);
-      hostRowData.data["Vagas restantes"] = String(Math.max(0, offered - reservedAfterDecision));
+      hostRowData.data["Vagas restantes"] = String(recalculateHostRemainingVacancies(hostRowData, requests.rows));
       await updateRow(HOST_SHEET, hostData.headers, hostRowData.rowNumber, hostRowData.data);
     }
 
@@ -1752,17 +1755,13 @@ app.post("/api/host/remove-candidate", requireAuth("host"), async (req, res) => 
       return res.status(403).json({ error: "Intercambista não vinculado ao anfitrião logado." });
     }
 
-    if (normalizeText(candidate.data["Status da solicitação"] || "") === "aceito") {
-      const participantCount = countRequestParticipants(candidate.data);
-      host.data["Vagas restantes"] = String(getHostRemainingVacancies(host.data) + participantCount);
-      await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
-    }
-
     candidate.data["Status da solicitação"] = "Pendente";
     candidate.data["Status final"] = "Pendente";
     candidate.data["Data da decisão"] = "";
     candidate.data["Observação da decisão"] = "";
     await updateRow(EXCHANGE_REQUESTS_SHEET, requests.headers, candidate.rowNumber, candidate.data);
+    host.data["Vagas restantes"] = String(recalculateHostRemainingVacancies(host, requests.rows));
+    await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
 
     res.json({ ok: true });
   } catch (error) {
