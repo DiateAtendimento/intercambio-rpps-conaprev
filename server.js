@@ -1837,7 +1837,24 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
     const entidade = sanitizeInput(req.body.entidade || req.body.hostEntidade, 250);
     const uf = sanitizeInput(req.body.uf || req.body.hostUf, 2).toUpperCase();
     const municipio = sanitizeInput(req.body.municipio || req.body.hostMunicipio, 200);
+    console.log("[candidate/select-host:request]", {
+      sessionSubject: req.session.subject,
+      hostNumero,
+      cnpj: maskValue(cnpj),
+      entidade,
+      uf,
+      municipio,
+      payloadKeys: Object.keys(req.body || {}),
+      participantes: Array.isArray(req.body.participantes) ? req.body.participantes.length : 0,
+    });
     if (!hostNumero && !cnpj && !entidade) {
+      console.warn("[candidate/select-host:missing-host]", {
+        sessionSubject: req.session.subject,
+        payloadKeys: Object.keys(req.body || {}),
+        rawHostNumero: req.body.numeroInscricao || req.body.hostNumeroInscricao || "",
+        rawCnpj: maskValue(onlyDigits(req.body.cnpj || req.body.hostCnpj || "")),
+        rawEntidade: req.body.entidade || req.body.hostEntidade || "",
+      });
       return res.status(400).json({ error: "Informe um anfitrião." });
     }
 
@@ -1865,9 +1882,17 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
     });
 
     if (normalizeText(resolveHostStatus(host.data)) !== "ativo") {
+      console.warn("[candidate/select-host:host-inactive]", {
+        hostNumero: String(host.data["Inscrição"] || "").trim(),
+        status: resolveHostStatus(host.data),
+      });
       return res.status(400).json({ error: "Anfitrião inativo para novas solicitações." });
     }
     if (normalizeText(host.data["Permissão admin"] || "") !== "concedido") {
+      console.warn("[candidate/select-host:host-not-authorized]", {
+        hostNumero: String(host.data["Inscrição"] || "").trim(),
+        permissaoAdmin: host.data["Permissão admin"] || "",
+      });
       return res.status(400).json({ error: "Anfitrião ainda não autorizado pelo admin." });
     }
 
@@ -1893,6 +1918,10 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
     const requests = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
     const participants = Array.isArray(req.body.participantes) ? req.body.participantes.filter((item) => item && item.nome) : [];
     if (!participants.length) {
+      console.warn("[candidate/select-host:missing-participants]", {
+        sessionSubject: req.session.subject,
+        participantesRecebidos: Array.isArray(req.body.participantes) ? req.body.participantes.length : 0,
+      });
       return res.status(400).json({ error: "Informe ao menos um participante." });
     }
     const duplicate = requests.rows.find((row) => {
@@ -1902,6 +1931,11 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
       return sameCandidate && sameHost && ["pendente", "aceito"].includes(status);
     });
     if (duplicate) {
+      console.warn("[candidate/select-host:duplicate]", {
+        candidateRegistration: candidate.data["Inscrição"] || "",
+        hostNumero: String(host.data["Inscrição"] || ""),
+        duplicateRow: duplicate.rowNumber,
+      });
       return res.status(409).json({ error: "Já existe uma inscrição ativa desse intercambista para este anfitrião." });
     }
     const requestedParticipants = participants.length;
@@ -1909,6 +1943,13 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
     const reserved = getReservedParticipantsForHost(requests.rows, String(host.data["Inscrição"] || ""));
     const remaining = Math.max(0, offered - reserved);
     if (requestedParticipants > remaining) {
+      console.warn("[candidate/select-host:no-vacancy]", {
+        hostNumero: String(host.data["Inscrição"] || ""),
+        requestedParticipants,
+        offered,
+        reserved,
+        remaining,
+      });
       return res.status(400).json({ error: `Este anfitrião possui apenas ${remaining} vaga(s) restante(s) para novas inscrições.` });
     }
 
@@ -1922,6 +1963,12 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
       host
     );
     await appendRow(EXCHANGE_REQUESTS_SHEET, requests.headers, requestPayload);
+    console.log("[candidate/select-host:success]", {
+      requestRegistration: requestPayload["Inscrição da solicitação"] || "",
+      candidateRegistration: candidate.data["Inscrição"] || "",
+      hostNumero: String(host.data["Inscrição"] || ""),
+      participantes: participants.length,
+    });
     res.json({ ok: true, message: "Inscrição enviada. Agora aguarde o feedback do anfitrião." });
   } catch (error) {
     console.error("candidate/select-host", error);

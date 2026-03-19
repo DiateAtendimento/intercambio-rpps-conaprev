@@ -1899,6 +1899,36 @@ function setupWorkspaceActions() {
     event.preventDefault();
 
     const payload = buildCandidateApplicationPayload(form);
+    console.log("[candidateApplyForm:submit]", {
+      modalTitle: qs("#detailsModalTitle")?.textContent || "",
+      formDataset: {
+        host: form.dataset.host || "",
+        cnpj: form.dataset.cnpj || "",
+        entidade: form.dataset.entidade || "",
+        uf: form.dataset.uf || "",
+        municipio: form.dataset.municipio || "",
+        maxParticipants: form.dataset.maxParticipants || "",
+      },
+      hiddenFields: {
+        hostNumeroInscricao: form.querySelector('[name="hostNumeroInscricao"]')?.value || "",
+        hostCnpj: form.querySelector('[name="hostCnpj"]')?.value || "",
+        hostEntidade: form.querySelector('[name="hostEntidade"]')?.value || "",
+        hostUf: form.querySelector('[name="hostUf"]')?.value || "",
+        hostMunicipio: form.querySelector('[name="hostMunicipio"]')?.value || "",
+      },
+      selectedHostApplication: state.ui.selectedHostApplication || null,
+      payloadPreview: {
+        numeroInscricao: payload.numeroInscricao || "",
+        hostNumeroInscricao: payload.hostNumeroInscricao || "",
+        cnpj: payload.cnpj || "",
+        hostCnpj: payload.hostCnpj || "",
+        entidade: payload.entidade || "",
+        hostEntidade: payload.hostEntidade || "",
+        uf: payload.uf || "",
+        municipio: payload.municipio || "",
+        participantes: payload.participantes.length,
+      },
+    });
     if (!payload.numeroInscricao && !payload.cnpj && !payload.entidade) {
       return showToast("Informe um anfitrião.", "error", "Erro");
     }
@@ -1912,12 +1942,20 @@ function setupWorkspaceActions() {
 
     try {
       await withActionLottie(
-        () =>
-          apiFetch("/api/candidate/select-host", {
+        () => {
+          console.log("[candidateApplyForm:request]", {
+            endpoint: "/api/candidate/select-host",
+            numeroInscricao: payload.numeroInscricao || payload.hostNumeroInscricao || "",
+            cnpj: payload.cnpj || payload.hostCnpj || "",
+            entidade: payload.entidade || payload.hostEntidade || "",
+            participantes: payload.participantes.length,
+          });
+          return apiFetch("/api/candidate/select-host", {
             method: "POST",
             headers: { Authorization: `Bearer ${state.tokens.candidate}` },
             body: JSON.stringify(payload),
-          }),
+          });
+        },
         "Enviando solicitação ao anfitrião..."
       );
       closeModal();
@@ -1975,6 +2013,7 @@ function setupWorkspaceActions() {
           municipio: actionEl.dataset.municipio || sourceCard?.dataset.municipio || "",
           vagasRestantes: actionEl.dataset.vagasRestantes || sourceCard?.dataset.vagasRestantes || "0",
         };
+        console.log("[candidateApplyForm:open]", hostMeta);
         state.ui.selectedHostApplication = hostMeta;
         openModal(`Inscrição em ${hostMeta.entidade || "Anfitrião"}`, renderExchangeApplicationForm(hostMeta));
         const profile = (state.ui.candidateProfile || {});
