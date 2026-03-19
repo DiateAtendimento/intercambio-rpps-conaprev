@@ -1589,11 +1589,30 @@ app.post("/api/host/decision", requireAuth("host"), async (req, res) => {
 
     const participantCount = countRequestParticipants(target.data);
     if (decision === "aceito") {
-      const remaining = getHostRemainingVacancies(hostRowData.data);
-      if (remaining < participantCount) {
+      const hostNumeroKey = String(hostRowData.data["Inscrição"] || "");
+      const offered = Number(String(hostRowData.data["Número de vagas oferecidas"] || "").trim()) || 0;
+      const reservedByOthers = requests.rows
+        .filter((row) => row.rowNumber !== target.rowNumber)
+        .filter((row) => String(row.data["Anfitrião - Inscrição"] || "") === hostNumeroKey)
+        .filter((row) => ["pendente", "aceito"].includes(normalizeText(row.data["Status da solicitação"] || "")))
+        .reduce((acc, row) => acc + countRequestParticipants(row.data), 0);
+      const remainingForAcceptance = Math.max(0, offered - reservedByOthers);
+      if (remainingForAcceptance < participantCount) {
+        console.warn("[host/decision:no-vacancy]", {
+          hostNumero: hostNumeroKey,
+          requestRow: target.rowNumber,
+          participantCount,
+          offered,
+          reservedByOthers,
+          remainingForAcceptance,
+        });
         return res.status(400).json({ error: "Vagas insuficientes para aceitar esta inscrição." });
       }
-      hostRowData.data["Vagas restantes"] = String(remaining - participantCount);
+      const reservedAfterDecision = requests.rows
+        .filter((row) => String(row.data["Anfitrião - Inscrição"] || "") === hostNumeroKey)
+        .filter((row) => ["pendente", "aceito"].includes(normalizeText(row.data["Status da solicitação"] || "")))
+        .reduce((acc, row) => acc + countRequestParticipants(row.data), 0);
+      hostRowData.data["Vagas restantes"] = String(Math.max(0, offered - reservedAfterDecision));
       await updateRow(HOST_SHEET, hostData.headers, hostRowData.rowNumber, hostRowData.data);
     }
 
