@@ -687,7 +687,7 @@ body.system-menu-open {
 .workspace-screen[data-screen-id="admin-area"] .module-card,
 .workspace-screen[data-screen-id="host-area"] .module-card,
 .workspace-screen[data-screen-id="candidate-area"] .module-card {
-  max-width: 1280px;
+  max-width: min(1520px, calc(100vw - 1rem));
 }
 
 .workspace-screen[data-screen-id="admin-area"] .module-card {
@@ -900,7 +900,8 @@ body.system-menu-open {
 .env-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 900px;
+  min-width: 1180px;
+  table-layout: fixed;
 }
 
 .env-table th,
@@ -909,7 +910,8 @@ body.system-menu-open {
   padding: 0.58rem 0.5rem;
   font-size: 0.8rem;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
 }
 
 .env-table th {
@@ -920,6 +922,17 @@ body.system-menu-open {
 
 .env-table td {
   color: #20384f;
+}
+
+.env-table th:first-child,
+.env-table td:first-child {
+  width: 42px;
+  text-align: center;
+}
+
+.env-table th:nth-child(2),
+.env-table td:nth-child(2) {
+  width: 110px;
 }
 
 .action-group {
@@ -1013,8 +1026,22 @@ body.system-menu-open {
 
 .workspace-screen[data-screen-id="host-area"] .env-table th:nth-child(7),
 .workspace-screen[data-screen-id="host-area"] .env-table th:nth-child(8),
+.workspace-screen[data-screen-id="host-area"] .env-table th:nth-child(9),
+.workspace-screen[data-screen-id="host-area"] .env-table th:nth-child(10),
 .workspace-screen[data-screen-id="host-area"] .env-table td:nth-child(7),
-.workspace-screen[data-screen-id="host-area"] .env-table td:nth-child(8) {
+.workspace-screen[data-screen-id="host-area"] .env-table td:nth-child(8),
+.workspace-screen[data-screen-id="host-area"] .env-table td:nth-child(9),
+.workspace-screen[data-screen-id="host-area"] .env-table td:nth-child(10) {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.workspace-screen[data-screen-id="candidate-area"] .env-table th:nth-child(6),
+.workspace-screen[data-screen-id="candidate-area"] .env-table th:nth-child(7),
+.workspace-screen[data-screen-id="candidate-area"] .env-table th:nth-child(8),
+.workspace-screen[data-screen-id="candidate-area"] .env-table td:nth-child(6),
+.workspace-screen[data-screen-id="candidate-area"] .env-table td:nth-child(7),
+.workspace-screen[data-screen-id="candidate-area"] .env-table td:nth-child(8) {
   text-align: center;
   vertical-align: middle;
 }

@@ -8,6 +8,15 @@
     adminApproved: [],
     hostAccepted: [],
     selectedHostApplication: null,
+    monitor: {
+      timerId: null,
+      intervalMs: 20000,
+      snapshots: {
+        admin: null,
+        host: null,
+        candidate: null,
+      },
+    },
   },
 };
 
@@ -32,6 +41,10 @@ function qs(selector) {
 
 function qsa(selector) {
   return [...document.querySelectorAll(selector)];
+}
+
+function getActiveWorkspaceScreenId() {
+  return qs(".workspace-screen.active")?.dataset.screenId || "";
 }
 
 function normalizeDigits(value) {
@@ -168,6 +181,109 @@ function showToast(message, kind = "info", title = "") {
   container.appendChild(toast);
   window.setTimeout(() => toast.classList.add("toast--visible"), 10);
   window.setTimeout(removeToast, 4200);
+}
+
+function setMonitorSnapshot(role, value) {
+  state.ui.monitor.snapshots[role] = value;
+}
+
+function getMonitorSnapshot(role) {
+  return state.ui.monitor.snapshots[role];
+}
+
+function clearWorkspaceMonitor() {
+  if (state.ui.monitor.timerId) {
+    window.clearInterval(state.ui.monitor.timerId);
+    state.ui.monitor.timerId = null;
+  }
+}
+
+function diffNewItems(previous = [], current = []) {
+  const previousSet = new Set(previous);
+  return current.filter((item) => !previousSet.has(item));
+}
+
+function createAdminMonitorSnapshot(data = {}) {
+  return {
+    pendingIds: (Array.isArray(data.solicitacoes) ? data.solicitacoes : [])
+      .map((item) => String(item.rowNumber || ""))
+      .filter(Boolean)
+      .sort(),
+  };
+}
+
+function createHostMonitorSnapshot(data = {}) {
+  return {
+    pendingIds: (Array.isArray(data.pendentes) ? data.pendentes : [])
+      .map((item) => String(item.rowNumber || ""))
+      .filter(Boolean)
+      .sort(),
+  };
+}
+
+function createCandidateMonitorSnapshot(data = {}) {
+  return {
+    updates: (Array.isArray(data.inscricoes) ? data.inscricoes : [])
+      .map((item) => [item.inscricao || "", item.statusSolicitacao || "", item.statusIntercambista || "", item.dataDecisao || ""].join("|"))
+      .sort(),
+  };
+}
+
+function handleAdminMonitor(data, notify = false) {
+  const nextSnapshot = createAdminMonitorSnapshot(data);
+  const prevSnapshot = getMonitorSnapshot("admin");
+  if (notify && prevSnapshot) {
+    const newItems = diffNewItems(prevSnapshot.pendingIds, nextSnapshot.pendingIds);
+    if (newItems.length) {
+      showToast(`Há ${newItems.length} nova(s) solicitação(ões) de anfitrião aguardando análise.`, "info", "Nova solicitação");
+    }
+  }
+  setMonitorSnapshot("admin", nextSnapshot);
+}
+
+function handleHostMonitor(data, notify = false) {
+  const nextSnapshot = createHostMonitorSnapshot(data);
+  const prevSnapshot = getMonitorSnapshot("host");
+  if (notify && prevSnapshot) {
+    const newItems = diffNewItems(prevSnapshot.pendingIds, nextSnapshot.pendingIds);
+    if (newItems.length) {
+      showToast(`Você recebeu ${newItems.length} nova(s) solicitação(ões) de intercâmbio.`, "info", "Nova solicitação");
+    }
+  }
+  setMonitorSnapshot("host", nextSnapshot);
+}
+
+function handleCandidateMonitor(data, notify = false) {
+  const nextSnapshot = createCandidateMonitorSnapshot(data);
+  const prevSnapshot = getMonitorSnapshot("candidate");
+  if (notify && prevSnapshot) {
+    const changed =
+      nextSnapshot.updates.length !== prevSnapshot.updates.length ||
+      nextSnapshot.updates.some((item, index) => item !== prevSnapshot.updates[index]);
+    if (changed) {
+      showToast("Sua área recebeu atualização em uma ou mais inscrições.", "info", "Nova atualização");
+    }
+  }
+  setMonitorSnapshot("candidate", nextSnapshot);
+}
+
+async function pollActiveWorkspace() {
+  const screenId = getActiveWorkspaceScreenId();
+  try {
+    if (screenId === "admin-area" && state.tokens.admin) {
+      await refreshAdminArea(true);
+    } else if (screenId === "host-area" && state.tokens.host) {
+      await refreshHostArea(true);
+    } else if (screenId === "candidate-area" && state.tokens.candidate) {
+      await refreshCandidateArea(true);
+    }
+  } catch (_) {}
+}
+
+function syncWorkspaceMonitor(screenId) {
+  clearWorkspaceMonitor();
+  if (!["admin-area", "host-area", "candidate-area"].includes(screenId)) return;
+  state.ui.monitor.timerId = window.setInterval(pollActiveWorkspace, state.ui.monitor.intervalMs);
 }
 
 function showMessageModal(title, message, kind = "info") {
@@ -545,6 +661,7 @@ function openWorkspace(screenId) {
   if (workspaceTop) workspaceTop.hidden = screenId === "form-host" || screenId === "form-candidate";
   saveScreen(screenId);
   updateScreenHash(screenId);
+  syncWorkspaceMonitor(screenId);
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -558,6 +675,7 @@ function showHome() {
   if (landing) landing.hidden = false;
   if (footer) footer.hidden = false;
   if (backTop) backTop.hidden = false;
+  clearWorkspaceMonitor();
   saveScreen("home");
   updateScreenHash("home");
 }
@@ -1467,9 +1585,10 @@ function upsertWorkspaceNotice(screenId, notice) {
   el.textContent = notice;
 }
 
-async function refreshCandidateArea() {
+async function refreshCandidateArea(notify = false) {
   const status = await apiFetch("/api/candidate/status", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
   const hostsData = await apiFetch("/api/candidate/hosts", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
+  handleCandidateMonitor(status, notify);
   state.ui.candidateProfile = status.profile || {};
   upsertWorkspaceNotice(
     "candidate-area",
@@ -1499,12 +1618,12 @@ async function refreshCandidateArea() {
   }
 
   const cards = qs("#candidateHostsList");
-  if (!cards) return;
+  if (!cards) return { ...status, hosts: hostsData.hosts || [] };
 
   const hosts = hostsData.hosts || [];
   if (!hosts.length) {
     cards.innerHTML = `<p class="module-note">Nenhum anfitrião ativo disponível.</p>`;
-    return;
+    return { ...status, hosts };
   }
 
   const groupedHosts = new Map();
@@ -1535,6 +1654,7 @@ async function refreshCandidateArea() {
     .join("");
 
   cards.innerHTML = content || `<p class="module-note">Nenhum anfitrião ativo disponível.</p>`;
+  return { ...status, hosts };
 }
 
 function buildHostRows(rows, targetId) {
@@ -1572,8 +1692,9 @@ function buildHostRows(rows, targetId) {
     .join("");
 }
 
-async function refreshHostArea() {
+async function refreshHostArea(notify = false) {
   const data = await apiFetch("/api/host/requests", { headers: { Authorization: `Bearer ${state.tokens.host}` } });
+  handleHostMonitor(data, notify);
   upsertWorkspaceNotice(
     "host-area",
     "As solicitações recebidas aguardam sua análise. Ao aceitar ou rejeitar, o status é refletido para o intercambista."
@@ -1589,6 +1710,7 @@ async function refreshHostArea() {
   buildHostRows(pendentes, "hostPendingTableBody");
   buildHostRows(cadastrados, "hostAcceptedTableBody");
   applyHostSearch();
+  return data;
 }
 
 function buildAdminRows(rows, targetId) {
@@ -1634,8 +1756,9 @@ function buildAdminRows(rows, targetId) {
     .join("");
 }
 
-async function refreshAdminArea() {
+async function refreshAdminArea(notify = false) {
   const data = await apiFetch("/api/admin/overview", { headers: { Authorization: `Bearer ${state.tokens.admin}` } });
+  handleAdminMonitor(data, notify);
   upsertWorkspaceNotice(
     "admin-area",
     "Cadastros aprovados ficam disponíveis para o fluxo do programa. Use Solicitações para analisar novos pedidos e Cadastrados para acompanhar o que já está ativo."
@@ -1644,6 +1767,7 @@ async function refreshAdminArea() {
   state.ui.adminApproved = data.cadastrados || [];
   buildAdminRows(state.ui.adminApproved, "adminApprovedTableBody");
   applyAdminSearch();
+  return data;
 }
 
 function applyAdminSearch() {
