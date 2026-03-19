@@ -93,11 +93,11 @@ async function apiFetch(url, options = {}) {
   let response;
   try {
     response = await fetch(requestUrl, {
+      ...options,
       headers: {
         "Content-Type": "application/json",
         ...(options.headers || {}),
       },
-      ...options,
     });
   } catch (error) {
     console.error("[apiFetch:network-error]", {
