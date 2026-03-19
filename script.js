@@ -203,6 +203,11 @@ function diffNewItems(previous = [], current = []) {
   return current.filter((item) => !previousSet.has(item));
 }
 
+function isWorkspaceSessionError(message) {
+  const text = String(message || "").toLowerCase();
+  return text.includes("sess") || text.includes("nao encontrado") || text.includes("não encontrado");
+}
+
 function createAdminMonitorSnapshot(data = {}) {
   return {
     pendingIds: (Array.isArray(data.solicitacoes) ? data.solicitacoes : [])
@@ -287,7 +292,22 @@ async function pollActiveWorkspace() {
     } else if (screenId === "candidate-area" && state.tokens.candidate) {
       await refreshCandidateArea(true);
     }
-  } catch (_) {}
+  } catch (error) {
+    if (!isWorkspaceSessionError(error?.message)) return;
+    if (screenId === "candidate-area") {
+      state.tokens.candidate = "";
+      saveTokens();
+      openWorkspace("candidate-login");
+    } else if (screenId === "host-area") {
+      state.tokens.host = "";
+      saveTokens();
+      openWorkspace("host-login");
+    } else if (screenId === "admin-area") {
+      state.tokens.admin = "";
+      saveTokens();
+      openWorkspace("admin-login");
+    }
+  }
 }
 
 function syncWorkspaceMonitor(screenId) {
@@ -2418,7 +2438,7 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         await loadWorkspaceWithLottie(() => refreshAdminArea(), "Carregando área do administrador...");
       } catch (error) {
-        if (!String(error?.message || "").toLowerCase().includes("sess")) return;
+        if (!isWorkspaceSessionError(error?.message)) return;
         state.tokens.admin = "";
         saveTokens();
         openWorkspace("admin-login");
@@ -2432,7 +2452,7 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         await loadWorkspaceWithLottie(() => refreshHostArea(), "Carregando área do anfitrião...");
       } catch (error) {
-        if (!String(error?.message || "").toLowerCase().includes("sess")) return;
+        if (!isWorkspaceSessionError(error?.message)) return;
         state.tokens.host = "";
         saveTokens();
         openWorkspace("host-login");
@@ -2446,7 +2466,7 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         await loadWorkspaceWithLottie(() => refreshCandidateArea(), "Carregando área do intercambista...");
       } catch (error) {
-        if (!String(error?.message || "").toLowerCase().includes("sess")) return;
+        if (!isWorkspaceSessionError(error?.message)) return;
         state.tokens.candidate = "";
         saveTokens();
         openWorkspace("candidate-login");

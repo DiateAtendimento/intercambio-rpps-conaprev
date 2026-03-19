@@ -791,6 +791,16 @@ function findHostBySessionSubject(rows, subject) {
   return rows.find((item) => item.rowNumber === rowNumber) || null;
 }
 
+function findCandidateBySessionSubject(rows, subject) {
+  const cpf = onlyDigits(subject);
+  if (cpf.length === 11) {
+    return rows.find((item) => onlyDigits(item.data.CPF || "") === cpf) || null;
+  }
+  const rowNumber = Number(subject);
+  if (!rowNumber) return null;
+  return rows.find((item) => item.rowNumber === rowNumber) || null;
+}
+
 function findHostForCandidateSelection(rows, criteria = {}) {
   const hostNumero = String(criteria.numeroInscricao || "").trim();
   const cnpj = onlyDigits(criteria.cnpj);
@@ -1716,7 +1726,7 @@ app.post("/api/candidate/login", loginLimiter, async (req, res) => {
       return res.status(401).json({ error: "Credenciais inválidas." });
     }
 
-    const token = createToken("candidate", String(found.rowNumber));
+    const token = createToken("candidate", cpf);
     res.json({
       token,
       profile: {
@@ -1926,16 +1936,15 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
       return res.status(400).json({ error: "Anfitrião ainda não autorizado pelo admin." });
     }
 
-    const candidateRow = Number(req.session.subject);
     const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
     logLookup("candidate-select-host", "candidate_lookup_start", {
-      candidateRow,
+      candidateSubject: req.session.subject,
       totalCandidates: candidates.rows.length,
     });
-    const candidate = candidates.rows.find((row) => row.rowNumber === candidateRow);
+    const candidate = findCandidateBySessionSubject(candidates.rows, req.session.subject);
 
     if (!candidate) {
-      logLookup("candidate-select-host", "candidate_not_found", { candidateRow });
+      logLookup("candidate-select-host", "candidate_not_found", { candidateSubject: req.session.subject });
       return res.status(404).json({ error: "Intercambista nao encontrado." });
     }
     logLookup("candidate-select-host", "candidate_matched", {
@@ -2008,9 +2017,8 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
 
 app.get("/api/candidate/status", requireAuth("candidate"), async (req, res) => {
   try {
-    const candidateRow = Number(req.session.subject);
     const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
-    const candidate = candidates.rows.find((row) => row.rowNumber === candidateRow);
+    const candidate = findCandidateBySessionSubject(candidates.rows, req.session.subject);
 
     if (!candidate) {
       return res.status(404).json({ error: "Intercambista nao encontrado." });
