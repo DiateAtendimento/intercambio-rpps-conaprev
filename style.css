@@ -1046,6 +1046,31 @@ body.system-menu-open {
   vertical-align: middle;
 }
 
+.workspace-screen[data-screen-id="candidate-area"] .env-table th:first-child,
+.workspace-screen[data-screen-id="candidate-area"] .env-table td:first-child {
+  width: 150px;
+}
+
+.workspace-screen[data-screen-id="candidate-area"] .env-table th:nth-child(2),
+.workspace-screen[data-screen-id="candidate-area"] .env-table td:nth-child(2) {
+  width: 290px;
+}
+
+.workspace-screen[data-screen-id="candidate-area"] .env-table th:nth-child(3),
+.workspace-screen[data-screen-id="candidate-area"] .env-table td:nth-child(3) {
+  width: 190px;
+}
+
+.workspace-screen[data-screen-id="candidate-area"] .env-table th:nth-child(4),
+.workspace-screen[data-screen-id="candidate-area"] .env-table td:nth-child(4) {
+  width: 56px;
+}
+
+.workspace-screen[data-screen-id="candidate-area"] .env-table th:nth-child(5),
+.workspace-screen[data-screen-id="candidate-area"] .env-table td:nth-child(5) {
+  width: 270px;
+}
+
 .status {
   font-weight: 700;
 }
