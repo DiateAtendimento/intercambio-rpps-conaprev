@@ -159,6 +159,7 @@ const hostHeaders = [
   "Primeiro Acesso Concluído",
   "Status do Anfitrião",
   "Permissão admin",
+  "Observação do admin",
 ];
 
 const candidateHeaders = [
@@ -1567,6 +1568,9 @@ app.post("/api/host/decision", requireAuth("host"), async (req, res) => {
     if (!candidateRow || !["aceito", "rejeitado"].includes(decision)) {
       return res.status(400).json({ error: "Dados inválidos para decisão." });
     }
+    if (decision === "rejeitado" && !note) {
+      return res.status(400).json({ error: "Informe o motivo da rejeição." });
+    }
 
     const hostData = await getRows(HOST_SHEET, hostHeaders);
     logLookup("host-decision", "start", {
@@ -1661,7 +1665,7 @@ app.post("/api/host/decision", requireAuth("host"), async (req, res) => {
       );
     }
 
-    res.json({ ok: true });
+    res.json({ ok: true, message: decision === "aceito" ? "Solicitação aceita com sucesso." : "Solicitação rejeitada com sucesso." });
   } catch (error) {
     console.error("host/decision", error);
     res.status(500).json({ error: "Falha ao registrar decisão." });
@@ -1745,8 +1749,12 @@ app.post("/api/candidate/login", loginLimiter, async (req, res) => {
 app.post("/api/host/remove-candidate", requireAuth("host"), async (req, res) => {
   try {
     const candidateRow = Number(req.body.candidateRow);
+    const note = sanitizeInput(req.body.note || "", 600);
     if (!candidateRow) {
       return res.status(400).json({ error: "Linha da inscrição inválida." });
+    }
+    if (!note) {
+      return res.status(400).json({ error: "Informe o motivo do cancelamento." });
     }
 
     const hosts = await getRows(HOST_SHEET, hostHeaders);
@@ -1769,12 +1777,12 @@ app.post("/api/host/remove-candidate", requireAuth("host"), async (req, res) => 
     candidate.data["Status da solicitação"] = "Pendente";
     candidate.data["Status final"] = "Pendente";
     candidate.data["Data da decisão"] = "";
-    candidate.data["Observação da decisão"] = "";
+    candidate.data["Observação da decisão"] = note;
     await updateRow(EXCHANGE_REQUESTS_SHEET, requests.headers, candidate.rowNumber, candidate.data);
     host.data["Vagas restantes"] = String(recalculateHostRemainingVacancies(host, requests.rows));
     await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
 
-    res.json({ ok: true });
+    res.json({ ok: true, message: "Inscrição do intercambista cancelada com sucesso." });
   } catch (error) {
     console.error("host/remove-candidate", error);
     res.status(500).json({ error: "Falha ao remover inscrição do intercambista." });
@@ -2161,6 +2169,11 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
     const dirigente = sanitizeInput(req.body.dirigente, 200);
     const dataSolicitacao = normalizeDateBr(req.body.dataSolicitacao);
     const permissao = normalizeText(req.body.status) === "negado" ? "Negado" : "Concedido";
+    const note = sanitizeInput(req.body.note || "", 600);
+
+    if (permissao === "Negado" && !note) {
+      return res.status(400).json({ error: "Informe o motivo da rejeição." });
+    }
 
     const data = await getRows(HOST_SHEET, hostHeaders);
     logLookup("admin-host-status", "start", {
@@ -2228,6 +2241,7 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
     host.data["Permissão admin"] = permissao;
     host.data["Status do Anfitrião"] = permissao === "Concedido" ? "Ativo" : "Inativo";
     host.data["Data aceite MPS"] = permissao === "Concedido" ? nowBrDate() : "";
+    host.data["Observação do admin"] = note;
     if (permissao === "Concedido") {
       if (!host.data["Senha"]) {
         const senhaInicial = generateHostPassword();
@@ -2253,7 +2267,7 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
     host.data["Primeiro Acesso Concluído"] = resolveHostFirstAccess(host.data);
     await updateRow(HOST_SHEET, data.headers, host.rowNumber, host.data);
 
-    res.json({ ok: true, status: permissao });
+    res.json({ ok: true, status: permissao, message: permissao === "Concedido" ? "Cadastro aprovado com sucesso." : "Cadastro rejeitado com sucesso." });
   } catch (error) {
     console.error("admin/host-status", error);
     res.status(500).json({ error: "Falha ao alterar permissão do anfitrião." });
@@ -2263,8 +2277,12 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
 app.post("/api/admin/remove-host", requireAuth("admin"), async (req, res) => {
   try {
     const rowNumber = Number(req.body.rowNumber);
+    const note = sanitizeInput(req.body.note || "", 600);
     if (!rowNumber) {
       return res.status(400).json({ error: "Linha do anfitrião inválida." });
+    }
+    if (!note) {
+      return res.status(400).json({ error: "Informe o motivo do cancelamento." });
     }
 
     const hosts = await getRows(HOST_SHEET, hostHeaders);
@@ -2277,10 +2295,11 @@ app.post("/api/admin/remove-host", requireAuth("admin"), async (req, res) => {
     host.data["Permissão admin"] = "Removido";
     host.data["Data aceite MPS"] = "";
     host.data["Senha"] = "";
+    host.data["Observação do admin"] = note;
     host.data["Primeiro Acesso Concluído"] = resolveHostFirstAccess(host.data);
     await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
 
-    res.json({ ok: true });
+    res.json({ ok: true, message: "Inscrição do anfitrião cancelada com sucesso." });
   } catch (error) {
     console.error("admin/remove-host", error);
     res.status(500).json({ error: "Falha ao remover inscrição do anfitrião." });

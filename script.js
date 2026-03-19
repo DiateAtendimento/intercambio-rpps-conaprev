@@ -21,6 +21,7 @@
 };
 
 let modalChoiceResolver = null;
+let modalTextResolver = null;
 
 const STORAGE_KEYS = {
   tokens: "intercambio_tokens_v1",
@@ -337,6 +338,29 @@ function showMessageModal(title, message, kind = "info") {
     `,
     { closeByBackdrop: false, closeByEsc: false, variant: "message" }
   );
+}
+
+function showNotePromptModal(title, message, confirmLabel = "Confirmar", { required = true, placeholder = "Descreva o motivo..." } = {}) {
+  return new Promise((resolve) => {
+    modalTextResolver = resolve;
+    openModal(
+      title,
+      `
+        <form id="notePromptForm" class="module-form modal-inline-form">
+          <p class="module-note">${escapeHtml(message)}</p>
+          <label>
+            Motivo
+            <textarea name="note" rows="5" placeholder="${escapeHtml(placeholder)}" ${required ? "required" : ""}></textarea>
+          </label>
+          <div class="first-access-actions">
+            <button type="button" class="btn btn-outline" data-action="cancel-note-prompt">Cancelar</button>
+            <button type="submit" class="btn btn-primary">${escapeHtml(confirmLabel)}</button>
+          </div>
+        </form>
+      `,
+      { closeByBackdrop: false, closeByEsc: false }
+    );
+  });
 }
 
 function showAccessInfoModal(accessInfo) {
@@ -2112,6 +2136,17 @@ function setupWorkspaceActions() {
   qs("#hostSearchInput")?.addEventListener("input", applyHostSearch);
 
   document.addEventListener("submit", async (event) => {
+    const notePromptForm = event.target.closest("#notePromptForm");
+    if (notePromptForm && typeof modalTextResolver === "function") {
+      event.preventDefault();
+      const resolver = modalTextResolver;
+      modalTextResolver = null;
+      const note = String(notePromptForm.querySelector('[name="note"]')?.value || "").trim();
+      closeModal();
+      resolver(note);
+      return;
+    }
+
     const form = event.target.closest("#candidateApplyForm");
     if (!form) return;
     event.preventDefault();
@@ -2203,6 +2238,14 @@ function setupWorkspaceActions() {
       resolver(confirmed);
       return;
     }
+    const cancelNotePromptEl = event.target.closest('[data-action="cancel-note-prompt"]');
+    if (cancelNotePromptEl && typeof modalTextResolver === "function") {
+      const resolver = modalTextResolver;
+      modalTextResolver = null;
+      closeModal();
+      resolver("");
+      return;
+    }
     const closeEl = event.target.closest("[data-close-modal]");
     if (closeEl) {
       const modal = qs("#detailsModal");
@@ -2267,22 +2310,32 @@ function setupWorkspaceActions() {
       }
 
       if (action === "host-decision") {
-        const note = "";
-        await withActionLottie(
+        const isAccept = actionEl.dataset.decision === "aceito";
+        const note = isAccept
+          ? ""
+          : await showNotePromptModal("Motivo da rejeição", "Informe o motivo da rejeição para o intercambista.", "Rejeitar");
+        if (!isAccept && !note) return;
+        const data = await withActionLottie(
           () =>
             apiFetch("/api/host/decision", {
               method: "POST",
               headers: { Authorization: `Bearer ${state.tokens.host}` },
               body: JSON.stringify({ candidateRow: rowNumber, decision: actionEl.dataset.decision, note }),
             }),
-          actionEl.dataset.decision === "aceito" ? "Registrando aceite..." : "Registrando recusa..."
+          isAccept ? "Registrando aceite..." : "Registrando recusa..."
         );
         await refreshHostArea();
+        showToast(data.message || (isAccept ? "Solicitação aceita com sucesso." : "Solicitação rejeitada com sucesso."), "success", "Sucesso");
       }
 
       if (action === "admin-status") {
+        const isApproved = normalizeText(actionEl.dataset.status) === "concedido";
+        const note = isApproved
+          ? ""
+          : await showNotePromptModal("Motivo da rejeição", "Informe o motivo da rejeição para o anfitrião.", "Rejeitar");
+        if (!isApproved && !note) return;
         await probeBackendReachability("admin-host-status");
-        await withActionLottie(
+        const data = await withActionLottie(
           () =>
             apiFetch("/api/admin/host-status", {
               method: "POST",
@@ -2300,11 +2353,13 @@ function setupWorkspaceActions() {
                 email: actionEl.dataset.email || "",
                 dirigente: actionEl.dataset.dirigente || "",
                 dataSolicitacao: actionEl.dataset.data || "",
+                note,
               }),
             }),
-          "Atualizando status do anfitrião..."
+          isApproved ? "Aprovando anfitrião..." : "Registrando rejeição..."
         );
         await refreshAdminArea();
+        showToast(data.message || (isApproved ? "Cadastro aprovado com sucesso." : "Cadastro rejeitado com sucesso."), "success", "Sucesso");
       }
 
       if (action === "admin-open-cred") {
@@ -2379,33 +2434,35 @@ function setupWorkspaceActions() {
       }
 
       if (action === "admin-remove-host") {
-        const ok = await showConfirmModal("Confirmação", "Deseja remover a inscrição deste anfitrião?", "Remover");
-        if (!ok) return;
-        await withActionLottie(
+        const note = await showNotePromptModal("Motivo do cancelamento", "Informe o motivo do cancelamento da inscrição do anfitrião.", "Cancelar inscrição");
+        if (!note) return;
+        const data = await withActionLottie(
           () =>
             apiFetch("/api/admin/remove-host", {
               method: "POST",
               headers: { Authorization: `Bearer ${state.tokens.admin}` },
-              body: JSON.stringify({ rowNumber }),
+              body: JSON.stringify({ rowNumber, note }),
             }),
           "Removendo anfitrião..."
         );
         await refreshAdminArea();
+        showToast(data.message || "Inscrição do anfitrião cancelada com sucesso.", "success", "Sucesso");
       }
 
       if (action === "host-remove-candidate") {
-        const ok = await showConfirmModal("Confirmação", "Deseja remover a inscrição deste intercambista?", "Remover");
-        if (!ok) return;
-        await withActionLottie(
+        const note = await showNotePromptModal("Motivo do cancelamento", "Informe o motivo do cancelamento da inscrição do intercambista.", "Cancelar inscrição");
+        if (!note) return;
+        const data = await withActionLottie(
           () =>
             apiFetch("/api/host/remove-candidate", {
               method: "POST",
               headers: { Authorization: `Bearer ${state.tokens.host}` },
-              body: JSON.stringify({ candidateRow: rowNumber }),
+              body: JSON.stringify({ candidateRow: rowNumber, note }),
             }),
           "Removendo intercambista..."
         );
         await refreshHostArea();
+        showToast(data.message || "Inscrição do intercambista cancelada com sucesso.", "success", "Sucesso");
       }
 
       if (action === "logout-admin") {
