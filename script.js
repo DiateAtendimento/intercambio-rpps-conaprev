@@ -1562,6 +1562,7 @@ function buildHostRows(rows, targetId) {
                  </div>
                </td>`
             : `<td>${escapeHtml(item.dirigente || "-")}</td>
+               <td>${escapeHtml(item.dataSolicitacao || "-")}</td>
                <td>${escapeHtml(item.dataDecisao || "-")}</td>
                <td>${iconButton("host-open-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho")}</td>
                <td>${iconButton("host-remove-candidate", item.rowNumber, "icone-lixeira.svg", "Remover inscrição")}</td>`

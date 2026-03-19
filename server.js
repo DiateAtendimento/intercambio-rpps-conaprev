@@ -1466,15 +1466,27 @@ app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
     }
 
     const requests = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
+    const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    const candidateByRegistration = new Map(
+      candidates.rows.map((row) => [String(row.data["Inscrição"] || ""), row.data])
+    );
+    const enrichRequest = (row) => {
+      const summary = exchangeRequestSummaryView(row);
+      const candidateData = candidateByRegistration.get(String(summary.inscricaoIntercambista || ""));
+      return {
+        ...summary,
+        dirigente: candidateData?.["Nome do Dirigente ou Responsável Legal"] || "",
+      };
+    };
     const pendentes = requests.rows
       .filter((row) => String(row.data["Anfitrião - Inscrição"] || "") === hostNumero)
       .filter((row) => normalizeText(row.data["Status da solicitação"] || "") === "pendente")
-      .map(exchangeRequestSummaryView);
+      .map(enrichRequest);
 
     const cadastrados = requests.rows
       .filter((row) => String(row.data["Anfitrião - Inscrição"] || "") === hostNumero)
       .filter((row) => normalizeText(row.data["Status da solicitação"] || "") === "aceito")
-      .map(exchangeRequestSummaryView);
+      .map(enrichRequest);
 
     res.json({
       host: {
