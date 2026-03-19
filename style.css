@@ -1097,6 +1097,7 @@ body.system-menu-open {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
   width: 100%;
+  align-items: start;
 }
 
 .host-region-group {
@@ -1126,7 +1127,9 @@ body.system-menu-open {
   display: grid;
   gap: 0.35rem;
   cursor: pointer;
-  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+  align-self: start;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
 .host-card:hover {
@@ -1164,13 +1167,15 @@ body.system-menu-open {
 .host-card__areas-head,
 .host-card__area-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 64px;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.6rem;
   align-items: start;
 }
 
 .host-card__areas-head {
   padding-top: 0.1rem;
+  font-size: 0.68rem;
+  line-height: 1.1;
 }
 
 .host-card__area-row {
@@ -1186,6 +1191,7 @@ body.system-menu-open {
   text-align: right;
   font-weight: 600;
   color: #173a5c;
+  white-space: nowrap;
 }
 
 .host-card__areas-more {
@@ -1194,11 +1200,11 @@ body.system-menu-open {
   overflow: hidden;
   max-height: 0;
   opacity: 0;
-  transition: max-height 0.24s ease, opacity 0.18s ease;
+  transition: max-height 0.28s ease, opacity 0.2s ease;
 }
 
 .host-card.host-card--expanded .host-card__areas-more {
-  max-height: 240px;
+  max-height: 320px;
   opacity: 1;
 }
 
