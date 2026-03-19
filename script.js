@@ -2186,9 +2186,15 @@ function setupWorkspaceActions() {
         event.preventDefault();
         event.stopPropagation();
         const card = actionEl.closest(".host-card");
-        const more = card?.querySelector(".host-card__areas-more");
-        if (!card || !more) return;
-        const expanded = card.classList.toggle("host-card--expanded");
+        if (!card) return;
+        const willExpand = !card.classList.contains("host-card--expanded");
+        qsa(".host-card.host-card--expanded").forEach((item) => {
+          if (item === card) return;
+          item.classList.remove("host-card--expanded");
+          item.querySelector('[data-action="host-card-toggle-areas"]')?.replaceChildren(document.createTextNode("Ver mais"));
+        });
+        const expanded = willExpand;
+        card.classList.toggle("host-card--expanded", expanded);
         actionEl.textContent = expanded ? "Ver menos" : "Ver mais";
         return;
       }
