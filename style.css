@@ -898,7 +898,7 @@ body.system-menu-open {
 }
 
 .table-wrap--limited {
-  max-height: 330px;
+  max-height: 286px;
   overflow-y: auto;
 }
 
