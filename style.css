@@ -897,6 +897,17 @@ body.system-menu-open {
   background: #fff;
 }
 
+.table-wrap--limited {
+  max-height: 330px;
+  overflow-y: auto;
+}
+
+.table-wrap--limited thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
 .env-table {
   width: 100%;
   border-collapse: collapse;
@@ -1039,9 +1050,11 @@ body.system-menu-open {
 .workspace-screen[data-screen-id="candidate-area"] .env-table th:nth-child(6),
 .workspace-screen[data-screen-id="candidate-area"] .env-table th:nth-child(7),
 .workspace-screen[data-screen-id="candidate-area"] .env-table th:nth-child(8),
+.workspace-screen[data-screen-id="candidate-area"] .env-table th:nth-child(9),
 .workspace-screen[data-screen-id="candidate-area"] .env-table td:nth-child(6),
 .workspace-screen[data-screen-id="candidate-area"] .env-table td:nth-child(7),
-.workspace-screen[data-screen-id="candidate-area"] .env-table td:nth-child(8) {
+.workspace-screen[data-screen-id="candidate-area"] .env-table td:nth-child(8),
+.workspace-screen[data-screen-id="candidate-area"] .env-table td:nth-child(9) {
   text-align: center;
   vertical-align: middle;
 }
@@ -1085,6 +1098,50 @@ body.system-menu-open {
 
 .status--pending {
   color: #7263e9;
+}
+
+.feedback-mail-btn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff7d6 0%, #ffe18c 100%);
+  color: #b86b00;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(184, 107, 0, 0.22);
+  animation: feedback-pulse 1.5s ease-in-out infinite;
+}
+
+.feedback-mail-btn__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes feedback-pulse {
+  0%, 100% {
+    box-shadow: 0 8px 18px rgba(184, 107, 0, 0.22);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 8px 18px rgba(184, 107, 0, 0.3), 0 0 0 6px rgba(255, 196, 79, 0.18);
+    transform: scale(1.05);
+  }
 }
 
 .host-region-list {

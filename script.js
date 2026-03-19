@@ -1510,6 +1510,24 @@ function formatStatus(status) {
   return `<span class="${getStatusClass(text)}">${escapeHtml(text)}</span>`;
 }
 
+function renderCandidateFeedbackButton(item) {
+  const rejected = normalizeText(item.statusSolicitacao || "") === "rejeitado";
+  const feedback = String(item.observacaoDecisao || "").trim();
+  if (!rejected || !feedback) return "-";
+  return `
+    <button
+      type="button"
+      class="feedback-mail-btn"
+      data-action="candidate-open-feedback"
+      data-feedback-title="${escapeHtml(`Feedback da inscrição ${item.inscricao || ""}`)}"
+      data-feedback-message="${escapeHtml(feedback)}"
+      aria-label="Abrir feedback da rejeição"
+    >
+      <i class="fa-solid fa-envelope"></i>
+      <span class="feedback-mail-btn__badge">1</span>
+    </button>`;
+}
+
 const REGION_ORDER = ["Norte", "Nordeste", "Centro-Oeste", "Sudeste", "Sul"];
 
 const UF_REGION_MAP = {
@@ -1685,10 +1703,11 @@ async function refreshCandidateArea(notify = false) {
               <td>${escapeHtml(item.dataSolicitacao || "-")}</td>
               <td>${escapeHtml(item.dataDecisao || "-")}</td>
               <td>${formatStatus(item.statusSolicitacao || item.statusIntercambista || "Pendente")}</td>
+              <td>${renderCandidateFeedbackButton(item)}</td>
             </tr>`
           )
           .join("")
-      : `<tr><td colspan="8">Sem inscrições realizadas.</td></tr>`;
+      : `<tr><td colspan="9">Sem inscrições realizadas.</td></tr>`;
   }
 
   const cards = qs("#candidateHostsList");
@@ -2216,6 +2235,17 @@ function setupWorkspaceActions() {
         const expanded = willExpand;
         card.classList.toggle("host-card--expanded", expanded);
         actionEl.textContent = expanded ? "Ver menos" : "Ver mais";
+        return;
+      }
+
+      if (action === "candidate-open-feedback") {
+        event.preventDefault();
+        event.stopPropagation();
+        showMessageModal(
+          actionEl.dataset.feedbackTitle || "Feedback da rejeição",
+          actionEl.dataset.feedbackMessage || "Sem observações disponíveis.",
+          "warning"
+        );
         return;
       }
 

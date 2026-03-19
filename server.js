@@ -904,6 +904,7 @@ function exchangeRequestSummaryView(row) {
     hostNome: row.data["Anfitrião - Nome"] || "",
     dataSolicitacao: normalizeDateBr(row.data["Data da inscrição"] || ""),
     dataDecisao: normalizeDateBr(row.data["Data da decisão"] || ""),
+    observacaoDecisao: row.data["Observação da decisão"] || "",
     statusSolicitacao: row.data["Status da solicitação"] || "",
     statusIntercambista: row.data["Status final"] || "Pendente",
   };
