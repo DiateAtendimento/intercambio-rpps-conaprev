@@ -1156,6 +1156,73 @@ body.system-menu-open {
   color: #173a5c;
 }
 
+.host-card__areas {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.host-card__areas-head,
+.host-card__area-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  gap: 0.6rem;
+  align-items: start;
+}
+
+.host-card__areas-head {
+  padding-top: 0.1rem;
+}
+
+.host-card__area-row {
+  font-size: 0.78rem;
+  color: #20384f;
+}
+
+.host-card__area-name {
+  min-width: 0;
+}
+
+.host-card__area-vacancies {
+  text-align: right;
+  font-weight: 600;
+  color: #173a5c;
+}
+
+.host-card__areas-more {
+  display: grid;
+  gap: 0.32rem;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.24s ease, opacity 0.18s ease;
+}
+
+.host-card.host-card--expanded .host-card__areas-more {
+  max-height: 240px;
+  opacity: 1;
+}
+
+.host-card__toggle {
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  color: #0b63ad;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0;
+  cursor: pointer;
+}
+
+.host-card__toggle:hover {
+  color: #084f89;
+  text-decoration: underline;
+}
+
+.host-card__areas-empty {
+  color: #5a7088;
+}
+
 .progestao-level {
   font-weight: 700;
   color: #0a6b43;

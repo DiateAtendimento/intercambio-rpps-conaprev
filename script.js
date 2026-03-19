@@ -1560,6 +1560,50 @@ function getStateNameForUf(uf) {
   return UF_NAME_MAP[String(uf || "").trim().toUpperCase()] || String(uf || "").trim().toUpperCase();
 }
 
+function renderHostAreasSummary(host) {
+  const areas = Array.isArray(host.areas) ? host.areas.filter((item) => item?.area) : [];
+  if (!areas.length) {
+    return `
+      <div class="host-card__areas">
+        <div class="host-card__areas-head">
+          <span class="host-card__meta-label">Áreas disponíveis</span>
+          <span class="host-card__meta-label">Nº Vagas</span>
+        </div>
+        <p class="host-card__areas-empty">-</p>
+      </div>`;
+  }
+
+  const previewCount = 2;
+  const previewAreas = areas.slice(0, previewCount);
+  const extraAreas = areas.slice(previewCount);
+  const renderAreaRow = (item) => `
+    <div class="host-card__area-row">
+      <span class="host-card__area-name">${escapeHtml(item.area || "-")}</span>
+      <span class="host-card__area-vacancies">${escapeHtml(String(item.restantes || item.vagas || "-"))}</span>
+    </div>`;
+
+  return `
+    <div class="host-card__areas">
+      <div class="host-card__areas-head">
+        <span class="host-card__meta-label">Áreas disponíveis</span>
+        <span class="host-card__meta-label">Nº Vagas</span>
+      </div>
+      <div class="host-card__areas-list">
+        ${previewAreas.map(renderAreaRow).join("")}
+      </div>
+      ${
+        extraAreas.length
+          ? `
+            <div class="host-card__areas-more" hidden>
+              ${extraAreas.map(renderAreaRow).join("")}
+            </div>
+            <button type="button" class="host-card__toggle" data-action="host-card-toggle-areas">Ver mais</button>
+          `
+          : ""
+      }
+    </div>`;
+}
+
 function buildCandidateHostCard(host) {
   return `
     <article class="host-card" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" role="button" tabindex="0">
@@ -1573,7 +1617,7 @@ function buildCandidateHostCard(host) {
       </p>
       <p><span class="host-card__meta-label">Número de vagas:</span> ${escapeHtml(host.vagas || "-")}</p>
       <p><span class="host-card__meta-label">Vagas restantes:</span> ${escapeHtml(host.vagasRestantes || "-")}</p>
-      <p><span class="host-card__meta-label">Áreas disponíveis:</span> ${escapeHtml((host.areas || []).map((item) => `${item.area} (${item.restantes || item.vagas} vaga(s))`).filter(Boolean).join(", ") || "-")}</p>
+      ${renderHostAreasSummary(host)}
       <button class="btn btn-primary" type="button" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}">Inscrever-se</button>
     </article>`;
 }
@@ -2138,6 +2182,17 @@ function setupWorkspaceActions() {
     const rowNumber = Number(actionEl.dataset.row || 0);
 
     try {
+      if (action === "host-card-toggle-areas") {
+        event.preventDefault();
+        event.stopPropagation();
+        const card = actionEl.closest(".host-card");
+        const more = card?.querySelector(".host-card__areas-more");
+        if (!card || !more) return;
+        const expanded = card.classList.toggle("host-card--expanded");
+        actionEl.textContent = expanded ? "Ver menos" : "Ver mais";
+        return;
+      }
+
       if (action === "open-host-application") {
         const sourceCard = actionEl.closest(".host-card");
         const hostMeta = {
