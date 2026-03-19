@@ -2265,9 +2265,10 @@ app.post("/api/admin/remove-host", requireAuth("admin"), async (req, res) => {
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }
 
-    host.data["Status do Anfitrião"] = "Pendente";
-    host.data["Permissão admin"] = "Pendente";
+    host.data["Status do Anfitrião"] = "Inativo";
+    host.data["Permissão admin"] = "Removido";
     host.data["Data aceite MPS"] = "";
+    host.data["Senha"] = "";
     host.data["Primeiro Acesso Concluído"] = resolveHostFirstAccess(host.data);
     await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
 
