@@ -1832,11 +1832,11 @@ app.get("/api/candidate/hosts", requireAuth("candidate"), async (req, res) => {
 
 app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res) => {
   try {
-    const hostNumero = sanitizeInput(req.body.numeroInscricao, 40);
-    const cnpj = onlyDigits(req.body.cnpj);
-    const entidade = sanitizeInput(req.body.entidade, 250);
-    const uf = sanitizeInput(req.body.uf, 2).toUpperCase();
-    const municipio = sanitizeInput(req.body.municipio, 200);
+    const hostNumero = sanitizeInput(req.body.numeroInscricao || req.body.hostNumeroInscricao, 40);
+    const cnpj = onlyDigits(req.body.cnpj || req.body.hostCnpj);
+    const entidade = sanitizeInput(req.body.entidade || req.body.hostEntidade, 250);
+    const uf = sanitizeInput(req.body.uf || req.body.hostUf, 2).toUpperCase();
+    const municipio = sanitizeInput(req.body.municipio || req.body.hostMunicipio, 200);
     if (!hostNumero && !cnpj && !entidade) {
       return res.status(400).json({ error: "Informe um anfitrião." });
     }

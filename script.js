@@ -1003,10 +1003,15 @@ function buildCandidateApplicationPayload(form) {
 
   return {
     numeroInscricao: fallbackValue('[name="hostNumeroInscricao"]', "host", "numeroInscricao"),
+    hostNumeroInscricao: fallbackValue('[name="hostNumeroInscricao"]', "host", "numeroInscricao"),
     cnpj: fallbackValue('[name="hostCnpj"]', "cnpj", "cnpj"),
+    hostCnpj: fallbackValue('[name="hostCnpj"]', "cnpj", "cnpj"),
     entidade: fallbackValue('[name="hostEntidade"]', "entidade", "entidade"),
+    hostEntidade: fallbackValue('[name="hostEntidade"]', "entidade", "entidade"),
     uf: fallbackValue('[name="hostUf"]', "uf", "uf"),
+    hostUf: fallbackValue('[name="hostUf"]', "uf", "uf"),
     municipio: fallbackValue('[name="hostMunicipio"]', "municipio", "municipio"),
+    hostMunicipio: fallbackValue('[name="hostMunicipio"]', "municipio", "municipio"),
     participantes: participants,
     "Temas/áreas de interesse (texto)": String(form.querySelector('[name="temas"]')?.value || "").trim(),
     "Atividades propostas (agenda por dia)": String(form.querySelector('[name="atividades"]')?.value || "").trim(),
