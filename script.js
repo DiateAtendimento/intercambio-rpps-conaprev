@@ -1936,10 +1936,15 @@ function renderHostAreasSummary(host) {
 
 function buildCandidateHostCard(host) {
   const serializedAreas = serializeHostAreasForDataset(host.areas || []);
-  const isUnavailable = Number(host.vagasRestantes || 0) <= 0;
+  const isUnavailable = Number(host.vagasRestantes || 0) <= 0 || !!host.blockedForCandidate;
   const actionAttrs = isUnavailable
     ? `data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializedAreas)}"`
     : `data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializedAreas)}" role="button" tabindex="0"`;
+  const buttonLabel = host.blockedForCandidate
+    ? "Solicitação já enviada"
+    : isUnavailable
+      ? "Sem vagas disponíveis"
+      : "Inscrever-se";
   return `
     <article class="host-card ${isUnavailable ? "host-card--full" : ""}" ${actionAttrs}>
       <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
@@ -1953,7 +1958,7 @@ function buildCandidateHostCard(host) {
       <p><span class="host-card__meta-label">Número de vagas:</span> ${escapeHtml(host.vagas || "-")}</p>
       <p><span class="host-card__meta-label">Vagas restantes:</span> ${escapeHtml(host.vagasRestantes || "-")}</p>
       ${renderHostAreasSummary(host)}
-      <button class="btn btn-primary" type="button" ${isUnavailable ? "disabled" : `data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializedAreas)}"`}>${isUnavailable ? "Sem vagas disponíveis" : "Inscrever-se"}</button>
+      <button class="btn btn-primary" type="button" ${isUnavailable ? "disabled" : `data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializedAreas)}"`}>${buttonLabel}</button>
     </article>`;
 }
 
@@ -1977,7 +1982,17 @@ function upsertWorkspaceNotice(screenId, notice) {
 async function refreshCandidateArea(notify = false) {
   const status = await apiFetch("/api/candidate/status", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
   const hostsData = await apiFetch("/api/candidate/hosts", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
-  handleCandidateMonitor({ status, hosts: hostsData.hosts || [] }, notify);
+  const activeHostNumbers = new Set(
+    (Array.isArray(status.inscricoes) ? status.inscricoes : [])
+      .filter((item) => ["pendente", "aceito"].includes(normalizeText(item.statusSolicitacao || "")))
+      .map((item) => String(item.hostNumero || "").trim())
+      .filter(Boolean)
+  );
+  const visibleHosts = (hostsData.hosts || []).map((host) => ({
+    ...host,
+    blockedForCandidate: activeHostNumbers.has(String(host.numeroInscricao || "").trim()),
+  }));
+  handleCandidateMonitor({ status, hosts: visibleHosts }, notify);
   state.ui.candidateProfile = status.profile || {};
   upsertWorkspaceNotice(
     "candidate-area",
@@ -2008,9 +2023,9 @@ async function refreshCandidateArea(notify = false) {
   }
 
   const cards = qs("#candidateHostsList");
-  if (!cards) return { ...status, hosts: hostsData.hosts || [] };
+  if (!cards) return { ...status, hosts: visibleHosts };
 
-  const hosts = hostsData.hosts || [];
+  const hosts = visibleHosts;
   if (!hosts.length) {
     cards.innerHTML = `<p class="module-note">Nenhum anfitrião ativo disponível.</p>`;
     return { ...status, hosts };
@@ -2354,15 +2369,7 @@ function setupWorkspaceActions() {
     setFeedback("hostLoginFeedback", "Autenticando...", true);
     try {
       const data = await runWithLottie(
-        () =>
-          apiFetch("/api/host/login", {
-            method: "POST",
-            body: JSON.stringify({
-              cnpj: normalizeDigits(payload.cnpj),
-              numeroInscricao: String(payload.numeroInscricao || "").trim(),
-              senha: payload.senha,
-            }),
-          }),
+        () => apiFetch("/api/host/login", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(payload.cnpj), senha: payload.senha }) }),
         {
           loadingPath: "Loading.json",
           loadingMessage: "Carregando informações para acesso do anfitrião...",
