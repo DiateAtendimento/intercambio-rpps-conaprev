@@ -1029,24 +1029,74 @@ function payloadCandidateRegister(form) {
   return payload;
 }
 
+function serializeHostAreasForDataset(areas = []) {
+  try {
+    return JSON.stringify(
+      (Array.isArray(areas) ? areas : [])
+        .filter((item) => item?.area)
+        .map((item) => ({
+          area: String(item.area || ""),
+          vagas: Number(item.vagas || 0),
+          restantes: Number(item.restantes ?? item.vagas ?? 0),
+        }))
+    );
+  } catch (error) {
+    return "[]";
+  }
+}
+
+function parseHostAreasFromValue(value) {
+  try {
+    const parsed = JSON.parse(String(value || "[]"));
+    return Array.isArray(parsed)
+      ? parsed
+          .filter((item) => item?.area)
+          .map((item) => ({
+            area: String(item.area || ""),
+            vagas: Number(item.vagas || 0),
+            restantes: Number(item.restantes ?? item.vagas ?? 0),
+          }))
+      : [];
+  } catch (error) {
+    return [];
+  }
+}
+
 function renderExchangeApplicationForm(host = {}) {
+  const areas = Array.isArray(host.areas) ? host.areas.filter((item) => item?.area) : [];
   return `
-    <form id="candidateApplyForm" class="module-form modal-inline-form" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-max-participants="${escapeHtml(host.vagasRestantes || "0")}">
+    <form id="candidateApplyForm" class="module-form modal-inline-form candidate-apply-form" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-max-participants="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializeHostAreasForDataset(areas))}">
       <input type="hidden" name="hostNumeroInscricao" value="${escapeHtml(host.numeroInscricao || "")}" />
       <input type="hidden" name="hostCnpj" value="${escapeHtml(host.cnpj || "")}" />
       <input type="hidden" name="hostEntidade" value="${escapeHtml(host.entidade || "")}" />
       <input type="hidden" name="hostUf" value="${escapeHtml(host.uf || "")}" />
       <input type="hidden" name="hostMunicipio" value="${escapeHtml(host.municipio || "")}" />
+      <input type="hidden" name="temas" value="" />
       <h4>Participantes indicados para o intercâmbio técnico</h4>
       <p class="form-block-note">
         Vagas disponíveis para esta inscrição:
         <strong id="applyRemainingSlots">${escapeHtml(host.vagasRestantes || "0")}</strong>
         <span id="applyParticipantsCounter"> | Participantes informados: 0</span>
       </p>
-      <div id="applyParticipantList" class="dynamic-list"></div>
+      <div id="applyParticipantWorkspace" class="apply-participant-workspace">
+        <div class="apply-participant-editor">
+          <div class="apply-participant-fields">
+            <input name="applyNome" placeholder="Nome completo" required />
+            <input name="applyCargo" placeholder="Cargo/Função" required />
+            <input name="applyVinculo" placeholder="Tipo de vínculo" required />
+            <input name="applyArea" placeholder="Área de atuação no RPPS ou EFPC" required />
+            <input name="applyCertificacao" placeholder="Certificação" />
+          </div>
+        </div>
+        <div id="applyParticipantFolders" class="apply-folder-list" aria-label="Participantes adicionados"></div>
+      </div>
       <button type="button" class="btn btn-outline dynamic-add-btn" id="addApplyParticipant"><i class="fa-solid fa-plus"></i> Adicionar participante</button>
-      <h4>Temas e áreas de interesse</h4>
-      <label>Temas/áreas de interesse (texto)<textarea name="temas" rows="3" required></textarea></label>
+      <div class="apply-areas-block">
+        <h4>Áreas disponíveis</h4>
+        <div id="applyAreasSummary" class="apply-areas-summary"></div>
+        <h4>Selecione as áreas que você deseja conhecer</h4>
+        <div id="applyAreasSelection" class="apply-areas-selection"></div>
+      </div>
       <h4>Atividades propostas</h4>
       <label>Atividades propostas (agenda por dia)<textarea name="atividades" rows="3" required></textarea></label>
       <h4>Objetivos e compromissos do regime intercambista</h4>
@@ -1070,11 +1120,13 @@ function renderExchangeApplicationForm(host = {}) {
 
 function setupExchangeApplicationForm(prefill = {}) {
   const form = qs("#candidateApplyForm");
-  const list = qs("#applyParticipantList");
   const addButton = qs("#addApplyParticipant");
   const remainingEl = qs("#applyRemainingSlots");
   const counterEl = qs("#applyParticipantsCounter");
-  if (!form || !list || !addButton) return;
+  const foldersEl = qs("#applyParticipantFolders");
+  const areasSummaryEl = qs("#applyAreasSummary");
+  const areasSelectionEl = qs("#applyAreasSelection");
+  if (!form || !addButton || !foldersEl || !areasSummaryEl || !areasSelectionEl) return;
   const selectedHost = state.ui.selectedHostApplication || {};
   form.dataset.host = form.dataset.host || selectedHost.numeroInscricao || "";
   form.dataset.cnpj = form.dataset.cnpj || selectedHost.cnpj || "";
@@ -1091,23 +1143,36 @@ function setupExchangeApplicationForm(prefill = {}) {
   assignHidden("hostUf", form.dataset.uf);
   assignHidden("hostMunicipio", form.dataset.municipio);
   const maxParticipants = Math.max(0, Number(form.dataset.maxParticipants || 0));
-
-  const createParticipantRow = () => {
-    const row = document.createElement("div");
-    row.className = "dynamic-list__row apply-participant-row";
-    row.innerHTML = `
-      <input name="applyNome" placeholder="Nome completo" required />
-      <input name="applyCargo" placeholder="Cargo/Função" required />
-      <input name="applyVinculo" placeholder="Tipo de vínculo" required />
-      <input name="applyArea" placeholder="Área de atuação no RPPS ou EFPC" required />
-      <input name="applyCertificacao" placeholder="Certificação" />
-      <button type="button" class="dynamic-remove-btn" aria-label="Remover participante"><i class="fa-solid fa-xmark"></i></button>
-    `;
-    return row;
+  const areas = parseHostAreasFromValue(form.dataset.areas || serializeHostAreasForDataset(selectedHost.areas || []));
+  const participantFields = {
+    nome: form.querySelector('[name="applyNome"]'),
+    cargo: form.querySelector('[name="applyCargo"]'),
+    vinculo: form.querySelector('[name="applyVinculo"]'),
+    area: form.querySelector('[name="applyArea"]'),
+    certificacao: form.querySelector('[name="applyCertificacao"]'),
   };
+  const folderPalette = [
+    "apply-folder--yellow",
+    "apply-folder--blue",
+    "apply-folder--orange",
+    "apply-folder--green",
+    "apply-folder--red",
+    "apply-folder--teal",
+  ];
+  const createParticipant = () => ({
+    nome: "",
+    cargo: "",
+    vinculo: "",
+    area: "",
+    certificacao: "",
+    selectedAreas: [],
+  });
+  const formState = {
+    participants: maxParticipants > 0 ? [createParticipant()] : [],
+    activeIndex: 0,
+  };
+  form.__applyState = formState;
 
-  const seed = createParticipantRow();
-  if (maxParticipants > 0) list.appendChild(seed);
   form.querySelector('[name="responsavel"]').value = prefill.responsavel || "";
   form.querySelector('[name="cargoResponsavel"]').value = prefill.cargoResponsavel || "";
   const dateInput = form.querySelector('[name="dataInscricao"]');
@@ -1119,43 +1184,191 @@ function setupExchangeApplicationForm(prefill = {}) {
     }
   }
 
-  const getFilledParticipantsCount = () =>
-    qsa("#applyParticipantList .apply-participant-row").filter((row) =>
-      String(row.querySelector('[name="applyNome"]')?.value || "").trim()
-    ).length;
+  const getActiveParticipant = () => formState.participants[formState.activeIndex] || null;
+  const readCurrentParticipant = () => {
+    const participant = getActiveParticipant();
+    if (!participant) return;
+    participant.nome = String(participantFields.nome?.value || "").trim();
+    participant.cargo = String(participantFields.cargo?.value || "").trim();
+    participant.vinculo = String(participantFields.vinculo?.value || "").trim();
+    participant.area = String(participantFields.area?.value || "").trim();
+    participant.certificacao = String(participantFields.certificacao?.value || "").trim();
+  };
+  const writeCurrentParticipant = () => {
+    const participant = getActiveParticipant();
+    Object.entries(participantFields).forEach(([key, field]) => {
+      if (!field) return;
+      field.value = participant?.[key] || "";
+    });
+  };
+  const participantIsComplete = (participant) =>
+    !!participant &&
+    [participant.nome, participant.cargo, participant.vinculo, participant.area].every((value) => String(value || "").trim()) &&
+    (!areas.length || (Array.isArray(participant.selectedAreas) && participant.selectedAreas.length > 0));
+  const getFilledParticipantsCount = () => formState.participants.filter(participantIsComplete).length;
+  const getSelectedCountForArea = (areaName) =>
+    formState.participants.reduce((total, participant) => {
+      return total + (participant.selectedAreas || []).filter((item) => item === areaName).length;
+    }, 0);
+  const buildThemesValue = () => {
+    const labels = Array.from(
+      new Set(
+        formState.participants.flatMap((participant) =>
+          Array.isArray(participant.selectedAreas) ? participant.selectedAreas : []
+        )
+      )
+    );
+    return labels.join("; ");
+  };
+  const syncThemesField = () => {
+    const field = form.querySelector('[name="temas"]');
+    if (field) field.value = buildThemesValue();
+  };
+  const renderFolders = () => {
+    foldersEl.innerHTML = formState.participants
+      .map((participant, index) => {
+        const paletteClass = folderPalette[index % folderPalette.length];
+        const isActive = index === formState.activeIndex;
+        const isComplete = participantIsComplete(participant);
+        const label = participant.nome || `Participante ${index + 1}`;
+        return `
+          <div class="apply-folder-item ${isActive ? "is-active" : ""}">
+            <button type="button" class="apply-folder ${paletteClass} ${isActive ? "is-active" : ""}" data-index="${index}">
+              <span class="apply-folder__icon"><i class="fa-solid fa-folder"></i></span>
+              <span class="apply-folder__name">${escapeHtml(label)}</span>
+              <span class="apply-folder__status">${isComplete ? "Completo" : "Em edição"}</span>
+            </button>
+            ${
+              formState.participants.length > 1
+                ? `<button type="button" class="apply-folder-remove" data-remove-index="${index}" aria-label="Remover participante"><i class="fa-solid fa-xmark"></i></button>`
+                : ""
+            }
+          </div>
+        `;
+      })
+      .join("");
+  };
+  const renderAreasSummary = () => {
+    if (!areas.length) {
+      areasSummaryEl.innerHTML = `<p class="host-card__areas-empty">Nenhuma área disponível no momento.</p>`;
+      return;
+    }
+    areasSummaryEl.innerHTML = areas
+      .map((item) => {
+        const remaining = Math.max(0, Number(item.restantes || 0) - getSelectedCountForArea(item.area));
+        return `<span class="apply-area-summary__item">${escapeHtml(item.area)}: <strong>${escapeHtml(String(remaining))}</strong></span>`;
+      })
+      .join("");
+  };
+  const renderAreaSelection = () => {
+    const participant = getActiveParticipant();
+    if (!participant) {
+      areasSelectionEl.innerHTML = "";
+      return;
+    }
+    const selectedAreas = Array.isArray(participant.selectedAreas) ? participant.selectedAreas : [];
+    areasSelectionEl.innerHTML = areas
+      .map((item) => {
+        const areaName = String(item.area || "");
+        const checked = selectedAreas.includes(areaName);
+        const selectedByOthers = getSelectedCountForArea(areaName) - (checked ? 1 : 0);
+        const remaining = Math.max(0, Number(item.restantes || 0) - selectedByOthers);
+        const disabled = !checked && remaining <= 0;
+        return `
+          <label class="apply-area-option ${checked ? "is-selected" : ""} ${disabled ? "is-disabled" : ""}">
+            <input type="checkbox" value="${escapeHtml(areaName)}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""} />
+            <span>${escapeHtml(areaName)}</span>
+            <strong>${escapeHtml(String(Math.max(0, remaining - (checked ? 1 : 0))))}</strong>
+          </label>
+        `;
+      })
+      .join("");
+  };
 
   const syncParticipantsFeedback = () => {
-    const totalRows = qsa("#applyParticipantList .apply-participant-row").length;
     const filledParticipants = getFilledParticipantsCount();
     const remainingSlots = Math.max(0, maxParticipants - filledParticipants);
-    addButton.disabled = maxParticipants <= 0 || totalRows >= maxParticipants;
+    addButton.disabled = maxParticipants <= 0 || formState.participants.length >= maxParticipants;
     if (remainingEl) remainingEl.textContent = String(remainingSlots);
     if (counterEl) counterEl.textContent = ` | Participantes informados: ${filledParticipants}`;
     addButton.innerHTML =
-      totalRows >= maxParticipants
+      formState.participants.length >= maxParticipants
         ? '<i class="fa-solid fa-ban"></i> Limite de participantes atingido'
         : '<i class="fa-solid fa-plus"></i> Adicionar participante';
+    syncThemesField();
+    renderFolders();
+    renderAreasSummary();
+    renderAreaSelection();
   };
 
+  Object.values(participantFields).forEach((field) => {
+    field?.addEventListener("input", () => {
+      readCurrentParticipant();
+      syncParticipantsFeedback();
+    });
+  });
+
   addButton.addEventListener("click", () => {
-    const totalRows = qsa("#applyParticipantList .apply-participant-row").length;
-    if (totalRows >= maxParticipants) return;
-    list.appendChild(createParticipantRow());
+    readCurrentParticipant();
+    const currentParticipant = getActiveParticipant();
+    if (!participantIsComplete(currentParticipant)) {
+      showToast("Preencha os dados do participante e selecione ao menos uma área antes de adicionar outro.", "warning", "Participante incompleto");
+      return;
+    }
+    if (formState.participants.length >= maxParticipants) return;
+    formState.participants.push(createParticipant());
+    formState.activeIndex = formState.participants.length - 1;
+    writeCurrentParticipant();
     syncParticipantsFeedback();
   });
-  list.addEventListener("click", (event) => {
-    const btn = event.target.closest(".dynamic-remove-btn");
-    if (!btn) return;
-    if (qsa("#applyParticipantList .apply-participant-row").length === 1) return;
-    btn.closest(".apply-participant-row")?.remove();
+
+  foldersEl.addEventListener("click", (event) => {
+    const removeBtn = event.target.closest("[data-remove-index]");
+    if (removeBtn) {
+      event.preventDefault();
+      const index = Number(removeBtn.dataset.removeIndex);
+      if (!Number.isInteger(index) || formState.participants.length === 1) return;
+      readCurrentParticipant();
+      formState.participants.splice(index, 1);
+      if (!formState.participants.length) formState.participants.push(createParticipant());
+      formState.activeIndex = Math.min(formState.activeIndex, formState.participants.length - 1);
+      writeCurrentParticipant();
+      syncParticipantsFeedback();
+      return;
+    }
+
+    const folderBtn = event.target.closest("[data-index]");
+    if (!folderBtn) return;
+    readCurrentParticipant();
+    const index = Number(folderBtn.dataset.index);
+    if (!Number.isInteger(index) || !formState.participants[index]) return;
+    formState.activeIndex = index;
+    writeCurrentParticipant();
     syncParticipantsFeedback();
   });
-  list.addEventListener("input", syncParticipantsFeedback);
+
+  areasSelectionEl.addEventListener("change", (event) => {
+    const input = event.target.closest('input[type="checkbox"]');
+    const participant = getActiveParticipant();
+    if (!input || !participant) return;
+    const areaName = String(input.value || "");
+    const nextAreas = new Set(Array.isArray(participant.selectedAreas) ? participant.selectedAreas : []);
+    if (input.checked) {
+      nextAreas.add(areaName);
+    } else {
+      nextAreas.delete(areaName);
+    }
+    participant.selectedAreas = Array.from(nextAreas);
+    syncParticipantsFeedback();
+  });
+
+  writeCurrentParticipant();
   syncParticipantsFeedback();
 }
 
 function buildCandidateApplicationPayload(form) {
   const selectedHost = state.ui.selectedHostApplication || {};
+  const availableAreas = parseHostAreasFromValue(form.dataset.areas || serializeHostAreasForDataset(selectedHost.areas || []));
   const fallbackValue = (selector, datasetKey, stateKey) =>
     String(
       form.querySelector(selector)?.value ||
@@ -1163,15 +1376,38 @@ function buildCandidateApplicationPayload(form) {
         selectedHost[stateKey] ||
         ""
     ).trim();
-  const participants = qsa("#applyParticipantList .apply-participant-row")
-    .map((row) => ({
-      nome: String(row.querySelector('[name="applyNome"]')?.value || "").trim(),
-      cargo: String(row.querySelector('[name="applyCargo"]')?.value || "").trim(),
-      vinculo: String(row.querySelector('[name="applyVinculo"]')?.value || "").trim(),
-      area: String(row.querySelector('[name="applyArea"]')?.value || "").trim(),
-      certificacao: String(row.querySelector('[name="applyCertificacao"]')?.value || "").trim(),
+  const formState = form.__applyState || { participants: [], activeIndex: 0 };
+  const participantFields = {
+    nome: form.querySelector('[name="applyNome"]'),
+    cargo: form.querySelector('[name="applyCargo"]'),
+    vinculo: form.querySelector('[name="applyVinculo"]'),
+    area: form.querySelector('[name="applyArea"]'),
+    certificacao: form.querySelector('[name="applyCertificacao"]'),
+  };
+  const activeParticipant = formState.participants?.[formState.activeIndex];
+  if (activeParticipant) {
+    activeParticipant.nome = String(participantFields.nome?.value || "").trim();
+    activeParticipant.cargo = String(participantFields.cargo?.value || "").trim();
+    activeParticipant.vinculo = String(participantFields.vinculo?.value || "").trim();
+    activeParticipant.area = String(participantFields.area?.value || "").trim();
+    activeParticipant.certificacao = String(participantFields.certificacao?.value || "").trim();
+  }
+  const participants = (Array.isArray(formState.participants) ? formState.participants : [])
+    .map((participant) => ({
+      nome: String(participant.nome || "").trim(),
+      cargo: String(participant.cargo || "").trim(),
+      vinculo: String(participant.vinculo || "").trim(),
+      area: String(participant.area || "").trim(),
+      certificacao: String(participant.certificacao || "").trim(),
+      selectedAreas: Array.isArray(participant.selectedAreas)
+        ? participant.selectedAreas.map((item) => String(item || "").trim()).filter(Boolean)
+        : [],
     }))
-    .filter((item) => item.nome && item.cargo && item.vinculo && item.area);
+    .filter((item) => item.nome || item.cargo || item.vinculo || item.area || item.certificacao || item.selectedAreas.length);
+  const invalidParticipant = participants.find(
+    (item) => !item.nome || !item.cargo || !item.vinculo || !item.area || (availableAreas.length && !item.selectedAreas.length)
+  );
+  const themesValue = Array.from(new Set(participants.flatMap((item) => item.selectedAreas))).join("; ");
 
   return {
     numeroInscricao: fallbackValue('[name="hostNumeroInscricao"]', "host", "numeroInscricao"),
@@ -1184,8 +1420,11 @@ function buildCandidateApplicationPayload(form) {
     hostUf: fallbackValue('[name="hostUf"]', "uf", "uf"),
     municipio: fallbackValue('[name="hostMunicipio"]', "municipio", "municipio"),
     hostMunicipio: fallbackValue('[name="hostMunicipio"]', "municipio", "municipio"),
-    participantes: participants,
-    "Temas/áreas de interesse (texto)": String(form.querySelector('[name="temas"]')?.value || "").trim(),
+    participantes: participants.map(({ selectedAreas, ...participant }) => ({
+      ...participant,
+      areasDesejadas: selectedAreas,
+    })),
+    "Temas/áreas de interesse (texto)": themesValue,
     "Atividades propostas (agenda por dia)": String(form.querySelector('[name="atividades"]')?.value || "").trim(),
     "Objetivos e compromissos (o que pretende implementar/replicar)": String(form.querySelector('[name="objetivosCompromissos"]')?.value || "").trim(),
     "Declaração: vínculo formal (Sim/Não)": form.querySelector('[name="declaracaoVinculo"]')?.checked || false,
@@ -1194,6 +1433,9 @@ function buildCandidateApplicationPayload(form) {
     "Responsável pelo preenchimento": String(form.querySelector('[name="responsavel"]')?.value || "").trim(),
     "Cargo/Função (Responsável)": String(form.querySelector('[name="cargoResponsavel"]')?.value || "").trim(),
     "Data da inscrição": normalizeDateToBr(form.querySelector('[name="dataInscricao"]')?.value || ""),
+    __validationError: invalidParticipant
+      ? `Preencha todos os dados do participante${availableAreas.length ? " e selecione ao menos uma área para cada pessoa." : "."}`
+      : "",
   };
 }
 
@@ -1656,7 +1898,7 @@ function renderHostAreasSummary(host) {
       ${
         extraAreas.length
           ? `
-            <div class="host-card__areas-more" hidden>
+            <div class="host-card__areas-more">
               ${extraAreas.map(renderAreaRow).join("")}
             </div>
             <button type="button" class="host-card__toggle" data-action="host-card-toggle-areas">Ver mais</button>
@@ -1667,8 +1909,9 @@ function renderHostAreasSummary(host) {
 }
 
 function buildCandidateHostCard(host) {
+  const serializedAreas = serializeHostAreasForDataset(host.areas || []);
   return `
-    <article class="host-card" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" role="button" tabindex="0">
+    <article class="host-card" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializedAreas)}" role="button" tabindex="0">
       <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
       <h4>${escapeHtml(host.entidade)}</h4>
       <p>${escapeHtml(getStateNameForUf(host.uf || "-"))} (${escapeHtml(host.uf || "-")})</p>
@@ -1680,7 +1923,7 @@ function buildCandidateHostCard(host) {
       <p><span class="host-card__meta-label">Número de vagas:</span> ${escapeHtml(host.vagas || "-")}</p>
       <p><span class="host-card__meta-label">Vagas restantes:</span> ${escapeHtml(host.vagasRestantes || "-")}</p>
       ${renderHostAreasSummary(host)}
-      <button class="btn btn-primary" type="button" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}">Inscrever-se</button>
+      <button class="btn btn-primary" type="button" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializedAreas)}">Inscrever-se</button>
     </article>`;
 }
 
@@ -2152,6 +2395,10 @@ function setupWorkspaceActions() {
     event.preventDefault();
 
     const payload = buildCandidateApplicationPayload(form);
+    if (payload.__validationError) {
+      return showToast(payload.__validationError, "warning", "Validação");
+    }
+    const { __validationError, ...requestPayload } = payload;
     console.log("[candidateApplyForm:submit]", {
       modalTitle: qs("#detailsModalTitle")?.textContent || "",
       formDataset: {
@@ -2171,25 +2418,25 @@ function setupWorkspaceActions() {
       },
       selectedHostApplication: state.ui.selectedHostApplication || null,
       payloadPreview: {
-        numeroInscricao: payload.numeroInscricao || "",
-        hostNumeroInscricao: payload.hostNumeroInscricao || "",
-        cnpj: payload.cnpj || "",
-        hostCnpj: payload.hostCnpj || "",
-        entidade: payload.entidade || "",
-        hostEntidade: payload.hostEntidade || "",
-        uf: payload.uf || "",
-        municipio: payload.municipio || "",
-        participantes: payload.participantes.length,
+        numeroInscricao: requestPayload.numeroInscricao || "",
+        hostNumeroInscricao: requestPayload.hostNumeroInscricao || "",
+        cnpj: requestPayload.cnpj || "",
+        hostCnpj: requestPayload.hostCnpj || "",
+        entidade: requestPayload.entidade || "",
+        hostEntidade: requestPayload.hostEntidade || "",
+        uf: requestPayload.uf || "",
+        municipio: requestPayload.municipio || "",
+        participantes: requestPayload.participantes.length,
       },
     });
-    if (!payload.numeroInscricao && !payload.cnpj && !payload.entidade) {
+    if (!requestPayload.numeroInscricao && !requestPayload.cnpj && !requestPayload.entidade) {
       return showToast("Informe um anfitrião.", "error", "Erro");
     }
-    if (!payload.participantes.length) {
+    if (!requestPayload.participantes.length) {
       return showToast("Informe ao menos um participante válido.", "error", "Erro");
     }
     const maxParticipants = Math.max(0, Number(form.dataset.maxParticipants || 0));
-    if (payload.participantes.length > maxParticipants) {
+    if (requestPayload.participantes.length > maxParticipants) {
       return showToast(`Esta inscrição permite no máximo ${maxParticipants} participante(s).`, "error", "Erro");
     }
 
@@ -2198,15 +2445,15 @@ function setupWorkspaceActions() {
         () => {
           console.log("[candidateApplyForm:request]", {
             endpoint: "/api/candidate/select-host",
-            numeroInscricao: payload.numeroInscricao || payload.hostNumeroInscricao || "",
-            cnpj: payload.cnpj || payload.hostCnpj || "",
-            entidade: payload.entidade || payload.hostEntidade || "",
-            participantes: payload.participantes.length,
+            numeroInscricao: requestPayload.numeroInscricao || requestPayload.hostNumeroInscricao || "",
+            cnpj: requestPayload.cnpj || requestPayload.hostCnpj || "",
+            entidade: requestPayload.entidade || requestPayload.hostEntidade || "",
+            participantes: requestPayload.participantes.length,
           });
           return apiFetch("/api/candidate/select-host", {
             method: "POST",
             headers: { Authorization: `Bearer ${state.tokens.candidate}` },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(requestPayload),
           });
         },
         "Enviando solicitação ao anfitrião..."
@@ -2301,6 +2548,7 @@ function setupWorkspaceActions() {
           uf: actionEl.dataset.uf || sourceCard?.dataset.uf || "",
           municipio: actionEl.dataset.municipio || sourceCard?.dataset.municipio || "",
           vagasRestantes: actionEl.dataset.vagasRestantes || sourceCard?.dataset.vagasRestantes || "0",
+          areas: parseHostAreasFromValue(actionEl.dataset.areas || sourceCard?.dataset.areas || "[]"),
         };
         console.log("[candidateApplyForm:open]", hostMeta);
         state.ui.selectedHostApplication = hostMeta;
