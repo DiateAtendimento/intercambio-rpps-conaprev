@@ -1869,7 +1869,6 @@ app.get("/api/candidate/hosts", requireAuth("candidate"), async (req, res) => {
           remaining,
         };
       })
-      .filter((item) => item.remaining > 0)
       .map((item) => publicHostView(item.row.data, item.hostAreasRows, proLookup, item.remaining));
 
     res.json({ hosts: ativos });

@@ -1150,6 +1150,8 @@ function setupExchangeApplicationForm(prefill = {}) {
     vinculo: form.querySelector('[name="applyVinculo"]'),
     area: form.querySelector('[name="applyArea"]'),
     certificacao: form.querySelector('[name="applyCertificacao"]'),
+    atividades: form.querySelector('[name="atividades"]'),
+    objetivosCompromissos: form.querySelector('[name="objetivosCompromissos"]'),
   };
   const folderPalette = [
     "apply-folder--yellow",
@@ -1165,6 +1167,8 @@ function setupExchangeApplicationForm(prefill = {}) {
     vinculo: "",
     area: "",
     certificacao: "",
+    atividades: "",
+    objetivosCompromissos: "",
     selectedAreas: [],
   });
   const formState = {
@@ -1193,6 +1197,8 @@ function setupExchangeApplicationForm(prefill = {}) {
     participant.vinculo = String(participantFields.vinculo?.value || "").trim();
     participant.area = String(participantFields.area?.value || "").trim();
     participant.certificacao = String(participantFields.certificacao?.value || "").trim();
+    participant.atividades = String(participantFields.atividades?.value || "").trim();
+    participant.objetivosCompromissos = String(participantFields.objetivosCompromissos?.value || "").trim();
   };
   const writeCurrentParticipant = () => {
     const participant = getActiveParticipant();
@@ -1203,7 +1209,8 @@ function setupExchangeApplicationForm(prefill = {}) {
   };
   const participantIsComplete = (participant) =>
     !!participant &&
-    [participant.nome, participant.cargo, participant.vinculo, participant.area].every((value) => String(value || "").trim()) &&
+    [participant.nome, participant.cargo, participant.vinculo, participant.area, participant.atividades, participant.objetivosCompromissos]
+      .every((value) => String(value || "").trim()) &&
     (!areas.length || (Array.isArray(participant.selectedAreas) && participant.selectedAreas.length > 0));
   const getFilledParticipantsCount = () => formState.participants.filter(participantIsComplete).length;
   const getSelectedCountForArea = (areaName) =>
@@ -1312,7 +1319,7 @@ function setupExchangeApplicationForm(prefill = {}) {
     readCurrentParticipant();
     const currentParticipant = getActiveParticipant();
     if (!participantIsComplete(currentParticipant)) {
-      showToast("Preencha os dados do participante e selecione ao menos uma área antes de adicionar outro.", "warning", "Participante incompleto");
+      showToast("Preencha todos os dados do participante, inclusive atividades, objetivos e ao menos uma área, antes de adicionar outro.", "warning", "Participante incompleto");
       return;
     }
     if (formState.participants.length >= maxParticipants) return;
@@ -1383,6 +1390,8 @@ function buildCandidateApplicationPayload(form) {
     vinculo: form.querySelector('[name="applyVinculo"]'),
     area: form.querySelector('[name="applyArea"]'),
     certificacao: form.querySelector('[name="applyCertificacao"]'),
+    atividades: form.querySelector('[name="atividades"]'),
+    objetivosCompromissos: form.querySelector('[name="objetivosCompromissos"]'),
   };
   const activeParticipant = formState.participants?.[formState.activeIndex];
   if (activeParticipant) {
@@ -1391,6 +1400,8 @@ function buildCandidateApplicationPayload(form) {
     activeParticipant.vinculo = String(participantFields.vinculo?.value || "").trim();
     activeParticipant.area = String(participantFields.area?.value || "").trim();
     activeParticipant.certificacao = String(participantFields.certificacao?.value || "").trim();
+    activeParticipant.atividades = String(participantFields.atividades?.value || "").trim();
+    activeParticipant.objetivosCompromissos = String(participantFields.objetivosCompromissos?.value || "").trim();
   }
   const participants = (Array.isArray(formState.participants) ? formState.participants : [])
     .map((participant) => ({
@@ -1399,15 +1410,30 @@ function buildCandidateApplicationPayload(form) {
       vinculo: String(participant.vinculo || "").trim(),
       area: String(participant.area || "").trim(),
       certificacao: String(participant.certificacao || "").trim(),
+      atividades: String(participant.atividades || "").trim(),
+      objetivosCompromissos: String(participant.objetivosCompromissos || "").trim(),
       selectedAreas: Array.isArray(participant.selectedAreas)
         ? participant.selectedAreas.map((item) => String(item || "").trim()).filter(Boolean)
         : [],
     }))
-    .filter((item) => item.nome || item.cargo || item.vinculo || item.area || item.certificacao || item.selectedAreas.length);
+    .filter((item) => item.nome || item.cargo || item.vinculo || item.area || item.certificacao || item.atividades || item.objetivosCompromissos || item.selectedAreas.length);
   const invalidParticipant = participants.find(
-    (item) => !item.nome || !item.cargo || !item.vinculo || !item.area || (availableAreas.length && !item.selectedAreas.length)
+    (item) =>
+      !item.nome ||
+      !item.cargo ||
+      !item.vinculo ||
+      !item.area ||
+      !item.atividades ||
+      !item.objetivosCompromissos ||
+      (availableAreas.length && !item.selectedAreas.length)
   );
   const themesValue = Array.from(new Set(participants.flatMap((item) => item.selectedAreas))).join("; ");
+  const activitiesValue = participants
+    .map((item, index) => `${item.nome || `Participante ${index + 1}`}: ${item.atividades}`)
+    .join("\n\n");
+  const goalsValue = participants
+    .map((item, index) => `${item.nome || `Participante ${index + 1}`}: ${item.objetivosCompromissos}`)
+    .join("\n\n");
 
   return {
     numeroInscricao: fallbackValue('[name="hostNumeroInscricao"]', "host", "numeroInscricao"),
@@ -1425,8 +1451,8 @@ function buildCandidateApplicationPayload(form) {
       areasDesejadas: selectedAreas,
     })),
     "Temas/áreas de interesse (texto)": themesValue,
-    "Atividades propostas (agenda por dia)": String(form.querySelector('[name="atividades"]')?.value || "").trim(),
-    "Objetivos e compromissos (o que pretende implementar/replicar)": String(form.querySelector('[name="objetivosCompromissos"]')?.value || "").trim(),
+    "Atividades propostas (agenda por dia)": activitiesValue,
+    "Objetivos e compromissos (o que pretende implementar/replicar)": goalsValue,
     "Declaração: vínculo formal (Sim/Não)": form.querySelector('[name="declaracaoVinculo"]')?.checked || false,
     "Declaração: custeio pelo intercambista (Sim/Não)": form.querySelector('[name="declaracaoCusteio"]')?.checked || false,
     "Declaração: ciência dos termos (Sim/Não)": form.querySelector('[name="declaracaoCiencia"]')?.checked || false,
@@ -1434,7 +1460,7 @@ function buildCandidateApplicationPayload(form) {
     "Cargo/Função (Responsável)": String(form.querySelector('[name="cargoResponsavel"]')?.value || "").trim(),
     "Data da inscrição": normalizeDateToBr(form.querySelector('[name="dataInscricao"]')?.value || ""),
     __validationError: invalidParticipant
-      ? `Preencha todos os dados do participante${availableAreas.length ? " e selecione ao menos uma área para cada pessoa." : "."}`
+      ? `Preencha todos os dados do participante${availableAreas.length ? ", incluindo atividades, objetivos e ao menos uma área para cada pessoa." : ", incluindo atividades e objetivos."}`
       : "",
   };
 }
@@ -1910,8 +1936,12 @@ function renderHostAreasSummary(host) {
 
 function buildCandidateHostCard(host) {
   const serializedAreas = serializeHostAreasForDataset(host.areas || []);
+  const isUnavailable = Number(host.vagasRestantes || 0) <= 0;
+  const actionAttrs = isUnavailable
+    ? `data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializedAreas)}"`
+    : `data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializedAreas)}" role="button" tabindex="0"`;
   return `
-    <article class="host-card" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializedAreas)}" role="button" tabindex="0">
+    <article class="host-card ${isUnavailable ? "host-card--full" : ""}" ${actionAttrs}>
       <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
       <h4>${escapeHtml(host.entidade)}</h4>
       <p>${escapeHtml(getStateNameForUf(host.uf || "-"))} (${escapeHtml(host.uf || "-")})</p>
@@ -1923,7 +1953,7 @@ function buildCandidateHostCard(host) {
       <p><span class="host-card__meta-label">Número de vagas:</span> ${escapeHtml(host.vagas || "-")}</p>
       <p><span class="host-card__meta-label">Vagas restantes:</span> ${escapeHtml(host.vagasRestantes || "-")}</p>
       ${renderHostAreasSummary(host)}
-      <button class="btn btn-primary" type="button" data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializedAreas)}">Inscrever-se</button>
+      <button class="btn btn-primary" type="button" ${isUnavailable ? "disabled" : `data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializedAreas)}"`}>${isUnavailable ? "Sem vagas disponíveis" : "Inscrever-se"}</button>
     </article>`;
 }
 
