@@ -380,6 +380,37 @@ function getAvailableHostAreas(areaRows = []) {
   return withRemaining.length ? withRemaining : areas.filter((item) => Number(item.vagas || 0) > 0);
 }
 
+function parseRequestedAreas(rawValue = "") {
+  return String(rawValue || "")
+    .split(/[\|\n;,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function recalculateHostAreas(areaRows = [], requestRows = [], hostNumero = "") {
+  const areas = getHostAreas(areaRows);
+  if (!areas.length) return [];
+  const occupiedByArea = new Map();
+  requestRows
+    .filter((row) => String(row.data["Anfitrião - Inscrição"] || "") === String(hostNumero || ""))
+    .filter((row) => ["pendente", "aceito"].includes(normalizeText(row.data["Status da solicitação"] || "")))
+    .forEach((row) => {
+      parseRequestedAreas(row.data["Temas/áreas de interesse (texto)"] || "").forEach((area) => {
+        occupiedByArea.set(area, (occupiedByArea.get(area) || 0) + 1);
+      });
+    });
+
+  return areas.map((item) => {
+    const vagas = Number(item.vagas || 0);
+    const ocupadas = Number(occupiedByArea.get(item.area) || 0);
+    return {
+      ...item,
+      ocupadas,
+      restantes: Math.max(0, vagas - ocupadas),
+    };
+  });
+}
+
 function getReservedParticipantsForHost(requestRows = [], hostNumero = "") {
   return requestRows
     .filter((row) => String(row.data["Anfitrião - Inscrição"] || "") === String(hostNumero || ""))
@@ -629,6 +660,17 @@ function requireAuth(role) {
 function normalizeDateBr(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
+  if (/^\d{5,6}$/.test(raw)) {
+    const serial = Number(raw);
+    if (Number.isFinite(serial)) {
+      const base = new Date(Date.UTC(1899, 11, 30));
+      base.setUTCDate(base.getUTCDate() + serial);
+      const day = String(base.getUTCDate()).padStart(2, "0");
+      const month = String(base.getUTCMonth() + 1).padStart(2, "0");
+      const year = base.getUTCFullYear();
+      return `${day}/${month}/${year}`;
+    }
+  }
   const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (isoMatch) return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
   const brMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -1321,6 +1363,7 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
       valueMap["Status do Anfitrião"] = existing.data["Status do Anfitrião"] || "Pendente";
       valueMap["Permissão admin"] = existing.data["Permissão admin"] || "Pendente";
       valueMap["Data aceite MPS"] = existing.data["Data aceite MPS"] || "";
+      valueMap["Observação do admin"] = existing.data["Observação do admin"] || "";
       valueMap["Primeiro Acesso Concluído"] = resolveHostFirstAccess(valueMap);
 
       await updateRow(HOST_SHEET, headers, existing.rowNumber, valueMap);
@@ -1865,7 +1908,7 @@ app.get("/api/candidate/hosts", requireAuth("candidate"), async (req, res) => {
         const remaining = Math.max(0, offered - reserved);
         return {
           row,
-          hostAreasRows: areasByHost.get(hostKey) || [],
+          hostAreasRows: recalculateHostAreas(areasByHost.get(hostKey) || [], requests.rows, hostKey),
           remaining,
         };
       })

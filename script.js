@@ -63,6 +63,17 @@ function normalizeText(value) {
 function normalizeDateToBr(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
+  if (/^\d{5,6}$/.test(raw)) {
+    const serial = Number(raw);
+    if (Number.isFinite(serial)) {
+      const base = new Date(Date.UTC(1899, 11, 30));
+      base.setUTCDate(base.getUTCDate() + serial);
+      const day = String(base.getUTCDate()).padStart(2, "0");
+      const month = String(base.getUTCMonth() + 1).padStart(2, "0");
+      const year = base.getUTCFullYear();
+      return `${day}/${month}/${year}`;
+    }
+  }
   const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (isoMatch) return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
   const brMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -702,10 +713,10 @@ function openWorkspace(screenId) {
     "form-host": "Formulário do Anfitrião",
     "form-candidate": "Formulário do Intercambista",
     "candidate-login": "Área Intercambista - Login",
-    "candidate-first-access": "Área Intercambista - Primeiro Acesso",
+    "candidate-first-access": "Área Intercambista - Primeiro acesso / Trocar senha",
     "candidate-area": "Área Intercambista",
     "host-login": "Área Anfitrião - Login",
-    "host-first-access": "Área Anfitrião - Primeiro Acesso",
+    "host-first-access": "Área Anfitrião - Primeiro acesso / Trocar senha",
     "host-area": "Área Anfitrião",
     "admin-login": "Gerenciador Admin - Login",
     "admin-area": "Gerenciador Admin",
@@ -713,6 +724,8 @@ function openWorkspace(screenId) {
   const title = qs("#workspaceTitle");
   if (title) title.textContent = titles[screenId] || "Módulo do Sistema";
   if (workspaceTop) workspaceTop.hidden = screenId === "form-host" || screenId === "form-candidate";
+  const activeScreen = qs(`.workspace-screen[data-screen-id="${screenId}"]`);
+  activeScreen?.querySelectorAll("form").forEach((form) => form.reset());
   saveScreen(screenId);
   updateScreenHash(screenId);
   syncWorkspaceMonitor(screenId);
@@ -997,12 +1010,15 @@ function resetCandidateRegisterForm(form) {
 function setupNoDraftInputs() {
   qsa("form").forEach((form) => {
     form.setAttribute("autocomplete", "off");
+    form.setAttribute("data-lpignore", "true");
   });
   qsa("input, textarea, select").forEach((field) => {
     field.setAttribute("autocomplete", "off");
     field.setAttribute("autocorrect", "off");
     field.setAttribute("autocapitalize", "off");
     field.setAttribute("spellcheck", "false");
+    field.setAttribute("data-form-type", "other");
+    field.setAttribute("data-lpignore", "true");
   });
 }
 
@@ -1427,7 +1443,11 @@ function buildCandidateApplicationPayload(form) {
       !item.objetivosCompromissos ||
       (availableAreas.length && !item.selectedAreas.length)
   );
-  const themesValue = Array.from(new Set(participants.flatMap((item) => item.selectedAreas))).join("; ");
+  const themesValue = participants
+    .flatMap((item) => item.selectedAreas)
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .join(" | ");
   const activitiesValue = participants
     .map((item, index) => `${item.nome || `Participante ${index + 1}`}: ${item.atividades}`)
     .join("\n\n");
@@ -1782,7 +1802,8 @@ function withActionLottie(task, loadingMessage) {
     loadingMessage,
     successMessage: "Concluído com sucesso.",
     successPath: "Success.json",
-    overlayDelayMs: 2500,
+    overlayDelayMs: 150,
+    minLoadingMs: 500,
   });
 }
 
@@ -2597,7 +2618,10 @@ function setupWorkspaceActions() {
         };
         console.log("[candidateApplyForm:open]", hostMeta);
         state.ui.selectedHostApplication = hostMeta;
-        openModal(`Inscrição em ${hostMeta.entidade || "Anfitrião"}`, renderExchangeApplicationForm(hostMeta));
+        openModal(`Inscrição em ${hostMeta.entidade || "Anfitrião"}`, renderExchangeApplicationForm(hostMeta), {
+          closeByBackdrop: false,
+          closeByEsc: false,
+        });
         setupExchangeApplicationForm();
         return;
       }
