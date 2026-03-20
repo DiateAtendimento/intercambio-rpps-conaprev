@@ -2354,7 +2354,15 @@ function setupWorkspaceActions() {
     setFeedback("hostLoginFeedback", "Autenticando...", true);
     try {
       const data = await runWithLottie(
-        () => apiFetch("/api/host/login", { method: "POST", body: JSON.stringify({ cnpj: normalizeDigits(payload.cnpj), senha: payload.senha }) }),
+        () =>
+          apiFetch("/api/host/login", {
+            method: "POST",
+            body: JSON.stringify({
+              cnpj: normalizeDigits(payload.cnpj),
+              numeroInscricao: String(payload.numeroInscricao || "").trim(),
+              senha: payload.senha,
+            }),
+          }),
         {
           loadingPath: "Loading.json",
           loadingMessage: "Carregando informações para acesso do anfitrião...",

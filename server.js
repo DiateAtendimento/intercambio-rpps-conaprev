@@ -783,6 +783,10 @@ function findHostForAdminStatus(rows, criteria = {}) {
 }
 
 function findHostBySessionSubject(rows, subject) {
+  const registration = String(subject || "").trim();
+  if (/^ANF-/i.test(registration)) {
+    return rows.find((item) => String(item.data["Inscrição"] || "").trim() === registration) || null;
+  }
   const cnpj = onlyDigits(subject);
   if (cnpj.length === 14) {
     return rows.find((item) => onlyDigits(item.data["Município CNPJ"]) === cnpj) || null;
@@ -1358,10 +1362,15 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
 app.post("/api/host/login", loginLimiter, async (req, res) => {
   try {
     const cnpj = onlyDigits(req.body.cnpj);
+    const numeroInscricao = sanitizeInput(req.body.numeroInscricao, 60);
     const senha = String(req.body.senha || "");
 
     const { rows } = await getRows(HOST_SHEET, hostHeaders);
-    const found = rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
+    const found = rows.find(
+      (row) =>
+        onlyDigits(row.data["Município CNPJ"]) === cnpj &&
+        String(row.data["Inscrição"] || "").trim() === numeroInscricao
+    );
 
     if (!found) {
       return res.status(401).json({ error: "Credenciais inválidas." });
@@ -1385,7 +1394,7 @@ app.post("/api/host/login", loginLimiter, async (req, res) => {
       return res.status(401).json({ error: "Credenciais inválidas." });
     }
 
-    const token = createToken("host", cnpj);
+    const token = createToken("host", found.data["Inscrição"] || numeroInscricao);
     return res.json({
       token,
       profile: {
