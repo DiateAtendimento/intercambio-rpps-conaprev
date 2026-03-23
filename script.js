@@ -217,7 +217,15 @@ function diffNewItems(previous = [], current = []) {
 
 function isWorkspaceSessionError(message) {
   const text = String(message || "").toLowerCase();
-  return text.includes("sess") || text.includes("nao encontrado") || text.includes("não encontrado");
+  return (
+    text.includes("sessão expirada") ||
+    text.includes("sessao expirada") ||
+    text.includes("acesso expirado") ||
+    text.includes("token inválido") ||
+    text.includes("token invalido") ||
+    text.includes("não autenticado") ||
+    text.includes("nao autenticado")
+  );
 }
 
 function createAdminMonitorSnapshot(data = {}) {

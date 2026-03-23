@@ -924,15 +924,35 @@ function findHostForCandidateSelection(rows, criteria = {}) {
 
 function getHostAreas(areaRows) {
   return areaRows
-    .filter((row) => normalizeText(row.data.Ativa || "sim") !== "nao")
-    .sort((a, b) => Number(a.data.Ordem || 0) - Number(b.data.Ordem || 0))
-    .map((row) => ({
-      area: row.data["Área/Setor"] || "",
-      tipo: row.data.Tipo || "",
-      vagas: Number(row.data["Vagas da área"] || 0),
-      ocupadas: Number(row.data["Vagas ocupadas"] || 0),
-      restantes: Number(row.data["Vagas restantes"] || 0),
-    }));
+    .filter((row) => {
+      if (row?.data) {
+        return normalizeText(row.data.Ativa || "sim") !== "nao";
+      }
+      return Boolean(row?.area);
+    })
+    .sort((a, b) => {
+      const leftOrder = Number(a?.data?.Ordem ?? a?.ordem ?? 0);
+      const rightOrder = Number(b?.data?.Ordem ?? b?.ordem ?? 0);
+      return leftOrder - rightOrder;
+    })
+    .map((row) => {
+      if (!row?.data) {
+        return {
+          area: row.area || "",
+          tipo: row.tipo || "",
+          vagas: Number(row.vagas || 0),
+          ocupadas: Number(row.ocupadas || 0),
+          restantes: Number(row.restantes || 0),
+        };
+      }
+      return {
+        area: row.data["Área/Setor"] || "",
+        tipo: row.data.Tipo || "",
+        vagas: Number(row.data["Vagas da área"] || 0),
+        ocupadas: Number(row.data["Vagas ocupadas"] || 0),
+        restantes: Number(row.data["Vagas restantes"] || 0),
+      };
+    });
 }
 
 function publicHostView(hostData, areaRows = [], proLookup = null, remainingOverride = null) {
