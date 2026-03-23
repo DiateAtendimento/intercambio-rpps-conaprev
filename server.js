@@ -1373,6 +1373,7 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
       const numeroInscricao = String(existing.data["Inscrição"] || "").trim() || (await getNextHostRegistration(rows));
       const valueMap = buildHostValueMap(req.body, accessPasswordHash, numeroInscricao);
 
+      valueMap["Senha"] = existing.data["Senha"] || valueMap["Senha"] || "";
       valueMap["Status do Anfitrião"] = existing.data["Status do Anfitrião"] || "Pendente";
       valueMap["Permissão admin"] = existing.data["Permissão admin"] || "Pendente";
       valueMap["Data aceite MPS"] = existing.data["Data aceite MPS"] || "";
@@ -1383,13 +1384,16 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
 
       await updateRow(HOST_SHEET, headers, existing.rowNumber, valueMap);
       await syncHostAreas(valueMap, areas);
+      const alreadyHasAccess = Boolean(existing.data["Senha"]);
       return res.json({
         updated: true,
         numeroInscricao,
         cnpj,
-        delivery: "modal",
-        accessInfo: buildHostAccessPayload(valueMap, numeroInscricao, accessPassword),
-        message: "Cadastro atualizado com sucesso.",
+        delivery: alreadyHasAccess ? "toast" : "modal",
+        accessInfo: alreadyHasAccess ? null : buildHostAccessPayload(valueMap, numeroInscricao, accessPassword),
+        message: alreadyHasAccess
+          ? "Cadastro reenviado para aprovação do admin."
+          : "Cadastro atualizado com sucesso.",
       });
     }
 
@@ -1557,6 +1561,21 @@ app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
       .filter((row) => normalizeText(row.data["Status da solicitação"] || "") === "aceito")
       .map(enrichRequest);
 
+    const approvalStatus = resolveHostApprovalLabel(hostRowData.data);
+    const adminSolicitacao =
+      approvalStatus === "Aceito"
+        ? null
+        : {
+            rowNumber: hostRowData.rowNumber,
+            inscricao: hostNumero || "",
+            municipio: hostRowData.data["Município"] || "",
+            uf: hostRowData.data.UF || "",
+            unidadeGestora: hostRowData.data["Unidade Gestora"] || "",
+            dataSolicitacao: normalizeDateBr(hostRowData.data.Data || ""),
+            statusSolicitacao: approvalStatus,
+            selfRequest: true,
+          };
+
     res.json({
       host: {
         rowNumber: hostRowData.rowNumber,
@@ -1564,12 +1583,13 @@ app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
         entidade: hostRowData.data["Unidade Gestora"],
         municipio: hostRowData.data["Município"] || "",
         uf: hostRowData.data.UF || "",
-        approvalStatus: resolveHostApprovalLabel(hostRowData.data),
+        approvalStatus,
         visibleToCandidates: normalizeText(hostRowData.data["Permissão admin"] || "") === "concedido",
         adminNote: hostRowData.data["Observação do admin"] || "",
         adminNoteRead: normalizeText(hostRowData.data["Mensagem do admin vista"] || "sim") === "sim",
         adminNoteReadAt: normalizeDateBr(hostRowData.data["Data visualização mensagem admin"] || ""),
       },
+      adminSolicitacao,
       pendentes,
       cadastrados,
     });

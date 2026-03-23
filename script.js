@@ -2100,13 +2100,16 @@ function buildHostRows(rows, targetId) {
         <td>${escapeHtml(item.dataSolicitacao || "-")}</td>
         ${
           targetId === "hostPendingTableBody"
-            ? `<td>${iconButton("host-open-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho")}</td>
-               <td>
-                 <div class="action-group">
-                   <button class="btn btn-sm btn-action-accept" type="button" data-action="host-decision" data-row="${item.rowNumber}" data-decision="aceito">Aceitar</button>
-                   <button class="btn btn-sm btn-action-reject" type="button" data-action="host-decision" data-row="${item.rowNumber}" data-decision="rejeitado">Rejeitar</button>
-                 </div>
-               </td>`
+            ? item.selfRequest
+              ? `<td>-</td>
+                 <td>${formatStatus(item.statusSolicitacao || "Pendente")}</td>`
+              : `<td>${iconButton("host-open-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho")}</td>
+                 <td>
+                   <div class="action-group">
+                     <button class="btn btn-sm btn-action-accept" type="button" data-action="host-decision" data-row="${item.rowNumber}" data-decision="aceito">Aceitar</button>
+                     <button class="btn btn-sm btn-action-reject" type="button" data-action="host-decision" data-row="${item.rowNumber}" data-decision="rejeitado">Rejeitar</button>
+                   </div>
+                 </td>`
             : `<td>${escapeHtml(item.dirigente || "-")}</td>
                <td>${escapeHtml(item.dataSolicitacao || "-")}</td>
                <td>${escapeHtml(item.dataDecisao || "-")}</td>
@@ -2159,7 +2162,10 @@ async function refreshHostArea(notify = false) {
       : "";
   }
 
-  const pendentes = data.pendentes || [];
+  const pendentes = [
+    ...(data.adminSolicitacao ? [data.adminSolicitacao] : []),
+    ...(data.pendentes || []),
+  ];
   const cadastrados = data.cadastrados || [];
   state.ui.hostAccepted = cadastrados;
   buildHostRows(pendentes, "hostPendingTableBody");
@@ -2281,7 +2287,11 @@ function setupWorkspaceActions() {
         }
       );
       setFeedback("hostRegisterFeedback", data.updated ? "Cadastro atualizado com sucesso." : "Cadastro concluído.", true);
-      showAccessInfoModal(data.accessInfo);
+      if (data.accessInfo) {
+        showAccessInfoModal(data.accessInfo);
+      } else {
+        showToast(data.message || "Cadastro enviado para aprovação do admin.", "success", "Solicitação enviada");
+      }
       if (data.emailSent === false) {
         console.error("[EMAIL_HOST_REGISTER_FAIL]", data.mailError || "erro nao informado");
         showMessageModal(
