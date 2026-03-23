@@ -373,6 +373,16 @@ function appendRejectionHistory(previousValue = "", note = "") {
   return entries.join("\n");
 }
 
+function extractLatestRejectionNote(historyValue = "") {
+  const entries = String(historyValue || "")
+    .split(/\r?\n+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (!entries.length) return "";
+  const lastEntry = entries[entries.length - 1];
+  return lastEntry.replace(/^\d+\s*-\s*/, "").trim();
+}
+
 function resolveCandidateStatus(rowData = {}) {
   const explicit = String(rowData["Status do Intercambista"] || "").trim();
   if (explicit) return explicit;
@@ -1625,6 +1635,9 @@ app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
       .map(enrichRequest);
 
     const approvalStatus = resolveHostApprovalLabel(hostRowData.data);
+    const hostAdminNote =
+      String(hostRowData.data["Observação do admin"] || "").trim() ||
+      extractLatestRejectionNote(hostRowData.data["Nº rejeições"] || "");
     const adminSolicitacao =
       approvalStatus === "Aceito"
         ? null
@@ -1636,7 +1649,7 @@ app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
             unidadeGestora: hostRowData.data["Unidade Gestora"] || "",
             dataSolicitacao: normalizeDateBr(hostRowData.data.Data || ""),
             statusSolicitacao: approvalStatus,
-            adminNote: hostRowData.data["Observação do admin"] || "",
+            adminNote: hostAdminNote,
             adminNoteRead: normalizeText(hostRowData.data["Mensagem do admin vista"] || "sim") === "sim",
             selfRequest: true,
           };
@@ -1650,7 +1663,7 @@ app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
         uf: hostRowData.data.UF || "",
         approvalStatus,
         visibleToCandidates: normalizeText(hostRowData.data["Permissão admin"] || "") === "concedido",
-        adminNote: hostRowData.data["Observação do admin"] || "",
+        adminNote: hostAdminNote,
         adminNoteRead: normalizeText(hostRowData.data["Mensagem do admin vista"] || "sim") === "sim",
         adminNoteReadAt: normalizeDateBr(hostRowData.data["Data visualização mensagem admin"] || ""),
       },
@@ -2495,7 +2508,10 @@ app.post("/api/host/admin-note/read", requireAuth("host"), async (req, res) => {
     if (!host) {
       return res.status(404).json({ error: "Anfitrião não encontrado." });
     }
-    if (!String(host.data["Observação do admin"] || "").trim()) {
+    const currentNote =
+      String(host.data["Observação do admin"] || "").trim() ||
+      extractLatestRejectionNote(host.data["Nº rejeições"] || "");
+    if (!currentNote) {
       return res.json({ ok: true, message: "Sem mensagem pendente." });
     }
     host.data["Mensagem do admin vista"] = "Sim";
