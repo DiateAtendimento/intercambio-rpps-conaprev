@@ -1636,6 +1636,8 @@ app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
             unidadeGestora: hostRowData.data["Unidade Gestora"] || "",
             dataSolicitacao: normalizeDateBr(hostRowData.data.Data || ""),
             statusSolicitacao: approvalStatus,
+            adminNote: hostRowData.data["Observação do admin"] || "",
+            adminNoteRead: normalizeText(hostRowData.data["Mensagem do admin vista"] || "sim") === "sim",
             selfRequest: true,
           };
 
@@ -2191,6 +2193,43 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
   } catch (error) {
     console.error("candidate/select-host", error);
     res.status(500).json({ error: "Falha ao registrar solicitação." });
+  }
+});
+
+app.get("/api/host/self-form/:rowNumber", requireAuth("host"), async (req, res) => {
+  try {
+    const hostRowNumber = Number(req.params.rowNumber);
+    if (!hostRowNumber) {
+      return res.status(400).json({ error: "Linha da solicitação inválida." });
+    }
+
+    const hostData = await getRows(HOST_SHEET, hostHeaders);
+    const hostRowData = findHostBySessionSubject(hostData.rows, req.session.subject);
+    if (!hostRowData) {
+      return res.status(404).json({ error: "Anfitrião não encontrado." });
+    }
+    if (hostRowData.rowNumber !== hostRowNumber) {
+      return res.status(403).json({ error: "Formulário não pertence ao anfitrião logado." });
+    }
+
+    const areaData = await getRows(HOST_AREAS_SHEET, hostAreaHeaders);
+    const hostAreas = getHostAreas(
+      areaData.rows.filter((row) => String(row.data["Inscrição do anfitrião"] || "").trim() === String(hostRowData.data["Inscrição"] || "").trim())
+    );
+    const data = {
+      ...hostRowData.data,
+      "Áreas/Setores disponíveis para intercâmbio": hostAreas.length
+        ? hostAreas.map((item) => `${item.area}: ${item.vagas}`).join("\n")
+        : "",
+    };
+
+    res.json({
+      rowNumber: hostRowData.rowNumber,
+      data,
+    });
+  } catch (error) {
+    console.error("host/self-form", error);
+    res.status(500).json({ error: "Falha ao abrir formulário do anfitrião." });
   }
 });
 

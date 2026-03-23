@@ -1824,6 +1824,7 @@ const HOST_FIELDS = [
   { key: "Nível do Pró-Gestão", label: "Nível do Pró-Gestão" },
   { key: "Número de vagas oferecidas", label: "Número de vagas oferecidas" },
   { key: "Vagas restantes", label: "Vagas restantes" },
+  { key: "Áreas/Setores disponíveis para intercâmbio", label: "Áreas/Setores disponíveis para intercâmbio" },
   { key: "Equipe de apoio designada (nomes)", label: "Equipe de apoio designada (nomes)" },
   { key: "Breve descrição da proposta de intercâmbio", label: "Proposta" },
   { key: "Responsável pelo preenchimento", label: "Responsável pelo preenchimento" },
@@ -2178,8 +2179,26 @@ function buildHostRows(rows, targetId) {
         ${
           targetId === "hostPendingTableBody"
             ? item.selfRequest
-              ? `<td>-</td>
-                 <td>${formatStatus(item.statusSolicitacao || "Pendente")}</td>`
+              ? `<td>${iconButton("host-open-self-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho do anfitrião")}</td>
+                 <td>
+                   ${
+                     item.adminNote
+                       ? `
+                       <button
+                         type="button"
+                         class="feedback-mail-btn host-admin-mail ${item.adminNoteRead ? "is-read" : "is-unread"}"
+                         data-action="host-open-admin-note"
+                         data-admin-note="${escapeHtml(item.adminNote)}"
+                         data-admin-note-read="${item.adminNoteRead ? "true" : "false"}"
+                       >
+                         <i class="fa-solid fa-envelope"></i>
+                         <span>${item.adminNoteRead ? "Mensagem do admin" : "Nova mensagem do admin"}</span>
+                         ${item.adminNoteRead ? '<span class="host-admin-mail__badge">Visto</span>' : '<span class="feedback-mail-btn__badge">!</span>'}
+                       </button>
+                     `
+                       : formatStatus(item.statusSolicitacao || "Pendente")
+                   }
+                 </td>`
               : `<td>${iconButton("host-open-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho")}</td>
                  <td>
                    <div class="action-group">
@@ -2889,6 +2908,17 @@ function setupWorkspaceActions() {
           "Carregando plano de trabalho..."
         );
         openModal("Plano de Trabalho do Intercambista", renderFieldList(data.data || {}, CANDIDATE_FIELDS));
+      }
+
+      if (action === "host-open-self-plan") {
+        const data = await withActionLottie(
+          () =>
+            apiFetch(`/api/host/self-form/${rowNumber}`, {
+              headers: { Authorization: `Bearer ${state.tokens.host}` },
+            }),
+          "Carregando formulário do anfitrião..."
+        );
+        openModal("Formulário do Anfitrião", renderFieldList(data.data || {}, HOST_FIELDS));
       }
 
       if (action === "admin-remove-host") {
