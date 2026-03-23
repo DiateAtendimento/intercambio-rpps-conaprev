@@ -162,6 +162,7 @@ const hostHeaders = [
   "Observação do admin",
   "Mensagem do admin vista",
   "Data visualização mensagem admin",
+  "Nº rejeições",
 ];
 
 const candidateHeaders = [
@@ -183,6 +184,7 @@ const candidateHeaders = [
   "CPF",
   "Primeiro Acesso Concluído",
   "Status do Intercambista",
+  "Nº rejeições",
 ];
 
 const hostAreaHeaders = [
@@ -356,6 +358,21 @@ function resolveHostApprovalLabel(rowData = {}) {
   return "Pendente";
 }
 
+function appendRejectionHistory(previousValue = "", note = "") {
+  const cleanNote = String(note || "").trim();
+  if (!cleanNote) return String(previousValue || "").trim();
+  const previous = String(previousValue || "").trim();
+  const entries = previous
+    ? previous
+        .split(/\r?\n+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+  const nextNumber = entries.length + 1;
+  entries.push(`${nextNumber} - ${cleanNote}`);
+  return entries.join("\n");
+}
+
 function resolveCandidateStatus(rowData = {}) {
   const explicit = String(rowData["Status do Intercambista"] || "").trim();
   if (explicit) return explicit;
@@ -433,6 +450,14 @@ function recalculateHostRemainingVacancies(hostRowData, requestRows = []) {
   const offered = Number(String(hostRowData?.data?.["Número de vagas oferecidas"] || "").trim()) || 0;
   const reserved = getReservedParticipantsForHost(requestRows, hostNumero);
   return Math.max(0, offered - reserved);
+}
+
+function candidateHasActiveRequest(requestRows = [], candidateRegistration = "") {
+  return requestRows.some((row) => {
+    const sameCandidate = String(row.data["Inscrição do intercambista"] || "") === String(candidateRegistration || "");
+    const status = normalizeText(row.data["Status da solicitação"] || "");
+    return sameCandidate && ["pendente", "aceito"].includes(status);
+  });
 }
 
 const auth = new google.auth.GoogleAuth({
@@ -1102,6 +1127,7 @@ function buildHostValueMap(payload, passwordHash, numeroInscricao) {
     "Observação do admin": "",
     "Mensagem do admin vista": "Sim",
     "Data visualização mensagem admin": "",
+    "Nº rejeições": "",
   };
 }
 
@@ -1132,6 +1158,7 @@ function buildCandidateValueMap(payload) {
     CPF: onlyDigits(payload.cpf),
     "Primeiro Acesso Concluído": "Não",
     "Status do Intercambista": "Ativo",
+    "Nº rejeições": "",
   };
 }
 
@@ -1260,6 +1287,9 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
           email: candidate.data["E-mail institucional"] || "",
           telefone: candidate.data["Telefone para contato"] || "",
           nivelProGestao,
+          responsavel: candidate.data["Responsável pelo preenchimento"] || "",
+          cargoResponsavel: candidate.data["Cargo/Função (Responsável)"] || "",
+          dataPreenchimento: candidate.data.Data || "",
         },
       });
     }
@@ -1282,11 +1312,20 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
           uf,
           municipioCnpj: host.data["Município CNPJ"] || "",
           unidadeGestora: host.data["Unidade Gestora"] || "",
+          endereco: host.data["Endereço"] || "",
+          coordenadorLocal: host.data["Responsável pela coordenação local"] || "",
           dirigente: host.data["Nome do Dirigente ou Responsável Legal"] || "",
           cargoDirigente: host.data["Cargo/Função (Dirigente)"] || "",
           email: host.data["E-mail de contato"] || "",
           telefone: host.data["Telefone de contato"] || "",
           nivelProGestao,
+          vagas: host.data["Número de vagas oferecidas"] || "",
+          vagasRestantes: host.data["Vagas restantes"] || "",
+          proposta: host.data["Breve descrição da proposta de intercâmbio"] || "",
+          equipeApoio: String(host.data["Equipe de apoio designada (nomes)"] || "")
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
           responsavel: host.data["Responsável pelo preenchimento"] || "",
           cargoResponsavel: host.data["Cargo/Função (Responsável)"] || "",
           dataPreenchimento: host.data.Data || "",
@@ -1318,6 +1357,9 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
           email: candidate.data["E-mail institucional"] || "",
           telefone: candidate.data["Telefone para contato"] || "",
           nivelProGestao,
+          responsavel: candidate.data["Responsável pelo preenchimento"] || "",
+          cargoResponsavel: candidate.data["Cargo/Função (Responsável)"] || "",
+          dataPreenchimento: candidate.data.Data || "",
         },
       });
     }
@@ -1340,11 +1382,23 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
           uf,
           municipioCnpj: host.data["Município CNPJ"] || "",
           unidadeGestora: host.data["Unidade Gestora"] || "",
+          endereco: host.data["Endereço"] || "",
+          coordenadorLocal: host.data["Responsável pela coordenação local"] || "",
           dirigente: host.data["Nome do Dirigente ou Responsável Legal"] || "",
           cargoDirigente: host.data["Cargo/Função (Dirigente)"] || "",
           email: host.data["E-mail de contato"] || "",
           telefone: host.data["Telefone de contato"] || "",
           nivelProGestao,
+          vagas: host.data["Número de vagas oferecidas"] || "",
+          vagasRestantes: host.data["Vagas restantes"] || "",
+          proposta: host.data["Breve descrição da proposta de intercâmbio"] || "",
+          equipeApoio: String(host.data["Equipe de apoio designada (nomes)"] || "")
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
+          responsavel: host.data["Responsável pelo preenchimento"] || "",
+          cargoResponsavel: host.data["Cargo/Função (Responsável)"] || "",
+          dataPreenchimento: host.data.Data || "",
         },
       });
     }
@@ -1374,12 +1428,14 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
       const valueMap = buildHostValueMap(req.body, accessPasswordHash, numeroInscricao);
 
       valueMap["Senha"] = existing.data["Senha"] || valueMap["Senha"] || "";
-      valueMap["Status do Anfitrião"] = existing.data["Status do Anfitrião"] || "Pendente";
-      valueMap["Permissão admin"] = existing.data["Permissão admin"] || "Pendente";
+      const wasRejected = normalizeText(existing.data["Permissão admin"] || "") === "negado";
+      valueMap["Status do Anfitrião"] = wasRejected ? "Pendente" : existing.data["Status do Anfitrião"] || "Pendente";
+      valueMap["Permissão admin"] = wasRejected ? "Pendente" : existing.data["Permissão admin"] || "Pendente";
       valueMap["Data aceite MPS"] = existing.data["Data aceite MPS"] || "";
-      valueMap["Observação do admin"] = existing.data["Observação do admin"] || "";
+      valueMap["Observação do admin"] = wasRejected ? "" : existing.data["Observação do admin"] || "";
       valueMap["Mensagem do admin vista"] = existing.data["Mensagem do admin vista"] || "Sim";
-      valueMap["Data visualização mensagem admin"] = existing.data["Data visualização mensagem admin"] || "";
+      valueMap["Data visualização mensagem admin"] = wasRejected ? "" : existing.data["Data visualização mensagem admin"] || "";
+      valueMap["Nº rejeições"] = existing.data["Nº rejeições"] || "";
       valueMap["Primeiro Acesso Concluído"] = resolveHostFirstAccess(valueMap);
 
       await updateRow(HOST_SHEET, headers, existing.rowNumber, valueMap);
@@ -1723,6 +1779,15 @@ app.post("/api/host/decision", requireAuth("host"), async (req, res) => {
 
     await updateRow(EXCHANGE_REQUESTS_SHEET, requests.headers, target.rowNumber, target.data);
 
+    if (decision !== "aceito" && note) {
+      const candidatesBase = await getRows(CANDIDATE_SHEET, candidateHeaders);
+      const candidateBase = candidatesBase.rows.find((row) => String(row.data["Inscrição"] || "") === String(target.data["Inscrição do intercambista"] || ""));
+      if (candidateBase) {
+        candidateBase.data["Nº rejeições"] = appendRejectionHistory(candidateBase.data["Nº rejeições"] || "", note);
+        await updateRow(CANDIDATE_SHEET, candidatesBase.headers, candidateBase.rowNumber, candidateBase.data);
+      }
+    }
+
     if (decision === "aceito") {
       const candidatesBase = await getRows(CANDIDATE_SHEET, candidateHeaders);
       const candidateBase = candidatesBase.rows.find((row) => String(row.data["Inscrição"] || "") === String(target.data["Inscrição do intercambista"] || ""));
@@ -1757,7 +1822,23 @@ app.post("/api/candidate/register", loginLimiter, async (req, res) => {
     const dataset = await getRows(CANDIDATE_SHEET, candidateHeaders);
     const existing = dataset.rows.find((row) => onlyDigits(row.data.CPF) === cpf);
     if (existing) {
-      return res.status(409).json({ error: "CPF já cadastrado. Use o login." });
+      const requests = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
+      if (candidateHasActiveRequest(requests.rows, existing.data["Inscrição"] || "")) {
+        return res.status(409).json({ error: "Olá, você já possui uma inscrição ativa" });
+      }
+      const row = buildCandidateValueMap(req.body);
+      row["Inscrição"] = existing.data["Inscrição"] || "";
+      row["Senha"] = existing.data["Senha"] || "";
+      row["Primeiro Acesso Concluído"] = existing.data["Primeiro Acesso Concluído"] || resolveCandidateFirstAccess(row);
+      row["Status do Intercambista"] = existing.data["Status do Intercambista"] || "Ativo";
+      row["Nº rejeições"] = existing.data["Nº rejeições"] || "";
+      await updateRow(CANDIDATE_SHEET, dataset.headers, existing.rowNumber, row);
+      return res.json({
+        ok: true,
+        updated: true,
+        delivery: "toast",
+        message: "Cadastro do intercambista atualizado com sucesso.",
+      });
     }
 
     const row = buildCandidateValueMap(req.body);
@@ -1854,6 +1935,14 @@ app.post("/api/host/remove-candidate", requireAuth("host"), async (req, res) => 
     candidate.data["Data da decisão"] = "";
     candidate.data["Observação da decisão"] = note;
     await updateRow(EXCHANGE_REQUESTS_SHEET, requests.headers, candidate.rowNumber, candidate.data);
+
+    const candidatesBase = await getRows(CANDIDATE_SHEET, candidateHeaders);
+    const candidateBase = candidatesBase.rows.find((row) => String(row.data["Inscrição"] || "") === String(candidate.data["Inscrição do intercambista"] || ""));
+    if (candidateBase) {
+      candidateBase.data["Nº rejeições"] = appendRejectionHistory(candidateBase.data["Nº rejeições"] || "", note);
+      await updateRow(CANDIDATE_SHEET, candidatesBase.headers, candidateBase.rowNumber, candidateBase.data);
+    }
+
     host.data["Vagas restantes"] = String(recalculateHostRemainingVacancies(host, requests.rows));
     await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
 
@@ -2316,6 +2405,9 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
     host.data["Status do Anfitrião"] = permissao === "Concedido" ? "Ativo" : "Rejeitado";
     host.data["Data aceite MPS"] = permissao === "Concedido" ? nowBrDate() : "";
     host.data["Observação do admin"] = note;
+    if (permissao === "Negado" && note) {
+      host.data["Nº rejeições"] = appendRejectionHistory(host.data["Nº rejeições"] || "", note);
+    }
     host.data["Mensagem do admin vista"] = permissao === "Negado" && note ? "Não" : host.data["Mensagem do admin vista"] || "Sim";
     host.data["Data visualização mensagem admin"] = permissao === "Negado" && note ? "" : host.data["Data visualização mensagem admin"] || "";
     if (permissao === "Concedido") {

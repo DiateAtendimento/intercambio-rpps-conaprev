@@ -971,6 +971,7 @@ function setupSupportTeamField() {
 function resetHostRegisterForm(form) {
   if (!form) return;
   form.reset();
+  delete form.dataset.prefillCnpj;
 
   const levelInput = form.querySelector('[name="nivelProGestao"]');
   if (levelInput) {
@@ -1001,6 +1002,7 @@ function resetHostRegisterForm(form) {
 function resetCandidateRegisterForm(form) {
   if (!form) return;
   form.reset();
+  delete form.dataset.prefillCnpj;
   const levelInput = form.querySelector('[name="nivelProGestao"]');
   if (levelInput) {
     levelInput.classList.remove("progestao-input--none");
@@ -1511,14 +1513,35 @@ function applyPrefillToHostForm(form, data) {
   set("uf", data.uf);
   set("municipioCnpj", normalizeDigits(data.municipioCnpj || ""));
   set("unidadeGestora", data.unidadeGestora);
+  set("endereco", data.endereco);
   set("dirigente", data.dirigente);
   set("cargoDirigente", data.cargoDirigente);
+  set("coordenadorLocal", data.coordenadorLocal);
   set("email", data.email);
   set("telefone", data.telefone);
   applyProGestaoFieldState(form, data.nivelProGestao);
+  set("vagas", data.vagas);
+  set("vagasRestantes", data.vagasRestantes);
+  set("proposta", data.proposta);
   set("responsavel", data.responsavel);
   set("cargoResponsavel", data.cargoResponsavel);
   set("dataPreenchimento", normalizeDateToBr(data.dataPreenchimento));
+  const supportList = qs("#supportTeamList");
+  if (supportList) {
+    supportList.innerHTML = "";
+    const team = Array.isArray(data.equipeApoio) && data.equipeApoio.length ? data.equipeApoio : [""];
+    team.forEach((name) => {
+      const row = document.createElement("div");
+      row.className = "dynamic-list__row";
+      row.innerHTML = `
+        <input name="equipeApoioItem" placeholder="Nome do membro da equipe" required value="${escapeHtml(name)}" />
+        <button type="button" class="dynamic-remove-btn" aria-label="Remover membro da equipe">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      `;
+      supportList.appendChild(row);
+    });
+  }
 }
 
 function applyPrefillToCandidateForm(form, data) {
@@ -1538,6 +1561,9 @@ function applyPrefillToCandidateForm(form, data) {
   set("email", data.email);
   set("telefone", data.telefone);
   applyProGestaoFieldState(form, data.nivelProGestao);
+  set("responsavel", data.responsavel);
+  set("cargoResponsavel", data.cargoResponsavel);
+  set("dataPreenchimento", normalizeDateToBr(data.dataPreenchimento));
 }
 
 function setupCnpjPrefill() {
@@ -1568,60 +1594,92 @@ function setupCnpjPrefill() {
     candidateProGestao.classList.toggle("progestao-input--none", isNone);
   }
 
-  hostBtn?.addEventListener("click", async () => {
-    const raw = hostForm?.querySelector('[name="municipioCnpj"]')?.value || "";
+  const fetchPrefill = async ({ form, target, feedbackId, apply, withOverlay = false, invalidTitle = "CNPJ inválido" }) => {
+    const raw = form?.querySelector('[name="municipioCnpj"]')?.value || "";
     const cnpj = normalizeDigits(raw);
     if (cnpj.length !== 14) {
-      setFeedback("hostRegisterFeedback", "", false);
-      showMessageModal("CNPJ inválido", "Informe um CNPJ do município válido para buscar.", "warning");
+      if (withOverlay) {
+        setFeedback(feedbackId, "", false);
+        showMessageModal(invalidTitle, "Informe um CNPJ do município válido para buscar.", "warning");
+      }
       return;
     }
-    setFeedback("hostRegisterFeedback", "Buscando dados no Nosso Banco de dados...", true);
+    if (!withOverlay && form?.dataset.prefillCnpj === cnpj) return;
+
     try {
-      const data = await runWithLottie(
-        () => apiFetch(`/api/prefill/municipio/${cnpj}?target=host`),
-        {
-          loadingPath: "Loading.json",
-          loadingMessage: "Buscando dados do município...",
-          successPath: "Success.json",
-          successMessage: "Dados encontrados.",
-          overlayDelayMs: 2500,
-        }
-      );
-      applyPrefillToHostForm(hostForm, data.prefill);
-      setFeedback("hostRegisterFeedback", "Dados carregados. Revise e ajuste se necessário.", true);
+      let data;
+      if (withOverlay) {
+        setFeedback(feedbackId, "Buscando dados no Nosso Banco de dados...", true);
+        data = await runWithLottie(
+          () => apiFetch(`/api/prefill/municipio/${cnpj}?target=${target}`),
+          {
+            loadingPath: "Loading.json",
+            loadingMessage: "Buscando dados do município...",
+            successPath: "Success.json",
+            successMessage: "Dados encontrados.",
+            overlayDelayMs: 2500,
+          }
+        );
+      } else {
+        data = await apiFetch(`/api/prefill/municipio/${cnpj}?target=${target}`);
+      }
+
+      apply(form, data.prefill);
+      if (form) form.dataset.prefillCnpj = cnpj;
+      setFeedback(feedbackId, "Dados carregados. Revise e ajuste se necessário.", true);
     } catch (error) {
-      setFeedback("hostRegisterFeedback", "", false);
-      showMessageModal("Falha na busca", error.message, "error");
+      if (form) delete form.dataset.prefillCnpj;
+      if (withOverlay) {
+        setFeedback(feedbackId, "", false);
+        showMessageModal("Falha na busca", error.message, "error");
+      }
     }
+  };
+
+  hostBtn?.addEventListener("click", () =>
+    fetchPrefill({
+      form: hostForm,
+      target: "host",
+      feedbackId: "hostRegisterFeedback",
+      apply: applyPrefillToHostForm,
+      withOverlay: true,
+    })
+  );
+
+  candidateBtn?.addEventListener("click", () =>
+    fetchPrefill({
+      form: candidateForm,
+      target: "candidate",
+      feedbackId: "candidateRegisterFeedback",
+      apply: applyPrefillToCandidateForm,
+      withOverlay: true,
+    })
+  );
+
+  hostForm?.querySelector('[name="municipioCnpj"]')?.addEventListener("blur", () =>
+    fetchPrefill({
+      form: hostForm,
+      target: "host",
+      feedbackId: "hostRegisterFeedback",
+      apply: applyPrefillToHostForm,
+    })
+  );
+
+  hostForm?.querySelector('[name="municipioCnpj"]')?.addEventListener("input", () => {
+    if (hostForm) delete hostForm.dataset.prefillCnpj;
   });
 
-  candidateBtn?.addEventListener("click", async () => {
-    const raw = candidateForm?.querySelector('[name="municipioCnpj"]')?.value || "";
-    const cnpj = normalizeDigits(raw);
-    if (cnpj.length !== 14) {
-      setFeedback("candidateRegisterFeedback", "", false);
-      showMessageModal("CNPJ inválido", "Informe um CNPJ do município válido para buscar.", "warning");
-      return;
-    }
-    setFeedback("candidateRegisterFeedback", "Buscando dados no Nosso Banco de dados...", true);
-    try {
-      const data = await runWithLottie(
-        () => apiFetch(`/api/prefill/municipio/${cnpj}?target=candidate`),
-        {
-          loadingPath: "Loading.json",
-          loadingMessage: "Buscando dados do município...",
-          successPath: "Success.json",
-          successMessage: "Dados encontrados.",
-          overlayDelayMs: 2500,
-        }
-      );
-      applyPrefillToCandidateForm(candidateForm, data.prefill);
-      setFeedback("candidateRegisterFeedback", "Dados carregados. Revise e ajuste se necessário.", true);
-    } catch (error) {
-      setFeedback("candidateRegisterFeedback", "", false);
-      showMessageModal("Falha na busca", error.message, "error");
-    }
+  candidateForm?.querySelector('[name="municipioCnpj"]')?.addEventListener("blur", () =>
+    fetchPrefill({
+      form: candidateForm,
+      target: "candidate",
+      feedbackId: "candidateRegisterFeedback",
+      apply: applyPrefillToCandidateForm,
+    })
+  );
+
+  candidateForm?.querySelector('[name="municipioCnpj"]')?.addEventListener("input", () => {
+    if (candidateForm) delete candidateForm.dataset.prefillCnpj;
   });
 }
 
@@ -2328,8 +2386,13 @@ function setupWorkspaceActions() {
           successMessage: "Cadastro enviado com sucesso.",
         }
       );
-      setFeedback("candidateRegisterFeedback", "Cadastro concluído. Inscrição e credenciais geradas com sucesso.", true);
-      showAccessInfoModal(data.accessInfo);
+      if (data?.delivery === "modal" && data?.accessInfo) {
+        setFeedback("candidateRegisterFeedback", "Cadastro concluído. Inscrição e credenciais geradas com sucesso.", true);
+        showAccessInfoModal(data.accessInfo);
+      } else {
+        setFeedback("candidateRegisterFeedback", data?.message || "Cadastro do intercambista atualizado com sucesso.", true);
+        showToast(data?.message || "Cadastro do intercambista atualizado com sucesso.", "success", "Solicitação enviada");
+      }
       if (data?.emailSent === false) {
         console.error("[EMAIL_CANDIDATE_REGISTER_FAIL]", data.mailError || "erro nao informado");
         showMessageModal(
@@ -2341,6 +2404,9 @@ function setupWorkspaceActions() {
       resetCandidateRegisterForm(candidateRegisterForm);
     } catch (error) {
       setFeedback("candidateRegisterFeedback", error.message, false);
+      if (error.message === "Olá, você já possui uma inscrição ativa") {
+        showMessageModal("Inscrição ativa", error.message, "warning");
+      }
     }
   });
 
