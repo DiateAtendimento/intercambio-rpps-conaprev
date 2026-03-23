@@ -953,16 +953,16 @@ body.system-menu-open {
 }
 
 #hostAdminMessageSlot {
-  display: grid;
-  justify-items: center;
-  min-height: 2.5rem;
+  display: none;
 }
 
 .host-admin-mail {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
+  justify-content: center;
+  gap: 0;
+  overflow: visible;
 }
 
 .host-admin-mail.is-unread {
@@ -972,6 +972,9 @@ body.system-menu-open {
 .host-admin-mail.is-read {
   border-color: #cfd8e3;
   background: #f8fafc;
+  color: #8a5a00;
+  animation: none;
+  box-shadow: 0 6px 12px rgba(143, 116, 27, 0.12);
 }
 
 .host-admin-mail__badge {

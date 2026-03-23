@@ -2187,12 +2187,13 @@ function buildHostRows(rows, targetId) {
                        <button
                          type="button"
                          class="feedback-mail-btn host-admin-mail ${item.adminNoteRead ? "is-read" : "is-unread"}"
+                         title="${item.adminNoteRead ? "Mensagem do admin lida" : "Nova mensagem do admin"}"
+                         aria-label="${item.adminNoteRead ? "Mensagem do admin lida" : "Nova mensagem do admin"}"
                          data-action="host-open-admin-note"
                          data-admin-note="${escapeHtml(item.adminNote)}"
                          data-admin-note-read="${item.adminNoteRead ? "true" : "false"}"
                        >
                          <i class="fa-solid fa-envelope"></i>
-                         <span>${item.adminNoteRead ? "Mensagem do admin" : "Nova mensagem do admin"}</span>
                          ${item.adminNoteRead ? '<span class="host-admin-mail__badge">Visto</span>' : '<span class="feedback-mail-btn__badge">!</span>'}
                        </button>
                      `
@@ -2241,21 +2242,7 @@ async function refreshHostArea(notify = false) {
     `;
   }
   if (messageSlot) {
-    messageSlot.innerHTML = adminNote
-      ? `
-        <button
-          type="button"
-          class="feedback-mail-btn host-admin-mail ${adminNoteRead ? "is-read" : "is-unread"}"
-          data-action="host-open-admin-note"
-          data-admin-note="${escapeHtml(adminNote)}"
-          data-admin-note-read="${adminNoteRead ? "true" : "false"}"
-        >
-          <i class="fa-solid fa-envelope"></i>
-          <span>${adminNoteRead ? "Mensagem do admin" : "Nova mensagem do admin"}</span>
-          ${adminNoteRead ? '<span class="host-admin-mail__badge">Visto</span>' : '<span class="feedback-mail-btn__badge">!</span>'}
-        </button>
-      `
-      : "";
+    messageSlot.innerHTML = "";
   }
 
   const pendentes = [
