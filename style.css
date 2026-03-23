@@ -952,6 +952,11 @@ body.system-menu-open {
   color: #1b8f4d;
 }
 
+.host-profile__status--ativo {
+  background: #e9f8ef;
+  color: #1b8f4d;
+}
+
 .host-profile__status--rejeitado {
   background: #fff0f0;
   color: #c03434;
