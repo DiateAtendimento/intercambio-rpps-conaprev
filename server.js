@@ -345,9 +345,13 @@ function isSemProGestaoValue(value) {
 }
 
 function resolveHostStatus(rowData = {}) {
+  const permission = normalizeText(rowData["Permissão admin"] || "");
+  if (permission === "concedido") return "Ativo";
+  if (permission === "removido") return "Inativo";
+  if (permission === "negado") return "Rejeitado";
   const explicit = String(rowData["Status do Anfitrião"] || "").trim();
   if (explicit) return explicit;
-  return normalizeText(rowData["Permissão admin"] || "") === "concedido" ? "Ativo" : "Pendente";
+  return "Pendente";
 }
 
 function resolveHostApprovalLabel(rowData = {}) {
