@@ -1541,6 +1541,25 @@ function applyPrefillToHostForm(form, data) {
       `;
       supportList.appendChild(row);
     });
+    const rows = qsa("#supportTeamList .dynamic-list__row");
+    rows.forEach((row, index) => {
+      const btn = row.querySelector(".dynamic-remove-btn");
+      if (!btn) return;
+      btn.disabled = rows.length === 1;
+      btn.style.opacity = rows.length === 1 ? "0.45" : "1";
+      btn.style.cursor = rows.length === 1 ? "not-allowed" : "pointer";
+      btn.setAttribute("aria-label", `Remover membro ${index + 1}`);
+    });
+  }
+
+  const hostAreaList = qs("#hostAreaList");
+  if (hostAreaList) {
+    hostAreaList.innerHTML = "";
+    const areas = Array.isArray(data.areas) && data.areas.length ? data.areas : [];
+    areas.forEach((item) => {
+      hostAreaList.appendChild(createHostAreaRow(item.area || "", item.vagas || "", false));
+    });
+    setupHostAreaFields();
   }
 }
 

@@ -1262,6 +1262,11 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
     const candidate = candidates.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
     const hosts = await getRows(HOST_SHEET, hostHeaders);
     const host = hosts.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
+    const hostAreas = await getRows(HOST_AREAS_SHEET, hostAreaHeaders);
+    const resolvePrefillAreas = (hostRow) =>
+      getHostAreas(
+        hostAreas.rows.filter((row) => String(row.data["Inscrição do anfitrião"] || "").trim() === String(hostRow?.data?.["Inscrição"] || "").trim())
+      );
 
     if (target === "candidate" && candidate) {
       const uf = candidate.data.UF || "";
@@ -1326,6 +1331,7 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
             .split(",")
             .map((item) => item.trim())
             .filter(Boolean),
+          areas: resolvePrefillAreas(host),
           responsavel: host.data["Responsável pelo preenchimento"] || "",
           cargoResponsavel: host.data["Cargo/Função (Responsável)"] || "",
           dataPreenchimento: host.data.Data || "",
@@ -1396,6 +1402,7 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
             .split(",")
             .map((item) => item.trim())
             .filter(Boolean),
+          areas: resolvePrefillAreas(host),
           responsavel: host.data["Responsável pelo preenchimento"] || "",
           cargoResponsavel: host.data["Cargo/Função (Responsável)"] || "",
           dataPreenchimento: host.data.Data || "",
