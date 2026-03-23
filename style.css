@@ -922,6 +922,21 @@ body.system-menu-open {
   justify-items: center;
 }
 
+#candidateProfileMeta {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: center;
+  max-width: 280px;
+}
+
+.candidate-profile__entity {
+  display: block;
+  text-align: center;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .host-profile__status {
   display: inline-flex;
   align-items: center;
