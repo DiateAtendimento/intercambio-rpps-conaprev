@@ -2136,6 +2136,12 @@ async function refreshCandidateArea(notify = false) {
   const visibleHosts = hostsData.hosts || [];
   handleCandidateMonitor({ status, hosts: visibleHosts }, notify);
   state.ui.candidateProfile = status.profile || {};
+  const candidateProfile = qs("#candidateProfileMeta");
+  if (candidateProfile) {
+    candidateProfile.innerHTML = `
+      <span>${escapeHtml(state.ui.candidateProfile?.unidadeGestora || "-")}</span>
+    `;
+  }
   upsertWorkspaceNotice(
     "candidate-area",
     "Selecione um anfitrião ativo, informe os participantes dentro do limite disponível e acompanhe o retorno em Meu intercâmbio."
