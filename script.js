@@ -2138,7 +2138,8 @@ async function refreshCandidateArea(notify = false) {
   state.ui.candidateProfile = status.profile || {};
   const candidateProfile = qs("#candidateProfileMeta");
   if (candidateProfile) {
-    const candidateStatus = String(state.ui.candidateProfile?.statusIntercambista || "Pendente").trim();
+    const rawCandidateStatus = String(state.ui.candidateProfile?.statusIntercambista || "Pendente").trim();
+    const candidateStatus = normalizeText(rawCandidateStatus) === "ativo" ? "Aceito" : rawCandidateStatus;
     candidateProfile.innerHTML = `
       <span class="candidate-profile__entity">${escapeHtml(`${state.ui.candidateProfile?.unidadeGestora || "-"}${state.ui.candidateProfile?.uf ? ` - ${state.ui.candidateProfile.uf}` : ""}`)}</span>
       <span class="host-profile__status host-profile__status--${normalizeText(candidateStatus)}">${escapeHtml(candidateStatus)}</span>
