@@ -2294,7 +2294,7 @@ async function refreshHostArea(notify = false) {
   upsertWorkspaceNotice("host-area", noticeByStatus);
   if (profile) {
     profile.innerHTML = `
-      <span>${escapeHtml(`${data.host?.municipio || ""} - ${data.host?.uf || ""}`.trim())}</span>
+      <span>${escapeHtml(`${data.host?.entidade || data.host?.municipio || ""} - ${data.host?.uf || ""}`.trim())}</span>
       <span class="host-profile__status host-profile__status--${normalizeText(approvalStatus)}">${escapeHtml(approvalStatus)}</span>
       <span class="host-profile__visibility">${isVisibleToCandidates ? "Visível para intercambistas" : "Ainda não visível para intercambistas"}</span>
     `;
