@@ -2121,13 +2121,42 @@ function buildHostRows(rows, targetId) {
 async function refreshHostArea(notify = false) {
   const data = await apiFetch("/api/host/requests", { headers: { Authorization: `Bearer ${state.tokens.host}` } });
   handleHostMonitor(data, notify);
-  upsertWorkspaceNotice(
-    "host-area",
-    "As solicitações recebidas aguardam sua análise. Ao aceitar ou rejeitar, o status é refletido para o intercambista."
-  );
   const profile = qs("#hostProfileMeta");
+  const messageSlot = qs("#hostAdminMessageSlot");
+  const approvalStatus = String(data.host?.approvalStatus || "Pendente").trim();
+  const isVisibleToCandidates = Boolean(data.host?.visibleToCandidates);
+  const adminNote = String(data.host?.adminNote || "").trim();
+  const adminNoteRead = Boolean(data.host?.adminNoteRead);
+  const noticeByStatus =
+    approvalStatus === "Aceito"
+      ? "Seu cadastro foi aprovado pelo admin e o regime já está visível para os intercambistas."
+      : approvalStatus === "Rejeitado"
+        ? "Seu cadastro foi rejeitado pelo admin. Consulte a mensagem destacada para verificar o motivo."
+        : "Seu cadastro está pendente de análise do admin. Enquanto isso, a área do anfitrião permanece acessível para acompanhamento.";
+  upsertWorkspaceNotice("host-area", noticeByStatus);
   if (profile) {
-    profile.textContent = `${data.host?.municipio || ""} - ${data.host?.uf || ""}`.trim();
+    profile.innerHTML = `
+      <span>${escapeHtml(`${data.host?.municipio || ""} - ${data.host?.uf || ""}`.trim())}</span>
+      <span class="host-profile__status host-profile__status--${normalizeText(approvalStatus)}">${escapeHtml(approvalStatus)}</span>
+      <span class="host-profile__visibility">${isVisibleToCandidates ? "Visível para intercambistas" : "Ainda não visível para intercambistas"}</span>
+    `;
+  }
+  if (messageSlot) {
+    messageSlot.innerHTML = adminNote
+      ? `
+        <button
+          type="button"
+          class="feedback-mail-btn host-admin-mail ${adminNoteRead ? "is-read" : "is-unread"}"
+          data-action="host-open-admin-note"
+          data-admin-note="${escapeHtml(adminNote)}"
+          data-admin-note-read="${adminNoteRead ? "true" : "false"}"
+        >
+          <i class="fa-solid fa-envelope"></i>
+          <span>${adminNoteRead ? "Mensagem do admin" : "Nova mensagem do admin"}</span>
+          ${adminNoteRead ? '<span class="host-admin-mail__badge">Visto</span>' : '<span class="feedback-mail-btn__badge">!</span>'}
+        </button>
+      `
+      : "";
   }
 
   const pendentes = data.pendentes || [];
@@ -2602,6 +2631,23 @@ function setupWorkspaceActions() {
           actionEl.dataset.feedbackMessage || "Sem observações disponíveis.",
           "warning"
         );
+        return;
+      }
+
+      if (action === "host-open-admin-note") {
+        event.preventDefault();
+        event.stopPropagation();
+        const note = actionEl.dataset.adminNote || "Sem observações disponíveis.";
+        const alreadyRead = actionEl.dataset.adminNoteRead === "true";
+        showMessageModal("Mensagem do admin", note, "warning");
+        if (!alreadyRead) {
+          await apiFetch("/api/host/admin-note/read", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${state.tokens.host}` },
+            body: JSON.stringify({}),
+          });
+          await refreshHostArea();
+        }
         return;
       }
 

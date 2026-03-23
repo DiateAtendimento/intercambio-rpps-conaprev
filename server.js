@@ -160,6 +160,8 @@ const hostHeaders = [
   "Status do Anfitrião",
   "Permissão admin",
   "Observação do admin",
+  "Mensagem do admin vista",
+  "Data visualização mensagem admin",
 ];
 
 const candidateHeaders = [
@@ -344,6 +346,14 @@ function resolveHostStatus(rowData = {}) {
   const explicit = String(rowData["Status do Anfitrião"] || "").trim();
   if (explicit) return explicit;
   return normalizeText(rowData["Permissão admin"] || "") === "concedido" ? "Ativo" : "Pendente";
+}
+
+function resolveHostApprovalLabel(rowData = {}) {
+  const permission = normalizeText(rowData["Permissão admin"] || "");
+  if (permission === "concedido") return "Aceito";
+  if (permission === "negado") return "Rejeitado";
+  if (permission === "removido") return "Removido";
+  return "Pendente";
 }
 
 function resolveCandidateStatus(rowData = {}) {
@@ -1089,6 +1099,9 @@ function buildHostValueMap(payload, passwordHash, numeroInscricao) {
     "Primeiro Acesso Concluído": "Não",
     "Status do Anfitrião": "Pendente",
     "Permissão admin": "Pendente",
+    "Observação do admin": "",
+    "Mensagem do admin vista": "Sim",
+    "Data visualização mensagem admin": "",
   };
 }
 
@@ -1364,6 +1377,8 @@ app.post("/api/host/register", loginLimiter, async (req, res) => {
       valueMap["Permissão admin"] = existing.data["Permissão admin"] || "Pendente";
       valueMap["Data aceite MPS"] = existing.data["Data aceite MPS"] || "";
       valueMap["Observação do admin"] = existing.data["Observação do admin"] || "";
+      valueMap["Mensagem do admin vista"] = existing.data["Mensagem do admin vista"] || "Sim";
+      valueMap["Data visualização mensagem admin"] = existing.data["Data visualização mensagem admin"] || "";
       valueMap["Primeiro Acesso Concluído"] = resolveHostFirstAccess(valueMap);
 
       await updateRow(HOST_SHEET, headers, existing.rowNumber, valueMap);
@@ -1411,12 +1426,8 @@ app.post("/api/host/login", loginLimiter, async (req, res) => {
     }
 
     const permissaoAdmin = normalizeText(found.data["Permissão admin"] || "pendente");
-    if (permissaoAdmin !== "concedido") {
-      return res.status(403).json({ error: "Cadastro ainda não autorizado pelo admin." });
-    }
-    const statusHost = normalizeText(resolveHostStatus(found.data));
-    if (statusHost !== "ativo") {
-      return res.status(403).json({ error: "Anfitrião inativo. Contate o admin." });
+    if (permissaoAdmin === "removido") {
+      return res.status(403).json({ error: "Cadastro do anfitrião removido pelo admin." });
     }
 
     if (!found.data["Senha"]) {
@@ -1434,7 +1445,7 @@ app.post("/api/host/login", loginLimiter, async (req, res) => {
       profile: {
         numeroInscricao: found.data["Inscrição"] || "",
         entidade: found.data["Unidade Gestora"] || "",
-        status: resolveHostStatus(found.data),
+        status: resolveHostApprovalLabel(found.data),
       },
     });
   } catch (error) {
@@ -1522,10 +1533,6 @@ app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
     });
 
     const hostNumero = hostRowData.data["Inscrição"];
-    const hostStatus = normalizeText(resolveHostStatus(hostRowData.data));
-    if (hostStatus !== "ativo") {
-      return res.status(403).json({ error: "Anfitrião inativo. Contate o admin." });
-    }
 
     const requests = await getRows(EXCHANGE_REQUESTS_SHEET, exchangeRequestHeaders);
     const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
@@ -1557,6 +1564,11 @@ app.get("/api/host/requests", requireAuth("host"), async (req, res) => {
         entidade: hostRowData.data["Unidade Gestora"],
         municipio: hostRowData.data["Município"] || "",
         uf: hostRowData.data.UF || "",
+        approvalStatus: resolveHostApprovalLabel(hostRowData.data),
+        visibleToCandidates: normalizeText(hostRowData.data["Permissão admin"] || "") === "concedido",
+        adminNote: hostRowData.data["Observação do admin"] || "",
+        adminNoteRead: normalizeText(hostRowData.data["Mensagem do admin vista"] || "sim") === "sim",
+        adminNoteReadAt: normalizeDateBr(hostRowData.data["Data visualização mensagem admin"] || ""),
       },
       pendentes,
       cadastrados,
@@ -2281,9 +2293,11 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
     }
 
     host.data["Permissão admin"] = permissao;
-    host.data["Status do Anfitrião"] = permissao === "Concedido" ? "Ativo" : "Inativo";
+    host.data["Status do Anfitrião"] = permissao === "Concedido" ? "Ativo" : "Rejeitado";
     host.data["Data aceite MPS"] = permissao === "Concedido" ? nowBrDate() : "";
     host.data["Observação do admin"] = note;
+    host.data["Mensagem do admin vista"] = permissao === "Negado" && note ? "Não" : host.data["Mensagem do admin vista"] || "Sim";
+    host.data["Data visualização mensagem admin"] = permissao === "Negado" && note ? "" : host.data["Data visualização mensagem admin"] || "";
     if (permissao === "Concedido") {
       if (!host.data["Senha"]) {
         const senhaInicial = generateHostPassword();
@@ -2313,6 +2327,26 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
   } catch (error) {
     console.error("admin/host-status", error);
     res.status(500).json({ error: "Falha ao alterar permissão do anfitrião." });
+  }
+});
+
+app.post("/api/host/admin-note/read", requireAuth("host"), async (req, res) => {
+  try {
+    const hosts = await getRows(HOST_SHEET, hostHeaders);
+    const host = findHostBySessionSubject(hosts.rows, req.session.subject);
+    if (!host) {
+      return res.status(404).json({ error: "Anfitrião não encontrado." });
+    }
+    if (!String(host.data["Observação do admin"] || "").trim()) {
+      return res.json({ ok: true, message: "Sem mensagem pendente." });
+    }
+    host.data["Mensagem do admin vista"] = "Sim";
+    host.data["Data visualização mensagem admin"] = nowBrDate();
+    await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
+    res.json({ ok: true, message: "Mensagem marcada como vista." });
+  } catch (error) {
+    console.error("host/admin-note/read", error);
+    res.status(500).json({ error: "Falha ao marcar mensagem como vista." });
   }
 });
 
