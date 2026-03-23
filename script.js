@@ -2091,15 +2091,11 @@ function renderHostAreasSummary(host) {
 
 function buildCandidateHostCard(host) {
   const serializedAreas = serializeHostAreasForDataset(host.areas || []);
-  const isUnavailable = Number(host.vagasRestantes || 0) <= 0 || !!host.blockedForCandidate;
+  const isUnavailable = Number(host.vagasRestantes || 0) <= 0;
   const actionAttrs = isUnavailable
     ? `data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializedAreas)}"`
     : `data-action="open-host-application" data-host="${escapeHtml(host.numeroInscricao || "")}" data-cnpj="${escapeHtml(host.cnpj || "")}" data-entidade="${escapeHtml(host.entidade || "")}" data-uf="${escapeHtml(host.uf || "")}" data-municipio="${escapeHtml(host.municipio || "")}" data-vagas-restantes="${escapeHtml(host.vagasRestantes || "0")}" data-areas="${escapeHtml(serializedAreas)}" role="button" tabindex="0"`;
-  const buttonLabel = host.blockedForCandidate
-    ? "Solicitação já enviada"
-    : isUnavailable
-      ? "Sem vagas disponíveis"
-      : "Inscrever-se";
+  const buttonLabel = isUnavailable ? "Sem vagas disponíveis" : "Inscrever-se";
   return `
     <article class="host-card ${isUnavailable ? "host-card--full" : ""}" ${actionAttrs}>
       <img src="${escapeHtml(host.bandeira || "")}" alt="Bandeira ${escapeHtml(host.uf)}" class="host-card__flag" onerror="this.src='logo-conaprev.svg'" />
@@ -2137,16 +2133,7 @@ function upsertWorkspaceNotice(screenId, notice) {
 async function refreshCandidateArea(notify = false) {
   const status = await apiFetch("/api/candidate/status", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
   const hostsData = await apiFetch("/api/candidate/hosts", { headers: { Authorization: `Bearer ${state.tokens.candidate}` } });
-  const activeHostNumbers = new Set(
-    (Array.isArray(status.inscricoes) ? status.inscricoes : [])
-      .filter((item) => ["pendente", "aceito"].includes(normalizeText(item.statusSolicitacao || "")))
-      .map((item) => String(item.hostNumero || "").trim())
-      .filter(Boolean)
-  );
-  const visibleHosts = (hostsData.hosts || []).map((host) => ({
-    ...host,
-    blockedForCandidate: activeHostNumbers.has(String(host.numeroInscricao || "").trim()),
-  }));
+  const visibleHosts = hostsData.hosts || [];
   handleCandidateMonitor({ status, hosts: visibleHosts }, notify);
   state.ui.candidateProfile = status.profile || {};
   upsertWorkspaceNotice(
@@ -2231,10 +2218,11 @@ function buildHostRows(rows, targetId) {
         <td>${escapeHtml(item.municipio || "-")}</td>
         <td>${escapeHtml(item.uf || "-")}</td>
         <td>${escapeHtml(item.unidadeGestora || "-")}</td>
-        <td>${escapeHtml(item.dataSolicitacao || "-")}</td>
         ${
           targetId === "hostPendingTableBody"
-            ? item.selfRequest
+            ? `<td>${escapeHtml(item.dataSolicitacao || "-")}</td>
+               ${
+                 item.selfRequest
               ? `<td>${iconButton("host-open-self-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho do anfitrião")}</td>
                  <td>
                    ${
@@ -2265,6 +2253,7 @@ function buildHostRows(rows, targetId) {
                      <button class="btn btn-sm btn-action-reject" type="button" data-action="host-decision" data-row="${item.rowNumber}" data-decision="rejeitado">Rejeitar</button>
                    </div>
                  </td>`
+               }
             : `<td>${escapeHtml(item.dirigente || "-")}</td>
                <td>${escapeHtml(item.dataSolicitacao || "-")}</td>
                <td>${escapeHtml(item.dataDecisao || "-")}</td>

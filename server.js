@@ -456,7 +456,11 @@ function getReservedParticipantsForHost(requestRows = [], hostNumero = "") {
   return requestRows
     .filter((row) => String(row.data["Anfitrião - Inscrição"] || "") === String(hostNumero || ""))
     .filter((row) => ["pendente", "aceito"].includes(normalizeText(row.data["Status da solicitação"] || "")))
-    .reduce((acc, row) => acc + countRequestParticipants(row.data), 0);
+    .reduce((acc, row) => {
+      const reservedByAreas = parseRequestedAreas(row.data["Temas/áreas de interesse (texto)"] || "").length;
+      const reservedSlots = reservedByAreas > 0 ? reservedByAreas : countRequestParticipants(row.data);
+      return acc + reservedSlots;
+    }, 0);
 }
 
 function recalculateHostRemainingVacancies(hostRowData, requestRows = []) {
@@ -2181,28 +2185,18 @@ app.post("/api/candidate/select-host", requireAuth("candidate"), async (req, res
       });
       return res.status(400).json({ error: "Informe ao menos um participante." });
     }
-    const duplicate = requests.rows.find((row) => {
-      const sameCandidate = String(row.data["Inscrição do intercambista"] || "") === String(candidate.data["Inscrição"] || "");
-      const sameHost = String(row.data["Anfitrião - Inscrição"] || "") === String(host.data["Inscrição"] || "");
-      const status = normalizeText(row.data["Status da solicitação"] || "");
-      return sameCandidate && sameHost && ["pendente", "aceito"].includes(status);
-    });
-    if (duplicate) {
-      console.warn("[candidate/select-host:duplicate]", {
-        candidateRegistration: candidate.data["Inscrição"] || "",
-        hostNumero: String(host.data["Inscrição"] || ""),
-        duplicateRow: duplicate.rowNumber,
-      });
-      return res.status(409).json({ error: "Já existe uma inscrição ativa desse intercambista para este anfitrião." });
-    }
     const requestedParticipants = participants.length;
+    const requestedAreas = parseRequestedAreas(req.body["Temas/áreas de interesse (texto)"] || req.body.temas || "").length;
+    const requestedSlots = requestedAreas > 0 ? requestedAreas : requestedParticipants;
     const offered = Number(String(host.data["Número de vagas oferecidas"] || "").trim()) || 0;
     const reserved = getReservedParticipantsForHost(requests.rows, String(host.data["Inscrição"] || ""));
     const remaining = Math.max(0, offered - reserved);
-    if (requestedParticipants > remaining) {
+    if (requestedSlots > remaining) {
       console.warn("[candidate/select-host:no-vacancy]", {
         hostNumero: String(host.data["Inscrição"] || ""),
         requestedParticipants,
+        requestedAreas,
+        requestedSlots,
         offered,
         reserved,
         remaining,
