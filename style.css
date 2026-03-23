@@ -1381,7 +1381,18 @@ body.system-menu-open {
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 8px 18px rgba(184, 107, 0, 0.22);
+}
+
+.feedback-mail-btn.is-unread {
   animation: feedback-pulse 1.5s ease-in-out infinite;
+}
+
+.feedback-mail-btn.is-read {
+  border: 1px solid #cfd8e3;
+  background: #f8fafc;
+  color: #8a5a00;
+  animation: none;
+  box-shadow: 0 6px 12px rgba(143, 116, 27, 0.12);
 }
 
 .feedback-mail-btn__badge {

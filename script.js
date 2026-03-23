@@ -26,6 +26,7 @@ let modalTextResolver = null;
 const STORAGE_KEYS = {
   tokens: "intercambio_tokens_v1",
   screen: "intercambio_screen_v1",
+  candidateFeedbackRead: "intercambio_candidate_feedback_read_v1",
 };
 
 const API_BASE =
@@ -459,6 +460,51 @@ function loadScreen() {
   } catch (_) {
     return "";
   }
+}
+
+function loadCandidateFeedbackReadMap() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.candidateFeedbackRead);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function saveCandidateFeedbackReadMap(map) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.candidateFeedbackRead, JSON.stringify(map || {}));
+  } catch (_) {}
+}
+
+function getCandidateFeedbackReadKey(item) {
+  const rowNumber = String(item?.rowNumber || "").trim();
+  if (rowNumber) return `row:${rowNumber}`;
+  const inscricao = String(item?.inscricao || "").trim();
+  if (inscricao) return `inscricao:${inscricao}`;
+  return "";
+}
+
+function isCandidateFeedbackRead(item) {
+  const key = getCandidateFeedbackReadKey(item);
+  if (!key) return false;
+  const map = loadCandidateFeedbackReadMap();
+  return map[key] === true;
+}
+
+function markCandidateFeedbackAsRead(item) {
+  const key = getCandidateFeedbackReadKey(item);
+  if (!key) return;
+  markCandidateFeedbackKeyAsRead(key);
+}
+
+function markCandidateFeedbackKeyAsRead(key) {
+  const safeKey = String(key || "").trim();
+  if (!safeKey) return;
+  const map = loadCandidateFeedbackReadMap();
+  map[safeKey] = true;
+  saveCandidateFeedbackReadMap(map);
 }
 
 function getNavigationType() {
@@ -1913,17 +1959,19 @@ function renderCandidateFeedbackButton(item) {
   const rejected = normalizeText(item.statusSolicitacao || "") === "rejeitado";
   const feedback = String(item.observacaoDecisao || "").trim();
   if (!rejected || !feedback) return "-";
+  const isRead = isCandidateFeedbackRead(item);
   return `
     <button
       type="button"
-      class="feedback-mail-btn"
+      class="feedback-mail-btn ${isRead ? "is-read" : "is-unread"}"
       data-action="candidate-open-feedback"
+      data-feedback-key="${escapeHtml(getCandidateFeedbackReadKey(item))}"
       data-feedback-title="${escapeHtml(`Feedback da inscrição ${item.inscricao || ""}`)}"
       data-feedback-message="${escapeHtml(feedback)}"
-      aria-label="Abrir feedback da rejeição"
+      aria-label="${isRead ? "Feedback da rejeição já lido" : "Abrir feedback da rejeição"}"
     >
       <i class="fa-solid fa-envelope"></i>
-      <span class="feedback-mail-btn__badge">1</span>
+      ${isRead ? '<span class="host-admin-mail__badge">Visto</span>' : '<span class="feedback-mail-btn__badge">!</span>'}
     </button>`;
 }
 
@@ -2172,7 +2220,7 @@ async function refreshCandidateArea(notify = false) {
 function buildHostRows(rows, targetId) {
   const body = qs(`#${targetId}`);
   if (!body) return;
-  if (!rows.length) return renderEmptyRow(targetId, targetId === "hostPendingTableBody" ? 8 : 10, "Sem registros.");
+  if (!rows.length) return renderEmptyRow(targetId, targetId === "hostPendingTableBody" ? 9 : 10, "Sem registros.");
 
   body.innerHTML = rows
     .map(
@@ -2205,10 +2253,12 @@ function buildHostRows(rows, targetId) {
                          ${item.adminNoteRead ? '<span class="host-admin-mail__badge">Visto</span>' : '<span class="feedback-mail-btn__badge">!</span>'}
                        </button>
                      `
-                       : formatStatus(item.statusSolicitacao || "Pendente")
+                       : "-"
                    }
-                 </td>`
+                 </td>
+                 <td>${formatStatus(item.statusSolicitacao || "Pendente")}</td>`
               : `<td>${iconButton("host-open-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho")}</td>
+                 <td>-</td>
                  <td>
                    <div class="action-group">
                      <button class="btn btn-sm btn-action-accept" type="button" data-action="host-decision" data-row="${item.rowNumber}" data-decision="aceito">Aceitar</button>
@@ -2740,6 +2790,15 @@ function setupWorkspaceActions() {
           actionEl.dataset.feedbackMessage || "Sem observações disponíveis.",
           "warning"
         );
+        markCandidateFeedbackKeyAsRead(actionEl.dataset.feedbackKey || "");
+        actionEl.classList.remove("is-unread");
+        actionEl.classList.add("is-read");
+        actionEl.setAttribute("aria-label", "Feedback da rejeição já lido");
+        const badge = actionEl.querySelector(".feedback-mail-btn__badge, .host-admin-mail__badge");
+        if (badge) {
+          badge.className = "host-admin-mail__badge";
+          badge.textContent = "Visto";
+        }
         return;
       }
 
