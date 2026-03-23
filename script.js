@@ -2226,10 +2226,9 @@ function buildHostRows(rows, targetId) {
         <td>${escapeHtml(item.unidadeGestora || "-")}</td>
         ${
           targetId === "hostPendingTableBody"
-            ? `<td>${escapeHtml(item.dataSolicitacao || "-")}</td>
-               ${
-                 item.selfRequest
-              ? `<td>${iconButton("host-open-self-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho do anfitrião")}</td>
+            ? item.selfRequest
+              ? `<td>${escapeHtml(item.dataSolicitacao || "-")}</td>
+                 <td>${iconButton("host-open-self-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho do anfitrião")}</td>
                  <td>
                    ${
                      item.adminNote
@@ -2251,7 +2250,8 @@ function buildHostRows(rows, targetId) {
                    }
                  </td>
                  <td>${formatStatus(item.statusSolicitacao || "Pendente")}</td>`
-              : `<td>${iconButton("host-open-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho")}</td>
+              : `<td>${escapeHtml(item.dataSolicitacao || "-")}</td>
+                 <td>${iconButton("host-open-plan", item.rowNumber, "icone-plano-trabalho.svg", "Plano de trabalho")}</td>
                  <td>-</td>
                  <td>
                    <div class="action-group">
@@ -2259,7 +2259,6 @@ function buildHostRows(rows, targetId) {
                      <button class="btn btn-sm btn-action-reject" type="button" data-action="host-decision" data-row="${item.rowNumber}" data-decision="rejeitado">Rejeitar</button>
                    </div>
                  </td>`
-               }
             : `<td>${escapeHtml(item.dirigente || "-")}</td>
                <td>${escapeHtml(item.dataSolicitacao || "-")}</td>
                <td>${escapeHtml(item.dataDecisao || "-")}</td>
