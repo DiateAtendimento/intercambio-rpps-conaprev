@@ -219,6 +219,8 @@ function diffNewItems(previous = [], current = []) {
 function isWorkspaceSessionError(message) {
   const text = String(message || "").toLowerCase();
   return (
+    text.includes("sessão inválida") ||
+    text.includes("sessao invalida") ||
     text.includes("sessão expirada") ||
     text.includes("sessao expirada") ||
     text.includes("acesso expirado") ||
@@ -433,19 +435,42 @@ function showAccessInfoModal(accessInfo) {
 
 function saveTokens() {
   try {
-    localStorage.setItem(STORAGE_KEYS.tokens, JSON.stringify(state.tokens));
+    sessionStorage.setItem(STORAGE_KEYS.tokens, JSON.stringify(state.tokens));
+    localStorage.removeItem(STORAGE_KEYS.tokens);
   } catch (_) {}
 }
 
 function loadTokens() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.tokens);
+    const raw = sessionStorage.getItem(STORAGE_KEYS.tokens) || localStorage.getItem(STORAGE_KEYS.tokens);
     if (!raw) return;
     const parsed = JSON.parse(raw);
     state.tokens.candidate = String(parsed?.candidate || "");
     state.tokens.host = String(parsed?.host || "");
     state.tokens.admin = String(parsed?.admin || "");
+    localStorage.removeItem(STORAGE_KEYS.tokens);
   } catch (_) {}
+}
+
+function clearRoleToken(role) {
+  if (!role || !Object.prototype.hasOwnProperty.call(state.tokens, role)) return;
+  state.tokens[role] = "";
+  saveTokens();
+}
+
+async function performLogout(role) {
+  const token = String(state.tokens?.[role] || "");
+  try {
+    if (token) {
+      await apiFetch("/api/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    }
+  } catch (_) {
+  } finally {
+    clearRoleToken(role);
+  }
 }
 
 function saveScreen(screenId) {
@@ -1679,33 +1704,14 @@ function setupCnpjPrefill() {
     }
     if (!withOverlay && form?.dataset.prefillCnpj === cnpj) return;
 
-    try {
-      let data;
-      if (withOverlay) {
-        setFeedback(feedbackId, "Buscando dados no Nosso Banco de dados...", true);
-        data = await runWithLottie(
-          () => apiFetch(`/api/prefill/municipio/${cnpj}?target=${target}`),
-          {
-            loadingPath: "Loading.json",
-            loadingMessage: "Buscando dados do município...",
-            successPath: "Success.json",
-            successMessage: "Dados encontrados.",
-            overlayDelayMs: 2500,
-          }
-        );
-      } else {
-        data = await apiFetch(`/api/prefill/municipio/${cnpj}?target=${target}`);
-      }
-
-      apply(form, data.prefill);
-      if (form) form.dataset.prefillCnpj = cnpj;
-      setFeedback(feedbackId, "Dados carregados. Revise e ajuste se necessário.", true);
-    } catch (error) {
-      if (form) delete form.dataset.prefillCnpj;
-      if (withOverlay) {
-        setFeedback(feedbackId, "", false);
-        showMessageModal("Falha na busca", error.message, "error");
-      }
+    if (form) delete form.dataset.prefillCnpj;
+    setFeedback(feedbackId, "", false);
+    if (withOverlay) {
+      showMessageModal(
+        "Pré-preenchimento desabilitado",
+        "O pré-preenchimento automático por CNPJ foi desabilitado por segurança. Preencha os dados manualmente.",
+        "warning"
+      );
     }
   };
 
@@ -3004,18 +3010,15 @@ function setupWorkspaceActions() {
       }
 
       if (action === "logout-admin") {
-        state.tokens.admin = "";
-        saveTokens();
+        await performLogout("admin");
         openWorkspace("admin-login");
       }
       if (action === "logout-host") {
-        state.tokens.host = "";
-        saveTokens();
+        await performLogout("host");
         openWorkspace("host-login");
       }
       if (action === "logout-candidate") {
-        state.tokens.candidate = "";
-        saveTokens();
+        await performLogout("candidate");
         openWorkspace("candidate-login");
       }
     } catch (error) {

@@ -26,7 +26,7 @@ const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
 const SMTP_CONNECTION_TIMEOUT = Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 4000);
 const SMTP_GREETING_TIMEOUT = Number(process.env.SMTP_GREETING_TIMEOUT_MS || 4000);
 const SMTP_SOCKET_TIMEOUT = Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 6000);
-const LOOKUP_DEBUG = String(process.env.LOOKUP_DEBUG || "true").trim().toLowerCase() !== "false";
+const LOOKUP_DEBUG = String(process.env.LOOKUP_DEBUG || "false").trim().toLowerCase() === "true";
 
 if (!SHEET_ID) {
   throw new Error("Missing GOOGLE_SHEET_ID");
@@ -87,26 +87,15 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
-  if (req.path.startsWith("/api/")) {
+  if (LOOKUP_DEBUG && req.path.startsWith("/api/")) {
+    const bodyKeys = req.body && typeof req.body === "object" ? Object.keys(req.body).slice(0, 20) : [];
     console.error("[api-hit]", {
       method: req.method,
       path: req.path,
       origin: req.headers.origin || "",
       hasAuthorization: Boolean(req.headers.authorization),
-      body: {
-        rowNumber: req.body?.rowNumber,
-        fingerprint: req.body?.fingerprint || "",
-        numeroInscricao: req.body?.numeroInscricao || "",
-        cnpj: maskValue(req.body?.cnpj || ""),
-        municipio: req.body?.municipio || "",
-        uf: req.body?.uf || "",
-        entidade: req.body?.entidade || "",
-        email: maskValue(req.body?.email || "", 6),
-        dirigente: req.body?.dirigente || "",
-        dataSolicitacao: req.body?.dataSolicitacao || "",
-        candidateRow: req.body?.candidateRow,
-        decision: req.body?.decision || "",
-      },
+      hasBody: bodyKeys.length > 0,
+      bodyKeys,
     });
   }
   next();
@@ -622,13 +611,60 @@ async function syncHostAreas(hostData, areas) {
 
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 const actionTokens = new Map();
+const activeSessions = new Map();
+const revokedSessions = new Map();
 const ACTION_TOKEN_TTL_MS = 30 * 60 * 1000;
+const AUTH_FAILURE_MESSAGE = "Não foi possível autenticar com os dados informados.";
+const SESSION_INVALID_MESSAGE = "Sessão inválida ou expirada.";
+
+function buildSessionKey(role, subject) {
+  return `${String(role || "").trim().toLowerCase()}:${String(subject || "").trim()}`;
+}
+
+function pruneRevokedSessions() {
+  const now = Date.now();
+  for (const [sessionId, expiresAt] of revokedSessions.entries()) {
+    if (!expiresAt || expiresAt <= now) revokedSessions.delete(sessionId);
+  }
+}
+
+function pruneActiveSessions() {
+  const now = Date.now();
+  for (const [sessionId, entry] of activeSessions.entries()) {
+    if (!entry?.expiresAt || entry.expiresAt <= now) {
+      activeSessions.delete(sessionId);
+    }
+  }
+}
+
+function revokeSessionById(sessionId, expiresAt = Date.now() + SESSION_TTL_MS) {
+  if (!sessionId) return;
+  activeSessions.delete(sessionId);
+  revokedSessions.set(sessionId, expiresAt);
+}
+
+function revokeSessionsFor(role, subject) {
+  const sessionKey = buildSessionKey(role, subject);
+  for (const [sessionId, entry] of activeSessions.entries()) {
+    if (entry?.sessionKey === sessionKey) {
+      revokeSessionById(sessionId, entry.expiresAt);
+    }
+  }
+}
 
 function createToken(role, subject) {
+  pruneActiveSessions();
+  pruneRevokedSessions();
+  revokeSessionsFor(role, subject);
+
+  const sessionId = crypto.randomBytes(18).toString("hex");
+  const createdAt = Date.now();
+  const expiresAt = createdAt + SESSION_TTL_MS;
   const payload = {
     role,
     subject: String(subject),
-    createdAt: Date.now(),
+    createdAt,
+    sid: sessionId,
     nonce: crypto.randomBytes(12).toString("hex"),
   };
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -636,6 +672,13 @@ function createToken(role, subject) {
     .createHmac("sha256", SESSION_SECRET)
     .update(encodedPayload)
     .digest("base64url");
+  activeSessions.set(sessionId, {
+    role: String(role),
+    subject: String(subject),
+    sessionKey: buildSessionKey(role, subject),
+    createdAt,
+    expiresAt,
+  });
   return `${encodedPayload}.${signature}`;
 }
 
@@ -655,12 +698,25 @@ function readTokenSession(token) {
 
   try {
     const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
-    if (!payload?.role || !payload?.subject || !payload?.createdAt) return null;
-    return {
+    if (!payload?.role || !payload?.subject || !payload?.createdAt || !payload?.sid) return null;
+    const session = {
       role: String(payload.role),
       subject: String(payload.subject),
       createdAt: Number(payload.createdAt),
+      sessionId: String(payload.sid),
     };
+    if (!Number.isFinite(session.createdAt)) return null;
+    if (Date.now() - session.createdAt > SESSION_TTL_MS) {
+      revokeSessionById(session.sessionId, session.createdAt + SESSION_TTL_MS);
+      return null;
+    }
+    pruneActiveSessions();
+    pruneRevokedSessions();
+    if (revokedSessions.has(session.sessionId)) return null;
+    const activeSession = activeSessions.get(session.sessionId);
+    if (!activeSession) return null;
+    if (activeSession.role !== session.role || activeSession.subject !== session.subject) return null;
+    return session;
   } catch (_) {
     return null;
   }
@@ -684,6 +740,7 @@ function consumeActionToken(token, kind) {
     return null;
   }
   if (kind && entry.kind !== kind) return null;
+  actionTokens.delete(token);
   return entry;
 }
 
@@ -694,11 +751,12 @@ function requireAuth(role) {
 
     const session = readTokenSession(token);
     if (!session) {
-      return res.status(401).json({ error: "Sessão inválida." });
+      return res.status(401).json({ error: SESSION_INVALID_MESSAGE });
     }
 
     if (Date.now() - session.createdAt > SESSION_TTL_MS) {
-      return res.status(401).json({ error: "Sessão expirada." });
+      revokeSessionById(session.sessionId, session.createdAt + SESSION_TTL_MS);
+      return res.status(401).json({ error: SESSION_INVALID_MESSAGE });
     }
 
     if (role && session.role !== role) {
@@ -748,7 +806,16 @@ function maskValue(value, visible = 4) {
 
 function logLookup(scope, stage, payload = {}) {
   if (!LOOKUP_DEBUG) return;
-  console.error(`[lookup:${scope}] ${stage}`, payload);
+  const sanitized = Object.fromEntries(
+    Object.entries(payload || {}).map(([key, value]) => {
+      if (value == null) return [key, value];
+      if (/token|senha|password|authorization/i.test(key)) return [key, "[redacted]"];
+      if (/email/i.test(key)) return [key, maskValue(value, 6)];
+      if (/cpf|cnpj/i.test(key)) return [key, maskValue(value)];
+      return [key, value];
+    })
+  );
+  console.error(`[lookup:${scope}] ${stage}`, sanitized);
 }
 
 function buildHostFingerprint(rowData = {}) {
@@ -1287,172 +1354,10 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
-app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
-  try {
-    const cnpj = onlyDigits(req.params.cnpj);
-    const target = normalizeText(req.query.target || "");
-    if (cnpj.length !== 14) {
-      return res.status(400).json({ error: "CNPJ do município inválido." });
-    }
-
-    const proLookup = await getProGestaoLookup();
-    const candidates = await getRows(CANDIDATE_SHEET, candidateHeaders);
-    const candidate = candidates.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
-    const hosts = await getRows(HOST_SHEET, hostHeaders);
-    const host = hosts.rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
-    const hostAreas = await getRows(HOST_AREAS_SHEET, hostAreaHeaders);
-    const resolvePrefillAreas = (hostRow) =>
-      getHostAreas(
-        hostAreas.rows.filter((row) => String(row.data["Inscrição do anfitrião"] || "").trim() === String(hostRow?.data?.["Inscrição"] || "").trim())
-      );
-
-    if (target === "candidate" && candidate) {
-      const uf = candidate.data.UF || "";
-      const municipio = candidate.data["Município"] || "";
-      const nivelProGestao = resolveProGestaoLevel(
-        proLookup,
-        municipio,
-        uf,
-        candidate.data["Nível do Pró-Gestão"] || ""
-      );
-      return res.json({
-        source: "candidate",
-        prefill: {
-          rowNumber: candidate.rowNumber,
-          source: "candidate",
-          municipio,
-          uf,
-          municipioCnpj: candidate.data["Município CNPJ"] || "",
-          unidadeGestora: candidate.data["Unidade Gestora"] || "",
-          unidadeGestoraCnpj: candidate.data["Unidade Gestora CNPJ"] || "",
-          dirigente: candidate.data["Nome do Dirigente ou Responsável Legal"] || "",
-          cargoDirigente: candidate.data["Cargo/Função (Dirigente)"] || "",
-          email: candidate.data["E-mail institucional"] || "",
-          telefone: candidate.data["Telefone para contato"] || "",
-          nivelProGestao,
-          responsavel: candidate.data["Responsável pelo preenchimento"] || "",
-          cargoResponsavel: candidate.data["Cargo/Função (Responsável)"] || "",
-          dataPreenchimento: candidate.data.Data || "",
-        },
-      });
-    }
-
-    if (target === "host" && host) {
-      const uf = host.data.UF || "";
-      const municipio = host.data["Município"] || "";
-      const nivelProGestao = resolveProGestaoLevel(
-        proLookup,
-        municipio,
-        uf,
-        host.data["Nível do Pró-Gestão"] || ""
-      );
-      return res.json({
-        source: "host",
-        prefill: {
-          rowNumber: host.rowNumber,
-          source: "host",
-          municipio,
-          uf,
-          municipioCnpj: host.data["Município CNPJ"] || "",
-          unidadeGestora: host.data["Unidade Gestora"] || "",
-          endereco: host.data["Endereço"] || "",
-          coordenadorLocal: host.data["Responsável pela coordenação local"] || "",
-          dirigente: host.data["Nome do Dirigente ou Responsável Legal"] || "",
-          cargoDirigente: host.data["Cargo/Função (Dirigente)"] || "",
-          email: host.data["E-mail de contato"] || "",
-          telefone: host.data["Telefone de contato"] || "",
-          nivelProGestao,
-          vagas: host.data["Número de vagas oferecidas"] || "",
-          vagasRestantes: host.data["Vagas restantes"] || "",
-          proposta: host.data["Breve descrição da proposta de intercâmbio"] || "",
-          equipeApoio: String(host.data["Equipe de apoio designada (nomes)"] || "")
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean),
-          areas: resolvePrefillAreas(host),
-          responsavel: host.data["Responsável pelo preenchimento"] || "",
-          cargoResponsavel: host.data["Cargo/Função (Responsável)"] || "",
-          dataPreenchimento: host.data.Data || "",
-        },
-      });
-    }
-
-    if (candidate) {
-      const uf = candidate.data.UF || "";
-      const municipio = candidate.data["Município"] || "";
-      const nivelProGestao = resolveProGestaoLevel(
-        proLookup,
-        municipio,
-        uf,
-        candidate.data["Nível do Pró-Gestão"] || ""
-      );
-      return res.json({
-        source: "candidate",
-        prefill: {
-          rowNumber: candidate.rowNumber,
-          source: "candidate",
-          municipio,
-          uf,
-          municipioCnpj: candidate.data["Município CNPJ"] || "",
-          unidadeGestora: candidate.data["Unidade Gestora"] || "",
-          unidadeGestoraCnpj: candidate.data["Unidade Gestora CNPJ"] || "",
-          dirigente: candidate.data["Nome do Dirigente ou Responsável Legal"] || "",
-          cargoDirigente: candidate.data["Cargo/Função (Dirigente)"] || "",
-          email: candidate.data["E-mail institucional"] || "",
-          telefone: candidate.data["Telefone para contato"] || "",
-          nivelProGestao,
-          responsavel: candidate.data["Responsável pelo preenchimento"] || "",
-          cargoResponsavel: candidate.data["Cargo/Função (Responsável)"] || "",
-          dataPreenchimento: candidate.data.Data || "",
-        },
-      });
-    }
-
-    if (host) {
-      const uf = host.data.UF || "";
-      const municipio = host.data["Município"] || "";
-      const nivelProGestao = resolveProGestaoLevel(
-        proLookup,
-        municipio,
-        uf,
-        host.data["Nível do Pró-Gestão"] || ""
-      );
-      return res.json({
-        source: "host",
-        prefill: {
-          rowNumber: host.rowNumber,
-          source: "host",
-          municipio,
-          uf,
-          municipioCnpj: host.data["Município CNPJ"] || "",
-          unidadeGestora: host.data["Unidade Gestora"] || "",
-          endereco: host.data["Endereço"] || "",
-          coordenadorLocal: host.data["Responsável pela coordenação local"] || "",
-          dirigente: host.data["Nome do Dirigente ou Responsável Legal"] || "",
-          cargoDirigente: host.data["Cargo/Função (Dirigente)"] || "",
-          email: host.data["E-mail de contato"] || "",
-          telefone: host.data["Telefone de contato"] || "",
-          nivelProGestao,
-          vagas: host.data["Número de vagas oferecidas"] || "",
-          vagasRestantes: host.data["Vagas restantes"] || "",
-          proposta: host.data["Breve descrição da proposta de intercâmbio"] || "",
-          equipeApoio: String(host.data["Equipe de apoio designada (nomes)"] || "")
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean),
-          areas: resolvePrefillAreas(host),
-          responsavel: host.data["Responsável pelo preenchimento"] || "",
-          cargoResponsavel: host.data["Cargo/Função (Responsável)"] || "",
-          dataPreenchimento: host.data.Data || "",
-        },
-      });
-    }
-
-    return res.status(404).json({ error: "Nenhum registro encontrado para este CNPJ." });
-  } catch (error) {
-    console.error("prefill/municipio", error);
-    return res.status(500).json({ error: "Falha ao consultar dados para pré-preenchimento." });
-  }
+app.get("/api/prefill/municipio/:cnpj", (req, res) => {
+  return res.status(403).json({
+    error: "O pré-preenchimento automático por CNPJ foi desabilitado por segurança.",
+  });
 });
 
 app.post("/api/host/register", loginLimiter, async (req, res) => {
@@ -1527,21 +1432,17 @@ app.post("/api/host/login", loginLimiter, async (req, res) => {
     const found = rows.find((row) => onlyDigits(row.data["Município CNPJ"]) === cnpj);
 
     if (!found) {
-      return res.status(401).json({ error: "Credenciais inválidas." });
+      return res.status(401).json({ error: AUTH_FAILURE_MESSAGE });
     }
 
     const permissaoAdmin = normalizeText(found.data["Permissão admin"] || "pendente");
-    if (permissaoAdmin === "removido") {
-      return res.status(403).json({ error: "Cadastro do anfitrião removido pelo admin." });
-    }
-
-    if (!found.data["Senha"]) {
-      return res.status(403).json({ error: "Senha inicial ainda não disponibilizada. Aguarde o e-mail de autorização." });
+    if (permissaoAdmin === "removido" || !found.data["Senha"]) {
+      return res.status(401).json({ error: AUTH_FAILURE_MESSAGE });
     }
 
     const passOk = await bcrypt.compare(senha, found.data["Senha"] || "");
     if (!passOk) {
-      return res.status(401).json({ error: "Credenciais inválidas." });
+      return res.status(401).json({ error: AUTH_FAILURE_MESSAGE });
     }
 
     const token = createToken("host", cnpj);
@@ -1592,7 +1493,7 @@ app.post("/api/host/first-access", loginLimiter, async (req, res) => {
         cnpj: maskValue(cnpj),
         numeroInscricao,
       });
-      return res.status(404).json({ error: "Anfitrião não encontrado para primeiro acesso." });
+      return res.status(401).json({ error: AUTH_FAILURE_MESSAGE });
     }
     logLookup("host-first-access", "matched", {
       by: "cnpj+numeroInscricao",
@@ -1603,12 +1504,13 @@ app.post("/api/host/first-access", loginLimiter, async (req, res) => {
 
     const initialOk = await bcrypt.compare(senhaInicial, found.data["Senha"] || "");
     if (!initialOk) {
-      return res.status(401).json({ error: "Senha inicial inválida." });
+      return res.status(401).json({ error: AUTH_FAILURE_MESSAGE });
     }
 
     found.data["Senha"] = await bcrypt.hash(novaSenha, 12);
     found.data["Primeiro Acesso Concluído"] = resolveHostFirstAccess(found.data);
     await updateRow(HOST_SHEET, dataset.headers, found.rowNumber, found.data);
+    revokeSessionsFor("host", cnpj);
 
     return res.json({ ok: true, message: "Primeiro acesso concluído." });
   } catch (error) {
@@ -1923,7 +1825,7 @@ app.post("/api/candidate/login", loginLimiter, async (req, res) => {
 
     if (!found) {
       logLookup("candidate-login", "not_found", { cpf: maskValue(cpf) });
-      return res.status(404).json({ error: "CPF não encontrado." });
+      return res.status(401).json({ error: AUTH_FAILURE_MESSAGE });
     }
     logLookup("candidate-login", "matched", {
       by: "cpf",
@@ -1934,7 +1836,7 @@ app.post("/api/candidate/login", loginLimiter, async (req, res) => {
 
     const passOk = await bcrypt.compare(senha, found.data["Senha"] || "");
     if (!passOk) {
-      return res.status(401).json({ error: "Credenciais inválidas." });
+      return res.status(401).json({ error: AUTH_FAILURE_MESSAGE });
     }
 
     const token = createToken("candidate", cpf);
@@ -2027,7 +1929,7 @@ app.post("/api/candidate/first-access", loginLimiter, async (req, res) => {
     const found = dataset.rows.find((row) => onlyDigits(row.data.CPF) === cpf);
     if (!found) {
       logLookup("candidate-first-access", "not_found", { cpf: maskValue(cpf) });
-      return res.status(404).json({ error: "CPF não encontrado." });
+      return res.status(401).json({ error: AUTH_FAILURE_MESSAGE });
     }
     logLookup("candidate-first-access", "matched", {
       by: "cpf",
@@ -2043,12 +1945,13 @@ app.post("/api/candidate/first-access", loginLimiter, async (req, res) => {
         emailRequest: maskValue(email, 6),
         emailSheet: maskValue(rowEmail, 6),
       });
-      return res.status(401).json({ error: "Email institucional não confere." });
+      return res.status(401).json({ error: AUTH_FAILURE_MESSAGE });
     }
 
     found.data["Senha"] = await bcrypt.hash(novaSenha, 12);
     found.data["Primeiro Acesso Concluído"] = "Sim";
     await updateRow(CANDIDATE_SHEET, dataset.headers, found.rowNumber, found.data);
+    revokeSessionsFor("candidate", cpf);
 
     return res.json({ ok: true, message: "Primeiro acesso concluído." });
   } catch (error) {
@@ -2507,6 +2410,8 @@ app.post("/api/admin/host-status", requireAuth("admin"), async (req, res) => {
           ].join("\n")
         );
       }
+    } else {
+      revokeSessionsFor("host", onlyDigits(host.data["Município CNPJ"] || ""));
     }
 
     host.data["Primeiro Acesso Concluído"] = resolveHostFirstAccess(host.data);
@@ -2566,6 +2471,7 @@ app.post("/api/admin/remove-host", requireAuth("admin"), async (req, res) => {
     host.data["Observação do admin"] = note;
     host.data["Primeiro Acesso Concluído"] = resolveHostFirstAccess(host.data);
     await updateRow(HOST_SHEET, hosts.headers, host.rowNumber, host.data);
+    revokeSessionsFor("host", onlyDigits(host.data["Município CNPJ"] || ""));
 
     res.json({ ok: true, message: "Inscrição do anfitrião cancelada com sucesso." });
   } catch (error) {
@@ -2655,7 +2561,8 @@ app.get("/api/admin/candidate-form/:rowNumber", requireAuth("admin"), async (req
   }
 });
 
-app.post("/api/logout", (req, res) => {
+app.post("/api/logout", requireAuth(), (req, res) => {
+  revokeSessionById(req.session.sessionId, req.session.createdAt + SESSION_TTL_MS);
   res.json({ ok: true });
 });
 
