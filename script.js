@@ -3053,8 +3053,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const restore = async () => {
     const savedScreen = loadScreen();
-    const navigationType = getNavigationType();
-    if (navigationType !== "reload") return;
     if (!savedScreen || savedScreen === "home") return;
 
     if (savedScreen === "admin-area") {
