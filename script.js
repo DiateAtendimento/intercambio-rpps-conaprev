@@ -1706,12 +1706,19 @@ function setupCnpjPrefill() {
 
     if (form) delete form.dataset.prefillCnpj;
     setFeedback(feedbackId, "", false);
-    if (withOverlay) {
-      showMessageModal(
-        "Pré-preenchimento desabilitado",
-        "O pré-preenchimento automático por CNPJ foi desabilitado por segurança. Preencha os dados manualmente.",
-        "warning"
-      );
+    try {
+      const params = new URLSearchParams({ target });
+      const response = await apiFetch(`/api/prefill/municipio/${cnpj}?${params.toString()}`);
+      const data = response?.data || response;
+      apply(form, data);
+      if (form) form.dataset.prefillCnpj = cnpj;
+      setFeedback(feedbackId, "Dados localizados e preenchidos automaticamente.", true);
+    } catch (error) {
+      const message = error?.message || "Não foi possível buscar os dados do CNPJ informado.";
+      setFeedback(feedbackId, message, false);
+      if (withOverlay) {
+        showMessageModal("Pré-preenchimento indisponível", message, "warning");
+      }
     }
   };
 

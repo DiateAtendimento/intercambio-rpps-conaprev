@@ -1267,6 +1267,58 @@ function buildCandidateValueMap(payload) {
   };
 }
 
+function splitCommaList(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function buildHostPrefillPayload(hostRow, hostAreas = []) {
+  const data = hostRow?.data || {};
+  return {
+    municipio: data["Município"] || "",
+    uf: data.UF || "",
+    municipioCnpj: onlyDigits(data["Município CNPJ"] || ""),
+    unidadeGestora: data["Unidade Gestora"] || "",
+    unidadeGestoraCnpj: "",
+    endereco: data["Endereço"] || "",
+    dirigente: data["Nome do Dirigente ou Responsável Legal"] || "",
+    cargoDirigente: data["Cargo/Função (Dirigente)"] || "",
+    coordenadorLocal: data["Responsável pela coordenação local"] || "",
+    email: data["E-mail de contato"] || "",
+    telefone: data["Telefone de contato"] || "",
+    nivelProGestao: data["Nível do Pró-Gestão"] || "",
+    vagas: data["Número de vagas oferecidas"] || "",
+    vagasRestantes: data["Vagas restantes"] || data["Número de vagas oferecidas"] || "",
+    proposta: data["Breve descrição da proposta de intercâmbio"] || "",
+    responsavel: data["Responsável pelo preenchimento"] || "",
+    cargoResponsavel: data["Cargo/Função (Responsável)"] || "",
+    dataPreenchimento: normalizeDateBr(data.Data || ""),
+    equipeApoio: splitCommaList(data["Equipe de apoio designada (nomes)"] || ""),
+    areas: hostAreas,
+  };
+}
+
+function buildCandidatePrefillPayload(candidateRow) {
+  const data = candidateRow?.data || {};
+  return {
+    municipio: data["Município"] || "",
+    uf: data.UF || "",
+    municipioCnpj: onlyDigits(data["Município CNPJ"] || ""),
+    unidadeGestora: data["Unidade Gestora"] || "",
+    unidadeGestoraCnpj: onlyDigits(data["Unidade Gestora CNPJ"] || ""),
+    dirigente: data["Nome do Dirigente ou Responsável Legal"] || "",
+    cargoDirigente: data["Cargo/Função (Dirigente)"] || "",
+    email: data["E-mail institucional"] || "",
+    telefone: data["Telefone para contato"] || "",
+    nivelProGestao: data["Nível do Pró-Gestão"] || "",
+    responsavel: data["Responsável pelo preenchimento"] || "",
+    cargoResponsavel: data["Cargo/Função (Responsável)"] || "",
+    dataPreenchimento: normalizeDateBr(data.Data || ""),
+  };
+}
+
 function buildExchangeRequestValueMap(payload, candidateRow, hostRow) {
   const yesNo = (v) => (v ? "Sim" : "Não");
   const participants = Array.isArray(payload.participantes) ? payload.participantes.slice(0, 20) : [];
@@ -1354,10 +1406,52 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
-app.get("/api/prefill/municipio/:cnpj", (req, res) => {
-  return res.status(403).json({
-    error: "O pré-preenchimento automático por CNPJ foi desabilitado por segurança.",
-  });
+app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
+  try {
+    const cnpj = onlyDigits(req.params.cnpj);
+    const target = normalizeText(req.query.target || "");
+
+    if (cnpj.length !== 14) {
+      return res.status(400).json({ error: "CNPJ inválido." });
+    }
+
+    const [hostsData, candidatesData] = await Promise.all([
+      getRows(HOST_SHEET, hostHeaders),
+      getRows(CANDIDATE_SHEET, candidateHeaders),
+    ]);
+
+    const host = hostsData.rows.find((row) => onlyDigits(row.data["Município CNPJ"] || "") === cnpj) || null;
+    const candidate = candidatesData.rows.find((row) => onlyDigits(row.data["Município CNPJ"] || "") === cnpj) || null;
+
+    if (target === "candidate" && candidate) {
+      return res.json({ target: "candidate", data: buildCandidatePrefillPayload(candidate) });
+    }
+
+    if (target === "host" && host) {
+      const areasData = await getRows(HOST_AREAS_SHEET, hostAreaHeaders);
+      const areas = getHostAreas(
+        areasData.rows.filter((row) => String(row.data["Inscrição do anfitrião"] || "").trim() === String(host.data["Inscrição"] || "").trim())
+      );
+      return res.json({ target: "host", data: buildHostPrefillPayload(host, areas) });
+    }
+
+    if (host) {
+      const areasData = await getRows(HOST_AREAS_SHEET, hostAreaHeaders);
+      const areas = getHostAreas(
+        areasData.rows.filter((row) => String(row.data["Inscrição do anfitrião"] || "").trim() === String(host.data["Inscrição"] || "").trim())
+      );
+      return res.json({ target: "host", data: buildHostPrefillPayload(host, areas) });
+    }
+
+    if (candidate) {
+      return res.json({ target: "candidate", data: buildCandidatePrefillPayload(candidate) });
+    }
+
+    return res.status(404).json({ error: "Nenhum cadastro encontrado para o CNPJ informado." });
+  } catch (error) {
+    console.error("prefill/municipio", error);
+    return res.status(500).json({ error: "Falha ao buscar dados para pré-preenchimento." });
+  }
 });
 
 app.post("/api/host/register", loginLimiter, async (req, res) => {
