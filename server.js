@@ -1319,6 +1319,22 @@ function buildCandidatePrefillPayload(candidateRow) {
   };
 }
 
+async function loadHostAreasForPrefill(host) {
+  if (!host?.data) return [];
+  try {
+    const areasData = await getRows(HOST_AREAS_SHEET, hostAreaHeaders);
+    return getHostAreas(
+      areasData.rows.filter((row) => String(row.data["Inscrição do anfitrião"] || "").trim() === String(host.data["Inscrição"] || "").trim())
+    );
+  } catch (error) {
+    console.error("prefill/municipio:host-areas", {
+      inscricao: String(host.data["Inscrição"] || "").trim(),
+      message: error?.message || String(error || "erro desconhecido"),
+    });
+    return [];
+  }
+}
+
 function buildExchangeRequestValueMap(payload, candidateRow, hostRow) {
   const yesNo = (v) => (v ? "Sim" : "Não");
   const participants = Array.isArray(payload.participantes) ? payload.participantes.slice(0, 20) : [];
@@ -1428,18 +1444,12 @@ app.get("/api/prefill/municipio/:cnpj", async (req, res) => {
     }
 
     if (target === "host" && host) {
-      const areasData = await getRows(HOST_AREAS_SHEET, hostAreaHeaders);
-      const areas = getHostAreas(
-        areasData.rows.filter((row) => String(row.data["Inscrição do anfitrião"] || "").trim() === String(host.data["Inscrição"] || "").trim())
-      );
+      const areas = await loadHostAreasForPrefill(host);
       return res.json({ target: "host", data: buildHostPrefillPayload(host, areas) });
     }
 
     if (host) {
-      const areasData = await getRows(HOST_AREAS_SHEET, hostAreaHeaders);
-      const areas = getHostAreas(
-        areasData.rows.filter((row) => String(row.data["Inscrição do anfitrião"] || "").trim() === String(host.data["Inscrição"] || "").trim())
-      );
+      const areas = await loadHostAreasForPrefill(host);
       return res.json({ target: "host", data: buildHostPrefillPayload(host, areas) });
     }
 
