@@ -3035,7 +3035,7 @@ body {
 }
 
 .navbar__toggle {
-  display: none;
+  display: flex;
 }
 
 .workspace,
