@@ -1713,7 +1713,22 @@ function setupCnpjPrefill() {
     setFeedback(feedbackId, "", false);
     try {
       const params = new URLSearchParams({ target });
-      const response = await apiFetch(`/api/prefill/municipio/${cnpj}?${params.toString()}`);
+      const loadingMessage =
+        target === "host"
+          ? "Buscando dados do CNPJ do anfitrião..."
+          : "Buscando dados do CNPJ do intercambista...";
+      const response = await runWithLottie(
+        () => apiFetch(`/api/prefill/municipio/${cnpj}?${params.toString()}`),
+        {
+          loadingPath: "Loading.json",
+          loadingMessage,
+          successPath: "Success.json",
+          successMessage: "Dados localizados.",
+          errorPath: "lottie_error_generic.json",
+          overlayDelayMs: 150,
+          minLoadingMs: 500,
+        }
+      );
       const data = response?.data || response;
       apply(form, data);
       if (form) form.dataset.prefillCnpj = cnpj;
